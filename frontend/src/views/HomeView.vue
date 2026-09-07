@@ -81,9 +81,6 @@
               <span class="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
               <span>您的车位排队轮候状态</span>
             </span>
-            <span class="text-xs font-bold text-blue-600 flex items-center gap-0.5">
-              顺位脱敏公示大盘 ➔
-            </span>
           </div>
 
           <div class="flex items-baseline gap-3 my-2">

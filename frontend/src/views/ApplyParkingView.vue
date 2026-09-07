@@ -32,21 +32,21 @@
             class="rounded-lg py-1 px-1 border transition cursor-pointer"
             :class="idCardScanned ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 font-bold' : 'bg-white/10 text-slate-300 border-white/10'"
           >
-            {{ idCardScanned ? '✓ 证一:身份证' : '证一:身份证' }}
+            证一:身份证
           </div>
           <div
             @click="propertyVerified ? step = 2 : null"
             class="rounded-lg py-1 px-1 border transition cursor-pointer"
             :class="propertyVerified ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 font-bold' : 'bg-white/10 text-slate-300 border-white/10'"
           >
-            {{ propertyVerified ? '✓ 证二:房产证' : '证二:房产证' }}
+            证二:房产证
           </div>
           <div
             @click="licenseScanned || inputPlate ? step = 3 : null"
             class="rounded-lg py-1 px-1 border transition cursor-pointer"
             :class="licenseScanned || inputPlate ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 font-bold' : 'bg-white/10 text-slate-300 border-white/10'"
           >
-            {{ licenseScanned || inputPlate ? '✓ 证三:行驶证' : '证三:行驶证' }}
+            证三:行驶证
           </div>
         </div>
       </div>
@@ -59,10 +59,7 @@
             class="flex items-center gap-1.5 transition"
             :class="step === 1 ? 'text-blue-600 font-black' : (idCardScanned ? 'text-emerald-600' : 'text-slate-400')"
           >
-            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="step === 1 ? 'bg-blue-600 text-white' : (idCardScanned ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500')">
-              {{ idCardScanned && step !== 1 ? '✓' : '1' }}
-            </span>
-            <span>① 身份核验</span>
+            <span>身份核验</span>
           </button>
           <span class="text-slate-300">──</span>
           <button
@@ -70,10 +67,7 @@
             class="flex items-center gap-1.5 transition"
             :class="step === 2 ? 'text-blue-600 font-black' : (propertyVerified ? 'text-emerald-600' : 'text-slate-400')"
           >
-            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="step === 2 ? 'bg-blue-600 text-white' : (propertyVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500')">
-              {{ propertyVerified && step !== 2 ? '✓' : '2' }}
-            </span>
-            <span>② 房产核定</span>
+            <span>房产核定</span>
           </button>
           <span class="text-slate-300">──</span>
           <button
@@ -81,10 +75,7 @@
             class="flex items-center gap-1.5 transition"
             :class="step === 3 ? 'text-blue-600 font-black' : (licenseScanned ? 'text-emerald-600' : 'text-slate-400')"
           >
-            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="step === 3 ? 'bg-blue-600 text-white' : (licenseScanned ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500')">
-              {{ licenseScanned && step !== 3 ? '✓' : '3' }}
-            </span>
-            <span>③ 车辆填报</span>
+            <span>车辆填报</span>
           </button>
         </div>
       </div>
@@ -251,9 +242,7 @@
               <h3 class="text-sm font-black text-slate-900">第三证：机动车行驶证与车牌填报</h3>
               <p class="text-[11px] text-slate-400 mt-0.5">支持拍摄识别行驶证原件，也可自主填报车牌</p>
             </div>
-            <span class="text-[11px] text-blue-600 font-bold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-              OCR/自填均可
-            </span>
+
           </div>
 
           <!-- 行驶证拍照上传 / OCR 扫描识别 -->
@@ -444,7 +433,7 @@
             class="flex-1 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 active:scale-[0.98] transition disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
           >
             <span v-if="submitting">正在上链存证并计算排位顺位...</span>
-            <span v-else>确认提交三证申请 (进入 FIFO 阳光排位)</span>
+            <span v-else>确认提交三证申请 (进入阳光排位)</span>
           </button>
         </div>
       </div>

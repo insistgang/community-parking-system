@@ -100,6 +100,32 @@
         </div>
       </div>
 
+      <!-- 统计报表: 排队周转周期 -->
+      <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-xs font-bold text-white flex items-center gap-1.5">📊 排队周转统计报表</h3>
+          <span class="text-[10px] text-slate-400">基于存证流水与租约台账实时测算</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+          <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-700/60">
+            <span class="text-[10px] text-slate-400 block">平均周转周期</span>
+            <span class="text-xl font-black text-cyan-400 font-mono mt-1 block">{{ stats.avg_turnover_days ?? 365 }}<span class="text-[10px] font-normal text-slate-400"> 天</span></span>
+          </div>
+          <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-700/60">
+            <span class="text-[10px] text-slate-400 block">轮候平均已等待</span>
+            <span class="text-xl font-black text-amber-400 font-mono mt-1 block">{{ stats.avg_queue_wait_days ?? 0 }}<span class="text-[10px] font-normal text-slate-400"> 天</span></span>
+          </div>
+          <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-700/60">
+            <span class="text-[10px] text-slate-400 block">累计完成分配</span>
+            <span class="text-xl font-black text-emerald-400 font-mono mt-1 block">{{ stats.completed_allocations ?? 0 }}<span class="text-[10px] font-normal text-slate-400"> 单</span></span>
+          </div>
+          <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-700/60">
+            <span class="text-[10px] text-slate-400 block">累计清退释放</span>
+            <span class="text-xl font-black text-rose-400 font-mono mt-1 block">{{ stats.released_total ?? 0 }}<span class="text-[10px] font-normal text-slate-400"> 次</span></span>
+          </div>
+        </div>
+      </div>
+
       <!-- 核心车位资产 50 矩阵网格 -->
       <div class="bg-slate-800 rounded-3xl p-6 border border-slate-700 space-y-4">
         <div class="flex items-center justify-between flex-wrap gap-2">
@@ -192,6 +218,39 @@
           <div class="flex justify-between">
             <span class="text-slate-400">租期截止日:</span>
             <span class="font-mono text-slate-300">{{ currentSpace.end_date || '无' }}</span>
+          </div>
+        </div>
+
+        <!-- 车位档案: 历史承租记录与流转事件 -->
+        <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-xs space-y-2">
+          <div class="flex items-center justify-between">
+            <h4 class="font-bold text-white">📁 车位档案 · 历史承租记录</h4>
+            <span class="text-[10px] text-slate-400">{{ spaceArchive ? spaceArchive.history.length + ' 条记录' : '加载中...' }}</span>
+          </div>
+          <div v-if="spaceArchive && spaceArchive.history.length === 0" class="text-slate-400 py-1">暂无承租记录</div>
+          <div v-if="spaceArchive" class="space-y-1.5 max-h-32 overflow-y-auto">
+            <div
+              v-for="h in spaceArchive.history"
+              :key="h.contract_no"
+              class="flex items-center justify-between bg-slate-800/60 rounded-lg px-2.5 py-1.5"
+            >
+              <div>
+                <span class="font-bold text-slate-200">{{ h.user_name }}</span>
+                <span class="text-slate-400 ml-1.5 font-mono">{{ h.plate_no }}</span>
+                <span class="text-slate-500 block text-[10px] font-mono">{{ h.start_date }} ~ {{ h.end_date }}</span>
+              </div>
+              <span
+                class="text-[10px] px-1.5 py-0.5 rounded font-semibold"
+                :class="h.status === 'TERMINATED' ? 'bg-slate-700 text-slate-300' : 'bg-emerald-900/50 text-emerald-300'"
+              >{{ h.status_label }}</span>
+            </div>
+          </div>
+          <div v-if="spaceArchive && spaceArchive.events.length > 0" class="pt-1.5 border-t border-slate-700/60 space-y-1">
+            <span class="text-[10px] text-slate-500 font-semibold">上链流转事件:</span>
+            <div v-for="(ev, i) in spaceArchive.events" :key="i" class="text-[10px] text-slate-400 flex justify-between gap-2">
+              <span class="truncate">{{ ev.summary }}</span>
+              <span class="font-mono shrink-0">{{ ev.time.slice(5, 16) }}</span>
+            </div>
           </div>
         </div>
 
@@ -321,9 +380,18 @@ const switchToOwnerH5 = async () => {
   await handleFastSwitch({ identifier: '13800000001', password: '123456' })
 }
 
-const selectSpace = (sp) => {
+const spaceArchive = ref(null)
+
+const selectSpace = async (sp) => {
   currentSpace.value = sp
   selectedSpaceModal.value = true
+  spaceArchive.value = null
+  try {
+    const res = await api.get(`/property/space-history/${sp.id}`)
+    if (res.code === 200) spaceArchive.value = res.data
+  } catch (err) {
+    console.error('加载车位档案失败:', err)
+  }
 }
 
 const getStatusLabel = (st) => {

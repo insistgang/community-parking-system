@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 import urllib.parse
 from io import BytesIO
 from database import get_db
-from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community
+from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community, ChainEvidence
 from schemas import MaintenanceRequest, ConfirmDeliveryRequest, ForceTerminateRequest, ResponseModel
 from scheduler import trigger_recalculate_queue, init_community_spaces
 from evidence import create_evidence_record
@@ -41,6 +41,30 @@ def get_property_stats(admin: User = Depends(get_property_admin), db: Session = 
         QueueApplication.status == "OFFLINE_PENDING"
     ).count()
 
+    # 排队周转周期统计 (真实计算, 替代固定值)
+    terminated_cts = db.query(RentalContract).join(
+        ParkingSpace, RentalContract.space_id == ParkingSpace.id
+    ).filter(ParkingSpace.community_id == comm_id, RentalContract.status == "TERMINATED").all()
+    if terminated_cts:
+        avg_turnover = round(sum((c.end_date - c.start_date).days for c in terminated_cts) / len(terminated_cts))
+    else:
+        avg_turnover = 365
+
+    waiting_apps = db.query(QueueApplication).filter(
+        QueueApplication.community_id == comm_id,
+        QueueApplication.status == "WAITING"
+    ).all()
+    avg_wait_days = round(sum((datetime.utcnow() - a.apply_time).days for a in waiting_apps) / len(waiting_apps)) if waiting_apps else 0
+
+    completed_count = db.query(QueueApplication).filter(
+        QueueApplication.community_id == comm_id,
+        QueueApplication.status == "COMPLETED"
+    ).count()
+    released_count = db.query(ChainEvidence).filter(
+        ChainEvidence.community_id == comm_id,
+        ChainEvidence.event_type == "TERMINATE"
+    ).count()
+
     return ResponseModel(
         code=200,
         data={
@@ -52,7 +76,10 @@ def get_property_stats(admin: User = Depends(get_property_admin), db: Session = 
             "waiting_count": waiting_users,
             "occupancy_rate": f"{(rented_sp / max(1, total_sp) * 100):.1f}%",
             "pending_warnings": expiring_count + pending_delivery,
-            "avg_turnover_days": 85
+            "avg_turnover_days": avg_turnover,
+            "avg_queue_wait_days": avg_wait_days,
+            "completed_allocations": completed_count,
+            "released_total": released_count
         }
     )
 
@@ -277,6 +304,75 @@ def force_terminate(req: ForceTerminateRequest, admin: User = Depends(get_proper
     trigger_recalculate_queue(db, admin.community_id)
 
     return ResponseModel(code=200, message=f"车位【{sp.space_no}】已成功清退释放，系统已自动触发后序顺位流转分配！")
+
+@router.get("/space-history/{space_id}", response_model=ResponseModel)
+def get_space_history(space_id: int, admin: User = Depends(get_property_admin), db: Session = Depends(get_db)):
+    """
+    车位档案: 当前使用业主信息 + 历史承租记录 + 该车位上链流转事件
+    """
+    sp = db.query(ParkingSpace).filter(
+        ParkingSpace.id == space_id,
+        ParkingSpace.community_id == admin.community_id
+    ).first()
+    if not sp:
+        raise HTTPException(status_code=404, detail="未找到指定车位")
+
+    # 当前生效租约
+    current = None
+    ct = db.query(RentalContract).filter(
+        RentalContract.space_id == sp.id,
+        RentalContract.status != "TERMINATED"
+    ).first()
+    if ct:
+        u = db.query(User).filter(User.id == ct.user_id).first()
+        current = {
+            "user_name": u.real_name if u else "--",
+            "phone": u.phone if u else "--",
+            "plate_no": ct.plate_no,
+            "start_date": str(ct.start_date),
+            "end_date": str(ct.end_date),
+            "status": ct.status
+        }
+
+    # 历史承租记录 (含已退租, 新的在前)
+    status_label = {"ACTIVE": "生效中", "EXPIRING": "临期", "OVERDUE": "逾期", "TERMINATED": "已退租"}
+    history = []
+    contracts = db.query(RentalContract).filter(
+        RentalContract.space_id == sp.id
+    ).order_by(RentalContract.id.desc()).all()
+    for c in contracts:
+        u = db.query(User).filter(User.id == c.user_id).first()
+        history.append({
+            "contract_no": c.contract_no,
+            "user_name": u.real_name if u else "--",
+            "phone": u.phone if u else "--",
+            "plate_no": c.plate_no,
+            "start_date": str(c.start_date),
+            "end_date": str(c.end_date),
+            "status": c.status,
+            "status_label": status_label.get(c.status, c.status)
+        })
+
+    # 该车位相关的上链流转事件
+    events = []
+    evs = db.query(ChainEvidence).filter(
+        ChainEvidence.community_id == admin.community_id,
+        ChainEvidence.raw_payload_json.like(f"%{sp.space_no}%")
+    ).order_by(ChainEvidence.id.desc()).limit(10).all()
+    for e in evs:
+        events.append({
+            "time": fmt_bj(e.created_at),
+            "summary": e.event_summary,
+            "tx_hash": (e.tx_hash or "")[:18] + "..."
+        })
+
+    return ResponseModel(code=200, data={
+        "space_no": sp.space_no,
+        "status": sp.status,
+        "current": current,
+        "history": history,
+        "events": events
+    })
 
 @router.get("/export-spaces")
 def export_spaces(admin: User = Depends(get_property_admin), db: Session = Depends(get_db)):

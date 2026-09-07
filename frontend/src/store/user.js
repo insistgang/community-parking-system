@@ -6,7 +6,8 @@ export const useUserStore = defineStore('user', {
     user: JSON.parse(localStorage.getItem('parking_user') || 'null'),
     token: localStorage.getItem('parking_token') || '',
     homeData: null,
-    theme: localStorage.getItem('parking_theme') || 'light'
+    theme: localStorage.getItem('parking_theme') || 'light',
+    propertyTheme: localStorage.getItem('parking_property_theme_v2') || 'dark'
   }),
   getters: {
     isLoggedIn: (state) => !!state.token && !!state.user,
@@ -29,6 +30,10 @@ export const useUserStore = defineStore('user', {
       this.theme = this.theme === 'dark' ? 'light' : 'dark'
       localStorage.setItem('parking_theme', this.theme)
       this.initTheme()
+    },
+    togglePropertyTheme() {
+      this.propertyTheme = this.propertyTheme === 'dark' ? 'light' : 'dark'
+      localStorage.setItem('parking_property_theme_v2', this.propertyTheme)
     },
     logout() {
       this.user = null

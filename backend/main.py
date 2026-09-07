@@ -13,7 +13,7 @@ from routers import auth, parking, property, evidence, dev
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
-    title="老旧小区停车位综合管理平台 API",
+    title="慧停管家 · 老旧小区停车位管理平台 API",
     description="面向老旧小区车位供需失衡的公平排位、三证合一准入与虚拟区块链存证系统",
     version="3.0.0"
 )
@@ -62,7 +62,7 @@ async def start_timeout_sweeper():
 @app.get("/")
 def root():
     return {
-        "system": "老旧小区停车位管理系统 API",
+        "system": "慧停管家 API",
         "version": "v3.0",
         "status": "online",
         "docs_url": "/docs"

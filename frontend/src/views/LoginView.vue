@@ -12,7 +12,7 @@
               <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/>
             </svg>
           </div>
-          <h2 class="text-xl font-black text-slate-900 tracking-tight">老旧小区停车位综合管理系统</h2>
+          <h2 class="text-xl font-black text-slate-900 tracking-tight">慧停管家 · 老旧小区停车位管理系统</h2>
           <p class="text-xs text-slate-500 mt-1">公平排位 · 三证合一 · 阳光公示 · 存证溯源</p>
         </div>
 

@@ -43,14 +43,6 @@
         </button>
 
         <button
-          @click="userStore.toggleTheme()"
-          class="px-2 py-1 rounded bg-slate-700/80 hover:bg-slate-600 active:scale-95 transition text-white border border-slate-500/40 flex items-center gap-1 ml-1"
-          :title="userStore.isDark ? '切换为浅色模式' : '切换为暗夜模式'"
-        >
-          <span>{{ userStore.isDark ? '☀️ 浅色' : '🌙 暗夜' }}</span>
-        </button>
-
-        <button
           @click="handleResetSeed"
           class="px-2 py-1 rounded bg-rose-700/80 hover:bg-rose-600 active:scale-95 transition text-white border border-rose-400/30 flex items-center gap-1 ml-1"
           title="重置所有演示数据至初始状态"

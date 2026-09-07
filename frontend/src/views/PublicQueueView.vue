@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-100 flex flex-col pb-12">
+  <div class="min-h-screen bg-slate-100 flex flex-col pb-20">
     <!-- 顶部导航 -->
     <header class="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
       <div class="flex items-center gap-2">
@@ -144,12 +144,15 @@
         </div>
       </div>
     </main>
+
+    <BottomNav />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../api'
+import BottomNav from '../components/BottomNav.vue'
 
 const tab = ref('QUEUE')
 const queueList = ref([])

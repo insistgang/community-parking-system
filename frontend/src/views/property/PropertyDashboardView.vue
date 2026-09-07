@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col property-dashboard">
+  <div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col property-dashboard" :class="{ 'light-mode': userStore.propertyTheme === 'light' }">
     <!-- 顶部演示控制条 (随时一键免密切换任意角色，绝不迷路) -->
     <SeedAccountBar @fill="handleFastSwitch" />
 
@@ -22,7 +22,7 @@
         </div>
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <h1 class="text-base font-black text-white tracking-wide">老旧小区车位资产综合调度中台</h1>
+            <h1 class="text-base font-black text-white tracking-wide">慧停管家 · 物业调度中台</h1>
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-900/60 text-purple-300 border border-purple-500/40 font-semibold whitespace-nowrap">
               物业管理 PC 端
             </span>
@@ -56,6 +56,14 @@
         </button>
 
         <button
+          @click="userStore.togglePropertyTheme()"
+          class="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold transition flex items-center gap-1.5"
+          :title="userStore.propertyTheme === 'dark' ? '切换为浅色模式' : '切换为深色大屏模式'"
+        >
+          <span>{{ userStore.propertyTheme === 'dark' ? '☀️ 浅色' : '🌙 深色' }}</span>
+        </button>
+
+        <button
           @click="handleLogout"
           class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition border border-slate-700"
         >
@@ -64,9 +72,25 @@
       </div>
     </header>
 
-    <div class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-      <!-- 顶部 7 大关键大屏看板指标 -->
-      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+    <div class="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 space-y-4">
+      <!-- 三栏切换: 一次只展开一栏，避免手机端三栏叠成长页 -->
+      <div class="bg-slate-800 p-1 rounded-2xl border border-slate-700 grid grid-cols-3 gap-1">
+        <button
+          v-for="tab in panels"
+          :key="tab.id"
+          @click="activePanel = tab.id"
+          class="px-2 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition active:scale-[0.98]"
+          :class="activePanel === tab.id
+            ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
+            : 'text-slate-400 hover:text-white hover:bg-slate-700'"
+        >
+          <span class="block text-base leading-none mb-0.5">{{ tab.icon }}</span>
+          <span>{{ tab.label }}</span>
+        </button>
+      </div>
+
+      <!-- 第 1 栏: 7 大关键大屏看板指标 -->
+      <div v-show="activePanel === 'kpi'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
           <span class="text-xs text-slate-400 block font-medium">总规划车位数</span>
           <span class="text-2xl font-black text-white mt-1 block font-mono">{{ stats.total_spaces ?? 50 }}</span>
@@ -100,9 +124,9 @@
         </div>
       </div>
 
-      <!-- 统计报表: 排队周转周期 -->
-      <div class="bg-slate-800 rounded-2xl p-5 border border-slate-700">
-        <div class="flex items-center justify-between mb-3">
+      <!-- 第 2 栏: 排队周转统计报表 -->
+      <div v-show="activePanel === 'report'" class="bg-slate-800 rounded-2xl p-5 border border-slate-700">
+        <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <h3 class="text-xs font-bold text-white flex items-center gap-1.5">📊 排队周转统计报表</h3>
           <span class="text-[10px] text-slate-400">基于存证流水与租约台账实时测算</span>
         </div>
@@ -126,59 +150,59 @@
         </div>
       </div>
 
-      <!-- 核心车位资产 50 矩阵网格 -->
-      <div class="bg-slate-800 rounded-3xl p-6 border border-slate-700 space-y-4">
+      <!-- 第 3 栏: 核心车位资产 50 矩阵网格 -->
+      <div v-show="activePanel === 'spaces'" class="bg-slate-800 rounded-3xl p-3 sm:p-6 border border-slate-700 space-y-4">
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <h2 class="text-sm font-bold text-white flex items-center gap-2">
+            <h2 class="text-sm font-bold text-white flex items-center gap-2 flex-wrap">
               <span>某某新村 50 车位资产实时运行矩阵</span>
-              <span class="text-xs text-slate-400 font-normal">(点击任意车位卡片可发起管理操作)</span>
+              <span class="text-xs text-slate-400 font-normal hidden sm:inline">(点击任意车位卡片可发起管理操作)</span>
             </h2>
           </div>
 
           <!-- 状态图例说明 -->
-          <div class="flex items-center gap-3 text-xs">
+          <div class="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs flex-wrap">
             <span class="flex items-center gap-1.5">
               <span class="w-3 h-3 rounded bg-blue-600"></span>
-              <span class="text-slate-300">已租使用中</span>
+              <span class="text-slate-300">已租</span>
             </span>
             <span class="flex items-center gap-1.5">
               <span class="w-3 h-3 rounded bg-amber-500"></span>
-              <span class="text-slate-300">中签锁定 (48h/线下中)</span>
+              <span class="text-slate-300">中签锁定</span>
             </span>
             <span class="flex items-center gap-1.5">
               <span class="w-3 h-3 rounded bg-emerald-500"></span>
-              <span class="text-slate-300">空闲可用</span>
+              <span class="text-slate-300">空闲</span>
             </span>
             <span class="flex items-center gap-1.5">
               <span class="w-3 h-3 rounded bg-rose-600"></span>
-              <span class="text-slate-300">维修停用</span>
+              <span class="text-slate-300">维修</span>
             </span>
           </div>
         </div>
 
-        <!-- 50 宫格矩阵 -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-10 gap-2.5">
+        <!-- 50 宫格矩阵: 手机 5 列 / 宽屏 10 列，避免 2 列把页面拉得很长 -->
+        <div class="grid grid-cols-5 lg:grid-cols-10 gap-1.5 sm:gap-2.5">
           <div
             v-for="sp in spaceList"
             :key="sp.id"
             @click="selectSpace(sp)"
-            class="p-2.5 rounded-xl border cursor-pointer transition-all hover:scale-105 active:scale-95 flex flex-col justify-between h-24 text-xs select-none"
+            class="p-1.5 sm:p-2.5 rounded-xl border cursor-pointer transition-all hover:scale-105 active:scale-95 flex flex-col justify-between h-[4.75rem] sm:h-24 text-xs select-none"
             :class="getSpaceColorClass(sp)"
           >
-            <div class="flex items-center justify-between">
-              <span class="font-mono font-black text-sm">{{ sp.space_no }}</span>
-              <span class="text-[10px] opacity-75">{{ sp.area_type === 'GROUND' ? '地面' : '地下' }}</span>
+            <div class="flex items-center justify-between gap-0.5">
+              <span class="font-mono font-black text-[11px] sm:text-sm">{{ sp.space_no }}</span>
+              <span class="text-[9px] sm:text-[10px] opacity-75 hidden sm:inline">{{ sp.area_type === 'GROUND' ? '地面' : '地下' }}</span>
             </div>
 
-            <div class="my-auto py-1">
-              <span class="font-bold text-[11px] block truncate">{{ sp.user_name || '待分' }}</span>
-              <span class="text-[10px] opacity-80 block truncate font-mono">{{ sp.plate_no || '--' }}</span>
+            <div class="my-auto py-0.5 min-w-0">
+              <span class="font-bold text-[10px] sm:text-[11px] block truncate">{{ sp.user_name || '待分' }}</span>
+              <span class="text-[9px] sm:text-[10px] opacity-80 block truncate font-mono">{{ sp.plate_no || '--' }}</span>
             </div>
 
-            <div class="flex items-center justify-between text-[10px] opacity-90 border-t border-white/20 pt-1">
-              <span>{{ getStatusLabel(sp.status) }}</span>
-              <span>{{ sp.end_date ? sp.end_date.slice(5) : '--' }}</span>
+            <div class="flex items-center justify-between text-[9px] sm:text-[10px] opacity-90 border-t border-white/20 pt-0.5 sm:pt-1 gap-0.5">
+              <span class="truncate">{{ getStatusLabel(sp.status) }}</span>
+              <span class="hidden sm:inline">{{ sp.end_date ? sp.end_date.slice(5) : '--' }}</span>
             </div>
           </div>
         </div>
@@ -187,7 +211,7 @@
 
     <!-- 车位操作抽屉 / Modal -->
     <div v-if="selectedSpaceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div class="bg-slate-800 rounded-3xl max-w-md w-full p-6 text-slate-100 shadow-2xl border border-slate-700 space-y-4">
+      <div class="bg-slate-800 rounded-3xl max-w-5xl w-full max-h-[90vh] overflow-y-auto p-3 sm:p-6 text-slate-100 shadow-2xl border border-slate-700 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-700 pb-3">
           <div class="flex items-center gap-2">
             <span class="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center font-black text-sm">
@@ -201,6 +225,9 @@
           <button @click="selectedSpaceModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
         </div>
 
+        <!-- 详细信息 | 车位档案 | 管理操作：手机单列，宽屏三列 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 items-start">
+        <div>
         <!-- 详细信息 -->
         <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-xs space-y-2">
           <div class="flex justify-between">
@@ -220,7 +247,9 @@
             <span class="font-mono text-slate-300">{{ currentSpace.end_date || '无' }}</span>
           </div>
         </div>
+        </div>
 
+        <div>
         <!-- 车位档案: 历史承租记录与流转事件 -->
         <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-xs space-y-2">
           <div class="flex items-center justify-between">
@@ -253,7 +282,9 @@
             </div>
           </div>
         </div>
+        </div>
 
+        <div class="space-y-3">
         <!-- 操作项 1: 第三幕核心演示——物业强制代清退 (如 A-015) -->
         <div v-if="currentSpace.status === 'RENTED'" class="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl space-y-2">
           <h4 class="text-xs font-bold text-rose-300 flex items-center gap-1.5">
@@ -319,6 +350,8 @@
             关闭
           </button>
         </div>
+        </div>
+        </div>
       </div>
     </div>
   </div>
@@ -333,6 +366,13 @@ import SeedAccountBar from '../../components/SeedAccountBar.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+const activePanel = ref('spaces')
+const panels = [
+  { id: 'kpi', icon: '📈', label: '看板指标' },
+  { id: 'report', icon: '📊', label: '周转报表' },
+  { id: 'spaces', icon: '🅿️', label: '车位矩阵' }
+]
 
 const stats = ref({})
 const spaceList = ref([])

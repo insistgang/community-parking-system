@@ -66,17 +66,60 @@
 
         <div class="pt-2 border-t border-slate-200">
           <span class="text-slate-500 block mb-1">存证业务中文摘要:</span>
-          <p class="font-medium text-slate-800 leading-relaxed bg-white p-2 rounded border border-slate-200">
+          <p class="font-medium text-slate-800 leading-relaxed bg-white p-2.5 rounded-xl border border-slate-200">
             {{ record.event_summary }}
           </p>
         </div>
 
-        <!-- 官方防伪验真电子印章 -->
-        <div class="pt-4 flex items-center justify-end">
-          <div class="w-32 h-32 border-2 border-emerald-600 rounded-full flex flex-col items-center justify-center text-emerald-700 p-2 text-center rotate-[-12deg] shadow-inner opacity-90 select-none bg-emerald-50/40">
-            <span class="text-[9px] font-bold tracking-tighter">上海智慧社区服务中心</span>
-            <span class="text-sm font-black tracking-widest my-0.5">区块链验真</span>
-            <span class="text-[8px] font-mono">VERIFIED OK</span>
+        <!-- 官方防伪验真电子印章：上海市“浦江数链”区块链公共存证中心 -->
+        <div class="pt-3 border-t border-slate-200 flex items-center justify-between gap-2">
+          <div class="text-[11px] text-slate-500 space-y-1">
+            <div class="flex items-center gap-1.5 font-bold text-slate-800">
+              <span class="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+              <span>上海市“浦江数链”城市存证服务平台</span>
+            </div>
+            <p class="text-[10px] text-slate-400">核验底座: 上海市政务区块链公共基础设施 · 浦江数链共识节点</p>
+            <p class="text-[10px] text-slate-400 font-mono">密码学状态: SHA-256 跨链指纹核验通过 (具有司法公信力)</p>
+          </div>
+
+          <!-- 权威红印章 -->
+          <div class="relative w-36 h-36 select-none pointer-events-none rotate-[-12deg] opacity-95 shrink-0 -my-2 -mr-1">
+            <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 200 200" class="w-full h-full drop-shadow-md">
+              <defs>
+                <path id="seal-top-arc" d="M 30,130 A 75,75 0 1,1 170,130" fill="none" />
+                <path id="seal-bottom-arc" d="M 40,136 A 72,72 0 0,0 160,136" fill="none" />
+              </defs>
+
+              <!-- 外双圈公章边框 -->
+              <circle cx="100" cy="100" r="95" stroke="#dc2626" stroke-width="4" fill="none" stroke-opacity="0.95" />
+              <circle cx="100" cy="100" r="90" stroke="#dc2626" stroke-width="1.2" fill="none" stroke-opacity="0.85" />
+              <circle cx="100" cy="100" r="62" stroke="#dc2626" stroke-width="0.8" stroke-dasharray="3 2" fill="none" stroke-opacity="0.45" />
+
+              <!-- 顶部圆弧机构名称: 上海市“浦江数链”区块链存证验证中心 -->
+              <text fill="#dc2626" font-size="11.5" font-weight="900" font-family="'Songti SC', 'SimSun', serif, sans-serif" letter-spacing="1.2">
+                <textPath href="#seal-top-arc" xlink:href="#seal-top-arc" startOffset="50%" text-anchor="middle">
+                  上海市“浦江数链”区块链存证验证中心
+                </textPath>
+              </text>
+
+              <!-- 中心五角星 -->
+              <polygon points="100,64 104,77 117,77 106,85 110,98 100,90 90,98 94,85 83,77 96,77" fill="#dc2626" fill-opacity="0.95" />
+
+              <!-- 中心核心功能专用章名 -->
+              <text x="100" y="116" text-anchor="middle" font-size="14.5" font-weight="900" fill="#dc2626" font-family="'Songti SC', 'SimSun', serif, sans-serif" letter-spacing="2">
+                区块链存证
+              </text>
+              <text x="100" y="134" text-anchor="middle" font-size="11" font-weight="bold" fill="#dc2626" font-family="'Songti SC', 'SimSun', serif, sans-serif" letter-spacing="1.5">
+                核验专用章 (上海)
+              </text>
+
+              <!-- 底部防伪编码 -->
+              <text fill="#dc2626" font-size="8" font-family="monospace" font-weight="bold" letter-spacing="1.2">
+                <textPath href="#seal-bottom-arc" xlink:href="#seal-bottom-arc" startOffset="50%" text-anchor="middle">
+                  ★ 310100 · PUJIANG CHAIN ★
+                </textPath>
+              </text>
+            </svg>
           </div>
         </div>
       </div>

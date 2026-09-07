@@ -62,6 +62,6 @@ def verify_evidence(evidence_id: str, db: Session = Depends(get_db)):
             "timestamp": rec.timestamp,
             "event_summary": rec.event_summary,
             "verification_status": "BLOCKCHAIN_VERIFIED_SUCCESS",
-            "cert_agency": "上海市基层治理与智慧社区区块链存证服务平台"
+            "cert_agency": "上海市“浦江数链”区块链公共存证基础设施平台"
         }
     )

@@ -4,6 +4,23 @@
     <NavBar />
 
     <main class="max-w-md w-full mx-auto p-4 space-y-4 flex-1">
+      <!-- 物业管理员身份专属巡检横幅 (物业人员返回前台时显示) -->
+      <div v-if="userStore.isPropertyAdmin" class="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-3.5 shadow-md border border-purple-500/30 flex items-center justify-between gap-3 animate-fade-in">
+        <div class="flex items-center gap-2.5 min-w-0">
+          <span class="text-2xl">🏢</span>
+          <div class="min-w-0">
+            <span class="text-xs font-bold text-purple-200 block truncate">物业管理巡检视角 · {{ userStore.realName }}</span>
+            <span class="text-[10px] text-slate-300 block">当前正在以管理员身份浏览前台大盘与公示</span>
+          </div>
+        </div>
+        <router-link
+          to="/property/dashboard"
+          class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shrink-0 shadow transition active:scale-95 flex items-center gap-1"
+        >
+          <span>回中台 ➔</span>
+        </router-link>
+      </div>
+
       <!-- 视图 D: 队首中签 48h 确认倒计时卡片 -->
       <div v-if="viewState === 'ALLOCATED' || viewState === 'OFFLINE_PENDING'">
         <CountdownCard
@@ -131,20 +148,39 @@
         </div>
       </div>
 
-      <!-- 视图 B: 新客无车位视图 -->
+      <!-- 视图 B: 新客无车位视图 / 物业管理员巡检视图 -->
       <div v-else class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 text-center space-y-4">
-        <div class="w-16 h-16 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto shadow-inner">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-inner" :class="userStore.isPropertyAdmin ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'">
+          <span v-if="userStore.isPropertyAdmin" class="text-3xl">🏢</span>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
             <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/>
           </svg>
         </div>
-        <div>
+        <div v-if="userStore.isPropertyAdmin">
+          <h3 class="text-base font-black text-slate-800">物业管理员前台巡检模式</h3>
+          <p class="text-xs text-slate-500 mt-1 leading-relaxed max-w-xs mx-auto">
+            当前登录身份：【{{ userStore.realName }}】(物业管理员)。您可在此查验车位公示大盘、顺位全量脱敏队列与存证链，随时可切回调度中台。
+          </p>
+        </div>
+        <div v-else>
           <h3 class="text-base font-black text-slate-800">尚未在本小区申请车位</h3>
           <p class="text-xs text-slate-500 mt-1 leading-relaxed max-w-xs mx-auto">
             老旧小区车位资源紧张，系统实行“三证合一严审、按序阳光轮候、全流程存证”的公平管理机制。
           </p>
         </div>
+
         <router-link
+          v-if="userStore.isPropertyAdmin"
+          to="/property/dashboard"
+          class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-md shadow-purple-500/20 active:scale-[0.98] transition"
+        >
+          <span>🏢 进入物业资产调度中台</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="m9 18 6-6-6-6"/>
+          </svg>
+        </router-link>
+        <router-link
+          v-else
           to="/apply"
           class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20 active:scale-[0.98] transition"
         >

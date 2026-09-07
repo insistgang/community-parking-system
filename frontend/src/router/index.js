@@ -70,8 +70,8 @@ router.beforeEach((to, from, next) => {
   if (to.meta.requiresAdmin && !userStore.isPropertyAdmin) {
     return next('/')
   }
-  // 物业管理员禁止进入业主申报及个人端路由，防止产生误操作或混淆
-  if (userStore.isPropertyAdmin && (to.path === '/apply' || to.path === '/')) {
+  // 物业管理员禁止进入业主申报提交页面，避免误操作；但允许浏览前台主页、公示大盘与存证
+  if (userStore.isPropertyAdmin && to.path === '/apply') {
     return next('/property/dashboard')
   }
   next()

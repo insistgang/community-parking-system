@@ -118,7 +118,7 @@ bash run.sh
 3. **公平流转**（王建国 + 张欣欣 同屏联动）：物业后台对 A-015（孙立新·逾期失联）执行强制清退 → 业主端 3 秒内排位 3→2 自动跳变并弹出通知
 4. **中签履约**（李雷 + 王建国）：金色倒计时卡确认办理 → 物业端确认交付 → 租约生效 365 天 → 存证中心复制 SHA-256 防伪哈希
 
-**防翻车保障**：任何演示操作后，访问 `POST /api/dev/reset-seed`（或重新运行 `seed.py`）即可一键恢复初始数据矩阵。
+**防翻车保障**：任何演示操作后，调用 `POST /api/dev/reset-seed`（ SeedAccountBar / 物业看板均有一键重置按钮）即可彻底恢复初始数据矩阵。日常 `bash run.sh` 重启**不会清空**已注册账号——seed 脚本检测到已有数据时自动跳过初始化。
 
 ---
 
@@ -129,8 +129,8 @@ bash run.sh
 | 模块 | 端点 |
 |---|---|
 | 认证 | `POST /api/auth/login` · `POST /api/auth/send-sms` · `POST /api/register` · `GET /api/common/districts` |
-| 业主 | `GET /api/user/home` · `POST /api/parking/apply` · `POST /api/parking/cancel-apply` · `POST /api/parking/accept-allocation` · `POST /api/parking/give-up-allocation` · `GET /api/parking/queue` · `GET /api/parking/my-timeline` · `GET /api/notifications` |
-| 物业 | `GET /api/property/stats` · `GET /api/property/spaces` · `POST /api/property/set-maintenance` · `POST /api/property/confirm-delivery` · `POST /api/property/force-terminate` |
+| 业主 | `GET /api/user/home` · `POST /api/parking/apply` · `POST /api/parking/cancel-apply` · `POST /api/parking/accept-allocation` · `POST /api/parking/give-up-allocation` · `POST /api/parking/terminate-rental`（主动退租） · `POST /api/parking/renew`（临期续租） · `GET /api/parking/queue` · `GET /api/parking/my-timeline` · `GET /api/notifications` |
+| 物业 | `GET /api/property/stats` · `GET /api/property/spaces` · `GET /api/property/export-spaces`（导出台账 Excel） · `POST /api/property/set-maintenance` · `POST /api/property/confirm-delivery`（仅允许系统已分配的中签车位，杜绝人工指派） · `POST /api/property/force-terminate` · `POST /api/property/init-demo-spaces` |
 | 存证 | `GET /api/evidence/list` · `GET /api/evidence/verify/{evidence_id}` |
 | 开发 | `POST /api/dev/reset-seed`（一键重置演示数据） |
 

@@ -1,6 +1,9 @@
 from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+import urllib.parse
+from io import BytesIO
 from database import get_db
 from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community
 from schemas import MaintenanceRequest, ConfirmDeliveryRequest, ForceTerminateRequest, ResponseModel
@@ -273,6 +276,111 @@ def force_terminate(req: ForceTerminateRequest, admin: User = Depends(get_proper
     trigger_recalculate_queue(db, admin.community_id)
 
     return ResponseModel(code=200, message=f"车位【{sp.space_no}】已成功清退释放，系统已自动触发后序顺位流转分配！")
+
+@router.get("/export-spaces")
+def export_spaces(admin: User = Depends(get_property_admin), db: Session = Depends(get_db)):
+    """
+    导出本小区车位资产台账为真实 Excel (.xlsx) 文件:
+    Sheet1 车位资产台账 + Sheet2 排队轮候名单
+    """
+    from openpyxl import Workbook
+    from openpyxl.styles import Font, PatternFill, Alignment
+
+    community = db.query(Community).filter(Community.id == admin.community_id).first()
+    community_name = community.name if community else "小区"
+
+    status_map = {
+        "RENTED": "已租(生效中)",
+        "VACANT": "空闲可用",
+        "ALLOCATED": "已分配待确认(48h)",
+        "OFFLINE_PENDING": "线下签约办理中",
+        "MAINTENANCE": "维修停用"
+    }
+
+    wb = Workbook()
+    header_font = Font(bold=True, color="FFFFFF")
+    header_fill = PatternFill("solid", fgColor="1D4ED8")
+    center = Alignment(horizontal="center", vertical="center")
+
+    def style_header(ws):
+        for c in ws[1]:
+            c.font = header_font
+            c.fill = header_fill
+            c.alignment = center
+
+    # Sheet1: 车位资产台账
+    ws = wb.active
+    ws.title = "车位资产台账"
+    ws.append(["车位编号", "区域类型", "车位状态", "关联业主", "联系电话", "登记车牌", "租约编号", "租期截止日"])
+    style_header(ws)
+
+    spaces = db.query(ParkingSpace).filter(
+        ParkingSpace.community_id == admin.community_id
+    ).order_by(ParkingSpace.space_no.asc()).all()
+
+    for sp in spaces:
+        user_name, user_phone, plate_no, contract_no, end_date = "--", "--", "--", "--", "--"
+        if sp.current_user_id:
+            u = db.query(User).filter(User.id == sp.current_user_id).first()
+            if u:
+                user_name, user_phone = u.real_name, u.phone
+            ct = db.query(RentalContract).filter(
+                RentalContract.space_id == sp.id,
+                RentalContract.status != "TERMINATED"
+            ).first()
+            if ct:
+                plate_no, contract_no, end_date = ct.plate_no, ct.contract_no, str(ct.end_date)
+            else:
+                app = db.query(QueueApplication).filter(
+                    QueueApplication.allocated_space_id == sp.id,
+                    QueueApplication.status.in_(["ALLOCATED", "OFFLINE_PENDING"])
+                ).first()
+                if app:
+                    plate_no, end_date = app.plate_no, "48h待签约"
+        ws.append([
+            sp.space_no,
+            "地面" if sp.area_type == "GROUND" else "地下",
+            status_map.get(sp.status, sp.status),
+            user_name, user_phone, plate_no, contract_no, end_date
+        ])
+
+    # Sheet2: 排队轮候名单
+    ws2 = wb.create_sheet("排队轮候名单")
+    ws2.append(["实时排位", "业主姓名", "联系电话", "登记车牌", "优先级", "申报房屋", "申请时间"])
+    style_header(ws2)
+
+    waiting_apps = db.query(QueueApplication).filter(
+        QueueApplication.community_id == admin.community_id,
+        QueueApplication.status == "WAITING"
+    ).order_by(QueueApplication.priority_level.asc(), QueueApplication.apply_time.asc()).all()
+
+    for idx, app in enumerate(waiting_apps, start=1):
+        u = db.query(User).filter(User.id == app.user_id).first()
+        ws2.append([
+            idx,
+            u.real_name if u else "--",
+            u.phone if u else "--",
+            app.plate_no,
+            "家庭一车" if app.priority_level == 1 else "家庭二车",
+            app.property_no,
+            app.apply_time.strftime("%Y-%m-%d %H:%M:%S")
+        ])
+
+    for sheet in (ws, ws2):
+        for col in sheet.columns:
+            max_len = max((len(str(c.value)) for c in col if c.value is not None), default=10)
+            sheet.column_dimensions[col[0].column_letter].width = min(32, max(12, max_len * 2 + 4))
+
+    buf = BytesIO()
+    wb.save(buf)
+    buf.seek(0)
+
+    filename = f"{community_name}_车位资产台账_{date.today().strftime('%Y%m%d')}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{urllib.parse.quote(filename)}"}
+    )
 
 @router.post("/init-demo-spaces", response_model=ResponseModel)
 def init_demo_spaces(admin: User = Depends(get_property_admin), db: Session = Depends(get_db)):

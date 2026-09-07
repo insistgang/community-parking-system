@@ -415,34 +415,20 @@ const handleResetDemo = async () => {
   }
 }
 
-const handleExcelTemplate = () => {
-  const headers = ['车位编号', '区域类型', '车位状态', '承租业主(脱敏)', '关联房号', '登记车牌(脱敏)', '租期截止日']
-  const statusMap = {
-    'RENTED': '已租 (生效中)',
-    'VACANT': '空闲可用',
-    'ALLOCATED': '已分配待确认(48h)',
-    'OFFLINE_PENDING': '线下签约办理中',
-    'MAINTENANCE': '维修停用'
+const handleExcelTemplate = async () => {
+  try {
+    const blob = await api.get('/property/export-spaces', { responseType: 'blob' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `${userStore.communityName}_车位资产台账_${new Date().toISOString().slice(0, 10)}.xlsx`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  } catch (err) {
+    alert('导出失败: ' + err.message)
   }
-  const rows = spaces.value.map(s => [
-    s.space_no,
-    s.area_type === 'GROUND' ? '地面' : '地下',
-    statusMap[s.status] || s.status,
-    s.user_name || '--',
-    s.room_no || '--',
-    s.plate_no || '--',
-    s.end_date || '--'
-  ])
-
-  const csvContent = '\uFEFF' + [headers, ...rows].map(e => e.map(cell => `"${(cell || '').replace(/"/g, '""')}"`).join(',')).join('\n')
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.setAttribute('href', url)
-  link.setAttribute('download', `某某新村_车位资产与脱敏业主台账_${new Date().toISOString().slice(0, 10)}.csv`)
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
 }
 
 const handleLogout = () => {

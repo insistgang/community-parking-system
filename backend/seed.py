@@ -4,7 +4,19 @@ from database import engine, SessionLocal, Base
 from models import Community, User, ParkingSpace, QueueApplication, RentalContract, ChainEvidence, Notification
 from evidence import create_evidence_record
 
-def init_db_and_seed():
+def init_db_and_seed(force: bool = False):
+    # 确保表结构存在
+    Base.metadata.create_all(bind=engine)
+
+    # 幂等保护: 非强制模式下检测到已有业务数据则跳过，
+    # 避免 run.sh 每次启动把用户新注册的账号一并清空
+    _db = SessionLocal()
+    has_data = _db.query(User).first() is not None
+    _db.close()
+    if has_data and not force:
+        print(">>> 检测到已有业务数据，跳过演示数据初始化 (已有账号全部保留)。如需彻底重置请调用 /api/dev/reset-seed")
+        return
+
     # 重新构建所有表
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)

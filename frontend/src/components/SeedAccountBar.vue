@@ -19,7 +19,7 @@
             <div class="flex flex-wrap items-center gap-1.5">
               <button
                 type="button"
-                @click="fillAccount('310104199201011111', '123456', '张欣欣')"
+                @click="pickAccount('310104199201011111', '123456', '张欣欣')"
                 class="px-2.5 py-1 rounded bg-blue-700/80 hover:bg-blue-600 active:scale-95 transition text-white border border-blue-400/30 flex items-center gap-1"
                 title="第一幕：未申请新客，测试外区房拦截与夫妻车"
               >
@@ -29,7 +29,7 @@
 
               <button
                 type="button"
-                @click="fillAccount('310104199002022222', '123456', '李雷')"
+                @click="pickAccount('310104199002022222', '123456', '李雷')"
                 class="px-2.5 py-1 rounded bg-amber-700/80 hover:bg-amber-600 active:scale-95 transition text-white border border-amber-400/30 flex items-center gap-1"
                 title="第四幕：队首中签者，测试48h倒计时与签约存证"
               >
@@ -39,7 +39,7 @@
 
               <button
                 type="button"
-                @click="fillAccount('310104199103033333', '123456', '韩梅梅')"
+                @click="pickAccount('310104199103033333', '123456', '韩梅梅')"
                 class="px-2.5 py-1 rounded bg-emerald-700/80 hover:bg-emerald-600 active:scale-95 transition text-white border border-emerald-400/30 flex items-center gap-1"
                 title="已有车位，剩余25天临期催缴"
               >
@@ -49,7 +49,7 @@
 
               <button
                 type="button"
-                @click="fillAccount('310104198005055555', '123456', '王建国')"
+                @click="pickAccount('310104198005055555', '123456', '王建国')"
                 class="px-2.5 py-1 rounded bg-purple-700/80 hover:bg-purple-600 active:scale-95 transition text-white border border-purple-400/30 flex items-center gap-1"
                 title="第三幕：物业大盘中台与强制代清退"
               >
@@ -68,7 +68,7 @@
               <button
                 type="button"
                 class="md:hidden px-2 py-1 rounded bg-slate-700/80 text-white border border-slate-500/40"
-                @click.stop="pinned = false"
+                @click.stop="close"
               >
                 收起
               </button>
@@ -81,28 +81,55 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
 import api from '../api'
 
 const emit = defineEmits(['fill'])
 const pinned = ref(false)
 
-const isCoarsePointer = () => {
-  if (typeof window === 'undefined') return false
-  return window.matchMedia('(hover: none)').matches
+const isDesktopHover = () => {
+  if (typeof window === 'undefined') return true
+  return window.matchMedia('(hover: hover) and (pointer: fine)').matches
 }
 
-const toggle = () => {
-  // 电脑只用 CSS :hover，移出即收起；点按热区不会钉住
-  if (!isCoarsePointer()) return
+const toggle = (e) => {
+  e?.stopPropagation()
+  // 电脑只用 CSS 悬停，移出即收；H5 点热区开关
+  if (isDesktopHover()) return
   pinned.value = !pinned.value
 }
 
-const fillAccount = (idCard, pwd, name) => {
+const close = () => {
+  pinned.value = false
+}
+
+const pickAccount = (idCard, pwd, name) => {
+  close()
   emit('fill', { identifier: idCard, password: pwd, name })
 }
 
+const onDocPointer = (e) => {
+  const root = e.target?.closest?.('.demo-hover-root')
+  if (!root) close()
+}
+
+watch(pinned, (open) => {
+  if (typeof document === 'undefined') return
+  if (open) {
+    setTimeout(() => document.addEventListener('pointerdown', onDocPointer), 0)
+  } else {
+    document.removeEventListener('pointerdown', onDocPointer)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof document !== 'undefined') {
+    document.removeEventListener('pointerdown', onDocPointer)
+  }
+})
+
 const handleResetSeed = async () => {
+  close()
   if (!confirm('确定要将系统演示数据一键重置回初始状态吗？')) return
   try {
     const res = await api.post('/dev/reset-seed')
@@ -142,17 +169,27 @@ const handleResetSeed = async () => {
   transform: translateY(-6px);
   transition: max-height 0.2s ease, opacity 0.16s ease, transform 0.16s ease;
 }
-/* 整块作为悬停区域：热区不卸载，展开后鼠标仍在同一容器内 */
-.demo-hover-root:hover .demo-panel,
 .demo-hover-root.is-open .demo-panel {
   max-height: 220px;
   opacity: 1;
   pointer-events: auto;
   transform: translateY(0);
 }
-.demo-hover-root:hover .demo-handle::after,
 .demo-hover-root.is-open .demo-handle::after {
   opacity: 0;
+}
+
+/* 仅鼠标设备用悬停；H5/触摸不用 :hover，避免点选后粘住收不起来 */
+@media (hover: hover) and (pointer: fine) {
+  .demo-hover-root:hover .demo-panel {
+    max-height: 220px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+  .demo-hover-root:hover .demo-handle::after {
+    opacity: 0;
+  }
 }
 
 @media (hover: none) {

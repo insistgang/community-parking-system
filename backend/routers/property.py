@@ -138,23 +138,40 @@ def set_maintenance(req: MaintenanceRequest, admin: User = Depends(get_property_
         raise HTTPException(status_code=404, detail="未找到指定车位")
 
     if req.action == "SET_MAINTENANCE":
-        if sp.status in ("RENTED", "ALLOCATED", "OFFLINE_PENDING"):
-            raise HTTPException(status_code=400, detail="该车位当前已在使用或处于分配确认中，不可直接置为维修！请先代办退租清退。")
+        orig_status = sp.status
+        # 若车位当前处于中签分配中，车位报修将原中签申请单平稳退回排队池重新排队分配
+        if sp.status in ("ALLOCATED", "OFFLINE_PENDING"):
+            active_app = db.query(QueueApplication).filter(QueueApplication.allocated_space_id == sp.id).first()
+            if active_app:
+                active_app.status = "WAITING"
+                active_app.allocated_space_id = None
+                active_app.allocated_time = None
+
+        # 若车位当前处于在租状态，记录合同流转
+        elif sp.status == "RENTED":
+            contract = db.query(RentalContract).filter(
+                RentalContract.space_id == sp.id,
+                RentalContract.status.in_(["ACTIVE", "EXPIRING", "OVERDUE"])
+            ).first()
+            if contract:
+                contract.status = "TERMINATED"
+
         sp.status = "MAINTENANCE"
-        msg = f"车位【{sp.space_no}】已成功置为维修停用状态（原因：{req.reason}），已移出自动排位分配池"
+        sp.current_user_id = None
+        msg = f"车位【{sp.space_no}】已直接置为维修停用状态（原状态: {orig_status}，原因: {req.reason}），已移出自动排位池"
     elif req.action == "RESTORE":
         sp.status = "VACANT"
+        sp.current_user_id = None
         msg = f"车位【{sp.space_no}】检修验收完毕，已恢复可用并重新纳入自动排位调度池！"
     else:
         raise HTTPException(status_code=400, detail="无效的操作类型")
 
     db.commit()
 
-    # 若恢复可用，触发排位自动检测
-    if req.action == "RESTORE":
-        trigger_recalculate_queue(db, admin.community_id)
+    # 触发排位自动检测与顺延分配
+    trigger_recalculate_queue(db, admin.community_id)
 
-    event_summary = f"物业登记车位【{sp.space_no}】设为维修停用 (原因: {req.reason})" if req.action == "SET_MAINTENANCE" else f"物业验收车位【{sp.space_no}】维修完毕，恢复正常投入使用"
+    event_summary = f"物业管理员操作车位【{sp.space_no}】直接进入维修状态 (原因: {req.reason})" if req.action == "SET_MAINTENANCE" else f"物业验收车位【{sp.space_no}】维修完毕，恢复正常投入使用"
     create_evidence_record(
         db=db,
         community_id=admin.community_id,

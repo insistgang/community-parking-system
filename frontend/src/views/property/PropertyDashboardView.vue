@@ -312,122 +312,126 @@
         </div>
         </div>
 
+        <!-- 核心业务操作卡片区 -->
         <div class="space-y-3">
-        <!-- 操作项 1: 第三幕核心演示——物业强制代清退 (如 A-015) -->
-        <div v-if="currentSpace.status === 'RENTED'" class="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl space-y-2">
-          <h4 class="text-xs font-bold text-rose-300 flex items-center gap-1.5">
-            <span>🚨 核心演示操作：物业强制代清退 (代办退租)</span>
-          </h4>
-          <p class="text-[11px] text-slate-400 leading-relaxed">
-            用于老业主房屋买卖过户、失联违规占用等场景。清退后车位立即释放回池，<strong>系统排位引擎将秒级触发顺延，后续业主排位实时前进 1 位</strong>！
-          </p>
-
-          <div class="space-y-2 text-xs pt-1">
-            <select v-model="terminateReason" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white">
-              <option value="房屋买卖过户且原业主失联">房屋买卖过户且原业主失联</option>
-              <option value="租约逾期未续租且车位被占">租约逾期未续租且车位被占</option>
-              <option value="业主自愿委托物业代办退租">业主自愿委托物业代办退租</option>
-            </select>
-
-            <button
-              @click="handleForceTerminate"
-              :disabled="actionLoading"
-              class="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1"
-            >
-              <span>⚡ 执行强制代清退 (全流程存证上链)</span>
-            </button>
-          </div>
-        </div>
-
-        <!-- 操作项 2: 第四幕核心演示——线下签约完成交付 (如李雷中签 A-012) -->
-        <div v-else-if="currentSpace.status === 'ALLOCATED' || currentSpace.status === 'OFFLINE_PENDING'" class="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl space-y-2">
-          <h4 class="text-xs font-bold text-amber-300">📝 线下履约交付确认</h4>
-          <p class="text-[11px] text-slate-400 leading-relaxed">
-            已完成现场纸质合同签署并收缴租金，点击确认后正式转为“已租”，生成 1 年期正式租约与区块链存证。
-          </p>
-          <button
-            @click="handleConfirmDelivery"
-            :disabled="actionLoading"
-            class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98]"
-          >
-            ✓ 线下签约已完成，确认正式交付
-          </button>
-        </div>
-
-        <!-- 操作项 3: 车位维修停用 (VACANT 时显示) -->
-        <div v-else-if="currentSpace.status === 'VACANT'" class="p-3 bg-slate-900/90 border border-amber-500/40 rounded-xl space-y-2.5">
-          <div class="flex items-center justify-between">
-            <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-              <span>🛠️ 车位维护与保养停用</span>
+          <!-- 场景 A: 物业代清退 (仅在租时可用) -->
+          <div v-if="currentSpace.status === 'RENTED'" class="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl space-y-2">
+            <h4 class="text-xs font-bold text-rose-300 flex items-center gap-1.5">
+              <span>🚨 核心演示操作：物业强制代清退 (代办退租)</span>
             </h4>
-            <span class="text-[10px] text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/30">当前空闲</span>
-          </div>
-          <p class="text-[11px] text-slate-400 leading-relaxed">
-            如遇地砖沉降、标线翻新、地锁充电桩故障等情况，可一键将其设为<strong>维修停用</strong>（系统将暂停向该车位分发排位）。
-          </p>
-          <div class="space-y-2 text-xs pt-1">
-            <div>
-              <label class="block text-[11px] text-slate-400 mb-1">报修原因：</label>
-              <select v-model="maintenanceReason" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs">
-                <option value="地面沉降破损与路砖平整修补">地面沉降破损与路砖平整修补</option>
-                <option value="车位标线模糊翻新与反光漆重涂">车位标线模糊翻新与反光漆重涂</option>
-                <option value="智能地锁检修与慢充充电桩线路维护">智能地锁检修与慢充充电桩线路维护</option>
-                <option value="绿化树木修剪与雨污管道清淤施工">绿化树木修剪与雨污管道清淤施工</option>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              用于老业主房屋买卖过户、失联违规占用等场景。清退后车位立即释放回池，<strong>系统排位引擎将秒级触发顺延，后续业主排位实时前进 1 位</strong>！
+            </p>
+
+            <div class="space-y-2 text-xs pt-1">
+              <select v-model="terminateReason" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white">
+                <option value="房屋买卖过户且原业主失联">房屋买卖过户且原业主失联</option>
+                <option value="租约逾期未续租且车位被占">租约逾期未续租且车位被占</option>
+                <option value="业主自愿委托物业代办退租">业主自愿委托物业代办退租</option>
               </select>
+
+              <button
+                @click="handleForceTerminate"
+                :disabled="actionLoading"
+                class="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1"
+              >
+                <span>⚡ 执行强制代清退 (全流程存证上链)</span>
+              </button>
             </div>
+          </div>
+
+          <!-- 场景 B: 线下签约完成交付 (仅中签锁定/办理中时可用) -->
+          <div v-if="currentSpace.status === 'ALLOCATED' || currentSpace.status === 'OFFLINE_PENDING'" class="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl space-y-2">
+            <h4 class="text-xs font-bold text-amber-300">📝 线下履约交付确认</h4>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              已完成现场纸质合同签署并收缴租金，点击确认后正式转为“已租”，生成 1 年期正式租约与区块链存证。
+            </p>
             <button
-              @click="handleToggleMaintenance('SET_MAINTENANCE')"
+              @click="handleConfirmDelivery"
               :disabled="actionLoading"
-              class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5"
+              class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98]"
             >
-              <span>🛠️ 设为维修停用 (暂停排位分配)</span>
+              ✓ 线下签约已完成，确认正式交付
             </button>
           </div>
-        </div>
 
-        <!-- 操作项 4: 维修验收恢复上线 (MAINTENANCE 时显示) -->
-        <div v-else-if="currentSpace.status === 'MAINTENANCE'" class="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl space-y-2.5">
-          <div class="flex items-center justify-between">
-            <h4 class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-              <span>✅ 维修验收完毕 · 恢复上线投入使用</span>
-            </h4>
-            <span class="text-[10px] text-rose-400 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-500/30">维修停用中</span>
+          <!-- 场景 C: 直接置为维修状态 (只要非维修中，无论当前是空闲、已租或中签，均可直接设为维修状态) -->
+          <div v-if="currentSpace.status !== 'MAINTENANCE'" class="p-3 bg-slate-900/90 border border-amber-500/40 rounded-xl space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                <span>🛠️ 车位报修维护 · 直接进入维修状态</span>
+              </h4>
+              <span class="text-[10px] text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/30">
+                当前: {{ getStatusLabel(currentSpace.status) }}
+              </span>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              支持将该车位直接转入<strong>维修停用</strong>状态。若该车位当前存在中签锁定，系统将自动退回排队池调度，保障车位资产安全。
+            </p>
+            <div class="space-y-2 text-xs pt-1">
+              <div>
+                <label class="block text-[11px] text-slate-400 mb-1">报修维护原因：</label>
+                <select v-model="maintenanceReason" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs">
+                  <option value="地面沉降破损与路砖平整修补">地面沉降破损与路砖平整修补</option>
+                  <option value="车位标线模糊翻新与反光漆重涂">车位标线模糊翻新与反光漆重涂</option>
+                  <option value="智能地锁检修与慢充充电桩线路维护">智能地锁检修与慢充充电桩线路维护</option>
+                  <option value="绿化树木修剪与雨污管道清淤施工">绿化树木修剪与雨污管道清淤施工</option>
+                  <option value="突发管道漏水应急维修抢修">突发管道漏水应急维修抢修</option>
+                </select>
+              </div>
+              <button
+                @click="handleToggleMaintenance('SET_MAINTENANCE')"
+                :disabled="actionLoading"
+                class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <span>🛠️ 确认：直接将该车位设为维修状态</span>
+              </button>
+            </div>
           </div>
-          <p class="text-[11px] text-slate-400 leading-relaxed">
-            车位施工检修已通过物业验收！点击恢复可用后，车位将重新释放回池，<strong>调度引擎将秒级触发自动排位，为轮候首位业主锁定该车位</strong>！
-          </p>
-          <button
-            @click="handleToggleMaintenance('RESTORE')"
-            :disabled="actionLoading"
-            class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5"
-          >
-            <span>⚡ 检修完成，恢复可用 (触发顺位自动分配)</span>
-          </button>
-        </div>
 
-        <!-- 弹窗底部操作栏 -->
-        <div class="flex items-center justify-end pt-2">
-          <button
-            @click="selectedSpaceModal = false"
-            class="px-5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition"
-          >
-            关闭窗口
-          </button>
-        </div>
+          <!-- 场景 D: 维修验收恢复上线 (当前为维修中时可用) -->
+          <div v-else class="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+                <span>✅ 维修验收完毕 · 恢复上线投入使用</span>
+              </h4>
+              <span class="text-[10px] text-rose-400 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-500/30">维修停用中</span>
+            </div>
+            <p class="text-[11px] text-slate-400 leading-relaxed">
+              车位施工检修已通过物业验收！点击恢复可用后，车位将重新释放回池，<strong>调度引擎将秒级触发自动排位，为轮候首位业主锁定该车位</strong>！
+            </p>
+            <button
+              @click="handleToggleMaintenance('RESTORE')"
+              :disabled="actionLoading"
+              class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5"
+            >
+              <span>⚡ 检修完成，恢复可用 (触发顺位自动分配)</span>
+            </button>
+          </div>
+
+          <!-- 弹窗底部操作栏 -->
+          <div class="flex items-center justify-end pt-2">
+            <button
+              @click="selectedSpaceModal = false"
+              class="px-5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition"
+            >
+              关闭窗口
+            </button>
+          </div>
         </div>
         </div>
       </div>
     </div>
 
-    <!-- 快捷登记车位维修 Modal -->
+    <!-- 快捷登记车位维修 Modal (支持选择小区任意车位直接设为维修) -->
     <div v-if="quickMaintenanceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
       <div class="bg-slate-800 rounded-3xl max-w-md w-full p-6 text-slate-100 shadow-2xl border border-slate-700 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-700 pb-3">
           <div class="flex items-center gap-2">
             <span class="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-base">🛠️</span>
             <div>
-              <h3 class="text-sm font-bold text-white">登记车位为维修停用</h3>
-              <p class="text-xs text-slate-400">将指定车位移出排位自动分配池</p>
+              <h3 class="text-sm font-bold text-white">选择车位直接进入维修状态</h3>
+              <p class="text-xs text-slate-400">支持将小区任意车位一键置为维修停用</p>
             </div>
           </div>
           <button @click="quickMaintenanceModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
@@ -435,35 +439,35 @@
 
         <div class="space-y-3 text-xs">
           <div>
-            <label class="block text-slate-300 font-bold mb-1">选择待报修车位：</label>
-            <select v-model="quickMaintenanceSpaceId" class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white">
-              <option :value="null" disabled>请选择车位...</option>
+            <label class="block text-slate-300 font-bold mb-1">选择车位：</label>
+            <select v-model="quickMaintenanceSpaceId" class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs">
+              <option :value="null" disabled>请选择需要设为维修状态的车位...</option>
               <option
-                v-for="sp in spaceList.filter(s => s.status === 'VACANT' || s.status === 'MAINTENANCE')"
+                v-for="sp in spaceList"
                 :key="sp.id"
                 :value="sp.id"
               >
-                {{ sp.space_no }} ({{ getStatusLabel(sp.status) }}) {{ sp.area_type === 'GROUND' ? '地面' : '地下' }}
+                {{ sp.space_no }} ({{ getStatusLabel(sp.status) }}) {{ sp.area_type === 'GROUND' ? '地面' : '地下' }} {{ sp.user_name ? '[' + sp.user_name + ']' : '' }}
               </option>
             </select>
-            <p class="text-[10px] text-slate-400 mt-1">仅支持将处于“空闲待分”状态的车位设为维修停用</p>
+            <p class="text-[10px] text-slate-400 mt-1">支持选择本小区任意车位直接进入维修状态。修缮验收完成后可随时一键恢复上线。</p>
           </div>
 
           <div>
-            <label class="block text-slate-300 font-bold mb-1">维修原因：</label>
+            <label class="block text-slate-300 font-bold mb-1">报修原因：</label>
             <select v-model="quickMaintenanceReason" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white">
               <option value="地面沉降破损与路砖平整修补">地面沉降破损与路砖平整修补</option>
               <option value="车位标线模糊翻新与反光漆重涂">车位标线模糊翻新与反光漆重涂</option>
               <option value="智能地锁检修与慢充充电桩线路维护">智能地锁检修与慢充充电桩线路维护</option>
               <option value="绿化树木修剪与雨污管道清淤施工">绿化树木修剪与雨污管道清淤施工</option>
-              <option value="市政消防通道改造临时占用">市政消防通道改造临时占用</option>
+              <option value="突发管道漏水应急维修抢修">突发管道漏水应急维修抢修</option>
             </select>
           </div>
 
           <div class="p-3 bg-amber-950/40 border border-amber-800/40 rounded-xl space-y-1">
-            <span class="text-[11px] font-bold text-amber-300 block">💡 业务防插队提示</span>
+            <span class="text-[11px] font-bold text-amber-300 block">💡 物业运维说明</span>
             <p class="text-[10px] text-slate-400 leading-relaxed">
-              车位设为维修停用后，系统排位引擎将跳过该车位；当修缮完毕并点击“恢复可用”时，调度引擎将严格依据 FIFO 公正分发给轮候首位业主。
+              车位设为维修停用后，系统排位引擎将暂停向该车位分配；修缮完毕后点击“恢复可用”，调度引擎将严格依据 FIFO 公正自动分发给轮候首位业主。
             </p>
           </div>
 
@@ -541,8 +545,12 @@ onMounted(() => {
 })
 
 const openQuickMaintenanceModal = () => {
-  const firstVacant = spaceList.value.find(s => s.status === 'VACANT')
-  quickMaintenanceSpaceId.value = firstVacant ? firstVacant.id : (spaceList.value[0]?.id || null)
+  if (currentSpace.value?.id) {
+    quickMaintenanceSpaceId.value = currentSpace.value.id
+  } else {
+    const firstVacant = spaceList.value.find(s => s.status === 'VACANT')
+    quickMaintenanceSpaceId.value = firstVacant ? firstVacant.id : (spaceList.value[0]?.id || null)
+  }
   quickMaintenanceModal.value = true
 }
 
@@ -671,6 +679,9 @@ const handleConfirmDelivery = async () => {
 }
 
 const handleToggleMaintenance = async (action) => {
+  if (action === 'SET_MAINTENANCE') {
+    if (!confirm(`确认将车位【${currentSpace.value.space_no}】直接设为维修停用状态吗？`)) return
+  }
   actionLoading.value = true
   try {
     const res = await api.post('/property/set-maintenance', {

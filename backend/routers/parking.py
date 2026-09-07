@@ -6,6 +6,7 @@ from models import User, ParkingSpace, QueueApplication, RentalContract, Notific
 from schemas import ApplyParkingRequest, CancelApplyRequest, ResponseModel
 from scheduler import trigger_recalculate_queue, estimate_waiting_duration, check_expired_allocations
 from evidence import create_evidence_record
+from utils import fmt_bj
 
 router = APIRouter(prefix="/api", tags=["Parking & User"])
 
@@ -85,7 +86,7 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
             "current_rank": app.current_rank,
             "total_queue": total_waiting,
             "is_first_candidate": (app.current_rank == 1),
-            "apply_time": app.apply_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "apply_time": fmt_bj(app.apply_time),
             "ai_waiting_time": est_text,
             "ai_estimation_basis": est_basis,
             "allocated_space_no": allocated_space_no,
@@ -452,7 +453,7 @@ def get_public_queue(user: User = Depends(get_current_user), db: Session = Depen
             "masked_name": name_masked,
             "masked_phone": phone_masked,
             "priority_type": "家庭一车" if app.priority_level == 1 else "家庭二车",
-            "apply_time": app.apply_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "apply_time": fmt_bj(app.apply_time),
             "is_me": (app.user_id == user.id)
         })
     db.commit()
@@ -473,7 +474,7 @@ def get_public_queue(user: User = Depends(get_current_user), db: Session = Depen
             "space_no": sp.space_no if sp else "--",
             "status": app.status,
             "status_label": "中签待确认(48h)" if app.status == "ALLOCATED" else "线下签约办理中",
-            "allocated_time": app.allocated_time.strftime("%Y-%m-%d %H:%M:%S") if app.allocated_time else "--",
+            "allocated_time": fmt_bj(app.allocated_time),
             "is_me": (app.user_id == user.id)
         })
 
@@ -495,7 +496,7 @@ def get_my_timeline(user: User = Depends(get_current_user), db: Session = Depend
             "title": n.title,
             "content": n.content,
             "type": n.type,
-            "time": n.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            "time": fmt_bj(n.created_at)
         })
 
     return ResponseModel(code=200, data=timeline)
@@ -522,7 +523,7 @@ def get_notifications(user: User = Depends(get_current_user), db: Session = Depe
             "content": n.content,
             "type": n.type,
             "action_type": n.action_type,
-            "created_at": n.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            "created_at": fmt_bj(n.created_at)
         })
 
     return ResponseModel(code=200, data=data)

@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from database import get_db
+from utils import fmt_bj
 from models import User, ChainEvidence
 from schemas import ResponseModel
 
@@ -36,7 +37,7 @@ def get_evidence_list(user: User = Depends(get_current_user), db: Session = Depe
             "prev_hash": r.prev_hash,
             "event_summary": r.event_summary,
             "timestamp": r.timestamp,
-            "created_at": r.created_at.strftime("%Y-%m-%d %H:%M:%S")
+            "created_at": fmt_bj(r.created_at)
         })
 
     return ResponseModel(code=200, data=data)

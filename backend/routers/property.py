@@ -9,6 +9,7 @@ from models import User, ParkingSpace, QueueApplication, RentalContract, Notific
 from schemas import MaintenanceRequest, ConfirmDeliveryRequest, ForceTerminateRequest, ResponseModel
 from scheduler import trigger_recalculate_queue, init_community_spaces
 from evidence import create_evidence_record
+from utils import fmt_bj
 
 router = APIRouter(prefix="/api/property", tags=["Property Management"])
 
@@ -363,7 +364,7 @@ def export_spaces(admin: User = Depends(get_property_admin), db: Session = Depen
             app.plate_no,
             "家庭一车" if app.priority_level == 1 else "家庭二车",
             app.property_no,
-            app.apply_time.strftime("%Y-%m-%d %H:%M:%S")
+            fmt_bj(app.apply_time)
         ])
 
     for sheet in (ws, ws2):

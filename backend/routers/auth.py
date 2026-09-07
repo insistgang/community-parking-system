@@ -102,7 +102,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         }
     )
 
-@router.post("/register", response_model=ResponseModel)
+@router.post("/auth/register", response_model=ResponseModel)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
     exist = db.query(User).filter((User.phone == req.phone) | (User.id_card == req.id_card)).first()
     if exist:

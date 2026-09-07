@@ -27,7 +27,7 @@
               物业管理 PC 端
             </span>
           </div>
-          <p class="text-xs text-slate-400 truncate">服务小区：某某新村 (总车位 50 个) | 当前管理员：{{ userStore.realName }}</p>
+          <p class="text-xs text-slate-400 break-words">服务小区：某某新村 (总车位 50 个) | 当前管理员：{{ userStore.realName }}</p>
         </div>
       </div>
 

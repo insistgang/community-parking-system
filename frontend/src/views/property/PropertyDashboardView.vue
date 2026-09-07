@@ -3,16 +3,17 @@
     <!-- 顶部导航栏 -->
     <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 sticky top-0 z-30 shadow-md">
       <div class="flex items-center gap-3 min-w-0">
-        <router-link
-          to="/"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-700/80 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition border border-slate-600 shrink-0"
-          title="返回业主端首页"
+        <button
+          type="button"
+          @click="switchToOwnerH5"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-700/80 hover:bg-slate-600 active:scale-95 text-slate-200 text-xs font-semibold transition border border-slate-600 shrink-0 cursor-pointer"
+          title="返回业主端 (自动切换为业主身份)"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="m15 18-6-6 6-6"/>
           </svg>
           <span>返回业主端</span>
-        </router-link>
+        </button>
 
         <div class="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold shadow-md shadow-purple-600/30 shrink-0">
           🏢

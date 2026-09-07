@@ -480,7 +480,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import api from '../api'
@@ -489,6 +489,13 @@ import FaceCaptureBox from '../components/FaceCaptureBox.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+
+onMounted(() => {
+  if (userStore.isPropertyAdmin) {
+    alert('当前为物业企业管理账号，无权发起车位申请！请切换为业主账号（如张欣欣）。')
+    router.replace('/property/dashboard')
+  }
+})
 
 const step = ref(1)
 const idCardScanned = ref(false)

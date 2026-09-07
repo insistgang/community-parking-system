@@ -1,6 +1,5 @@
 <template>
   <div class="min-h-screen bg-slate-100 flex items-center justify-center p-4">
-    <SeedAccountBar @fill="handleFastFill" />
     <div class="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200">
       <div class="flex items-center justify-between mb-6">
         <div>
@@ -157,7 +156,6 @@ import { useRouter } from 'vue-router'
 import api from '../api'
 import OcrUploadBox from '../components/OcrUploadBox.vue'
 import FaceCaptureBox from '../components/FaceCaptureBox.vue'
-import SeedAccountBar from '../components/SeedAccountBar.vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -267,13 +265,6 @@ onMounted(async () => {
     // 离线环境使用预置 defaultDistricts
   }
 })
-
-const handleFastFill = ({ identifier, password, name }) => {
-  form.value.real_name = name
-  form.value.id_card = identifier
-  form.value.password = password
-  form.value.confirm_pwd = password
-}
 
 const handleIdCardScanned = () => {
   idCardScanned.value = true

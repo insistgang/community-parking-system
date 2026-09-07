@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from models import ParkingSpace, QueueApplication, Notification
+from models import ParkingSpace, QueueApplication, Notification, User
 from evidence import create_evidence_record
 
 def estimate_waiting_duration(rank: int, total_spaces: int = 50) -> tuple[str, str]:
@@ -25,19 +25,42 @@ def trigger_recalculate_queue(db: Session, community_id: int):
     """
     FIFO 自动重排调度核心引擎 (原子事务):
     1. 检查是否有处于 VACANT 的空闲车位;
-    2. 按 priority_level (一车优先) 升序、apply_time 升序获取 WAITING 申请人;
+    2. 按 priority_level (一车优先) 升序、apply_time 升序获取 WAITING 申请人 (严格排除物业人员);
     3. 自动匹配分发: 车位与申请均变更为 ALLOCATED, 记录 allocated_time 作为 48h 倒计时起点;
     4. 重新编排剩余 WAITING 业主的 current_rank (1, 2, 3...);
     5. 若顺位发生前移, 自动生成排位变动通知与存证.
     """
+    # 防呆自愈：清除任何错误混入队列的物业管理人员申请单
+    invalid_admin_apps = db.query(QueueApplication).join(
+        User, QueueApplication.user_id == User.id
+    ).filter(
+        QueueApplication.community_id == community_id,
+        QueueApplication.status.in_(["WAITING", "ALLOCATED", "OFFLINE_PENDING"]),
+        User.role == "PROPERTY_ADMIN"
+    ).all()
+    for bad_app in invalid_admin_apps:
+        bad_app.status = "CANCELLED"
+        bad_app.current_rank = 0
+        if bad_app.allocated_space_id:
+            sp = db.query(ParkingSpace).filter(ParkingSpace.id == bad_app.allocated_space_id).first()
+            if sp and sp.status in ("ALLOCATED", "OFFLINE_PENDING"):
+                sp.status = "VACANT"
+                sp.current_user_id = None
+            bad_app.allocated_space_id = None
+    if invalid_admin_apps:
+        db.commit()
+
     vacant_spaces = db.query(ParkingSpace).filter(
         ParkingSpace.community_id == community_id,
         ParkingSpace.status == "VACANT"
     ).order_by(ParkingSpace.space_no.asc()).all()
 
-    waiting_apps = db.query(QueueApplication).filter(
+    waiting_apps = db.query(QueueApplication).join(
+        User, QueueApplication.user_id == User.id
+    ).filter(
         QueueApplication.community_id == community_id,
-        QueueApplication.status == "WAITING"
+        QueueApplication.status == "WAITING",
+        User.role != "PROPERTY_ADMIN"
     ).order_by(
         QueueApplication.priority_level.asc(),
         QueueApplication.apply_time.asc()

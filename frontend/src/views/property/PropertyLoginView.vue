@@ -1,7 +1,5 @@
 <template>
   <div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-    <SeedAccountBar @fill="handleFastFill" />
-
     <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
       <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-purple-600 text-white shadow-lg shadow-purple-500/30 mb-3">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -182,7 +180,6 @@ import { useUserStore } from '../../store/user'
 import api from '../../api'
 import OcrUploadBox from '../../components/OcrUploadBox.vue'
 import FaceCaptureBox from '../../components/FaceCaptureBox.vue'
-import SeedAccountBar from '../../components/SeedAccountBar.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -225,12 +222,6 @@ const completeAllSteps = () => {
 
 const fillAdmin = () => {
   completeAllSteps()
-}
-
-const handleFastFill = ({ identifier: id, password: pwd, name }) => {
-  identifier.value = id
-  password.value = pwd
-  if (name === '王建国') completeAllSteps()
 }
 
 const handleLogin = async () => {

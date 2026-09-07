@@ -1,8 +1,5 @@
 <template>
   <div class="min-h-screen bg-slate-100 flex flex-col">
-    <!-- 顶部演示账号快捷工具条 -->
-    <SeedAccountBar @fill="handleFastFill" />
-
     <div class="flex-1 flex items-center justify-center p-4">
       <div class="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200">
         <!-- 头部 Logo 与标题 -->
@@ -141,7 +138,6 @@ import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import api from '../api'
-import SeedAccountBar from '../components/SeedAccountBar.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -160,13 +156,6 @@ const sendingSms = ref(false)
 const smsCountdown = ref(0)
 const smsToast = ref(false)
 let countdownTimer = null
-
-const handleFastFill = ({ identifier, password }) => {
-  form.value.identifier = identifier
-  form.value.password = password
-  form.value.verify_code = '888888'
-  errorMsg.value = ''
-}
 
 const handleSendSms = async () => {
   if (!form.value.identifier) {

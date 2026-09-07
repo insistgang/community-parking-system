@@ -38,6 +38,8 @@ class CancelApplyRequest(BaseModel):
 class MaintenanceRequest(BaseModel):
     space_id: int
     action: str # SET_MAINTENANCE 或 RESTORE
+    reason: Optional[str] = "地砖检修与设施保养"
+    estimated_days: Optional[int] = 3
 
 class ConfirmDeliveryRequest(BaseModel):
     space_id: int

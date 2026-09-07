@@ -1,8 +1,5 @@
 <template>
   <div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col property-dashboard" :class="{ 'light-mode': userStore.propertyTheme === 'light' }">
-    <!-- 顶部演示控制条 (随时一键免密切换任意角色，绝不迷路) -->
-    <SeedAccountBar @fill="handleFastSwitch" />
-
     <!-- 顶部导航栏 -->
     <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 sticky top-0 z-30 shadow-md">
       <div class="flex items-center gap-3 min-w-0">
@@ -46,6 +43,14 @@
           title="防翻车：一键将所有车位和账号重置为初始演示状态"
         >
           <span>🔄 一键重置演示</span>
+        </button>
+
+        <button
+          @click="openQuickMaintenanceModal"
+          class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold transition active:scale-95 flex items-center gap-1.5 shadow-sm"
+          title="快速选择车位设为维修停用或录入报修"
+        >
+          <span>🛠️ 登记车位维修</span>
         </button>
 
         <button
@@ -160,31 +165,54 @@
             </h2>
           </div>
 
-          <!-- 状态图例说明 -->
-          <div class="flex items-center gap-2 sm:gap-3 text-[10px] sm:text-xs flex-wrap">
-            <span class="flex items-center gap-1.5">
-              <span class="w-3 h-3 rounded bg-blue-600"></span>
-              <span class="text-slate-300">已租</span>
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-3 h-3 rounded bg-amber-500"></span>
-              <span class="text-slate-300">中签锁定</span>
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-3 h-3 rounded bg-emerald-500"></span>
-              <span class="text-slate-300">空闲</span>
-            </span>
-            <span class="flex items-center gap-1.5">
-              <span class="w-3 h-3 rounded bg-rose-600"></span>
-              <span class="text-slate-300">维修</span>
-            </span>
+          <!-- 状态图例说明与快捷筛选 -->
+          <div class="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs flex-wrap">
+            <button
+              @click="statusFilter = 'ALL'"
+              class="px-2 py-0.5 rounded-lg border transition font-medium"
+              :class="statusFilter === 'ALL' ? 'bg-purple-600 text-white border-purple-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
+            >
+              全部 ({{ spaceList.length }})
+            </button>
+            <button
+              @click="statusFilter = 'RENTED'"
+              class="px-2 py-0.5 rounded-lg border transition flex items-center gap-1 font-medium"
+              :class="statusFilter === 'RENTED' ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
+            >
+              <span class="w-2 h-2 rounded-full bg-blue-400"></span>
+              <span>已租</span>
+            </button>
+            <button
+              @click="statusFilter = 'ALLOCATED'"
+              class="px-2 py-0.5 rounded-lg border transition flex items-center gap-1 font-medium"
+              :class="statusFilter === 'ALLOCATED' ? 'bg-amber-600 text-white border-amber-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
+            >
+              <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+              <span>中签</span>
+            </button>
+            <button
+              @click="statusFilter = 'VACANT'"
+              class="px-2 py-0.5 rounded-lg border transition flex items-center gap-1 font-medium"
+              :class="statusFilter === 'VACANT' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
+            >
+              <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+              <span>空闲</span>
+            </button>
+            <button
+              @click="statusFilter = 'MAINTENANCE'"
+              class="px-2 py-0.5 rounded-lg border transition flex items-center gap-1 font-medium"
+              :class="statusFilter === 'MAINTENANCE' ? 'bg-rose-600 text-white border-rose-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
+            >
+              <span class="w-2 h-2 rounded-full bg-rose-400"></span>
+              <span>🛠️ 维修停用 ({{ stats.maintenance_spaces ?? 0 }})</span>
+            </button>
           </div>
         </div>
 
         <!-- 50 宫格矩阵: 手机 5 列 / 宽屏 10 列，避免 2 列把页面拉得很长 -->
         <div class="grid grid-cols-5 lg:grid-cols-10 gap-1.5 sm:gap-2.5">
           <div
-            v-for="sp in spaceList"
+            v-for="sp in filteredSpaces"
             :key="sp.id"
             @click="selectSpace(sp)"
             class="p-1.5 sm:p-2.5 rounded-xl border cursor-pointer transition-all hover:scale-105 active:scale-95 flex flex-col justify-between h-[4.75rem] sm:h-24 text-xs select-none"
@@ -326,31 +354,135 @@
           </button>
         </div>
 
-        <!-- 操作项 3: 维修停用 / 恢复可用 -->
-        <div class="flex items-center gap-2 pt-2">
-          <button
-            v-if="currentSpace.status === 'MAINTENANCE'"
-            @click="handleToggleMaintenance('RESTORE')"
-            class="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition"
-          >
-            恢复可用 (触发顺位分配)
-          </button>
-          <button
-            v-else-if="currentSpace.status === 'VACANT'"
-            @click="handleToggleMaintenance('SET_MAINTENANCE')"
-            class="flex-1 py-2 rounded-xl bg-slate-700 hover:bg-rose-900 text-slate-200 font-bold text-xs transition"
-          >
-            设为维修停用
-          </button>
+        <!-- 操作项 3: 车位维修停用 (VACANT 时显示) -->
+        <div v-else-if="currentSpace.status === 'VACANT'" class="p-3 bg-slate-900/90 border border-amber-500/40 rounded-xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+              <span>🛠️ 车位维护与保养停用</span>
+            </h4>
+            <span class="text-[10px] text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/30">当前空闲</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            如遇地砖沉降、标线翻新、地锁充电桩故障等情况，可一键将其设为<strong>维修停用</strong>（系统将暂停向该车位分发排位）。
+          </p>
+          <div class="space-y-2 text-xs pt-1">
+            <div>
+              <label class="block text-[11px] text-slate-400 mb-1">报修原因：</label>
+              <select v-model="maintenanceReason" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs">
+                <option value="地面沉降破损与路砖平整修补">地面沉降破损与路砖平整修补</option>
+                <option value="车位标线模糊翻新与反光漆重涂">车位标线模糊翻新与反光漆重涂</option>
+                <option value="智能地锁检修与慢充充电桩线路维护">智能地锁检修与慢充充电桩线路维护</option>
+                <option value="绿化树木修剪与雨污管道清淤施工">绿化树木修剪与雨污管道清淤施工</option>
+              </select>
+            </div>
+            <button
+              @click="handleToggleMaintenance('SET_MAINTENANCE')"
+              :disabled="actionLoading"
+              class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5"
+            >
+              <span>🛠️ 设为维修停用 (暂停排位分配)</span>
+            </button>
+          </div>
+        </div>
 
+        <!-- 操作项 4: 维修验收恢复上线 (MAINTENANCE 时显示) -->
+        <div v-else-if="currentSpace.status === 'MAINTENANCE'" class="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl space-y-2.5">
+          <div class="flex items-center justify-between">
+            <h4 class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
+              <span>✅ 维修验收完毕 · 恢复上线投入使用</span>
+            </h4>
+            <span class="text-[10px] text-rose-400 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-500/30">维修停用中</span>
+          </div>
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            车位施工检修已通过物业验收！点击恢复可用后，车位将重新释放回池，<strong>调度引擎将秒级触发自动排位，为轮候首位业主锁定该车位</strong>！
+          </p>
+          <button
+            @click="handleToggleMaintenance('RESTORE')"
+            :disabled="actionLoading"
+            class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5"
+          >
+            <span>⚡ 检修完成，恢复可用 (触发顺位自动分配)</span>
+          </button>
+        </div>
+
+        <!-- 弹窗底部操作栏 -->
+        <div class="flex items-center justify-end pt-2">
           <button
             @click="selectedSpaceModal = false"
-            class="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-semibold"
+            class="px-5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition"
           >
-            关闭
+            关闭窗口
           </button>
         </div>
         </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 快捷登记车位维修 Modal -->
+    <div v-if="quickMaintenanceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+      <div class="bg-slate-800 rounded-3xl max-w-md w-full p-6 text-slate-100 shadow-2xl border border-slate-700 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-base">🛠️</span>
+            <div>
+              <h3 class="text-sm font-bold text-white">登记车位为维修停用</h3>
+              <p class="text-xs text-slate-400">将指定车位移出排位自动分配池</p>
+            </div>
+          </div>
+          <button @click="quickMaintenanceModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block text-slate-300 font-bold mb-1">选择待报修车位：</label>
+            <select v-model="quickMaintenanceSpaceId" class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white">
+              <option :value="null" disabled>请选择车位...</option>
+              <option
+                v-for="sp in spaceList.filter(s => s.status === 'VACANT' || s.status === 'MAINTENANCE')"
+                :key="sp.id"
+                :value="sp.id"
+              >
+                {{ sp.space_no }} ({{ getStatusLabel(sp.status) }}) {{ sp.area_type === 'GROUND' ? '地面' : '地下' }}
+              </option>
+            </select>
+            <p class="text-[10px] text-slate-400 mt-1">仅支持将处于“空闲待分”状态的车位设为维修停用</p>
+          </div>
+
+          <div>
+            <label class="block text-slate-300 font-bold mb-1">维修原因：</label>
+            <select v-model="quickMaintenanceReason" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white">
+              <option value="地面沉降破损与路砖平整修补">地面沉降破损与路砖平整修补</option>
+              <option value="车位标线模糊翻新与反光漆重涂">车位标线模糊翻新与反光漆重涂</option>
+              <option value="智能地锁检修与慢充充电桩线路维护">智能地锁检修与慢充充电桩线路维护</option>
+              <option value="绿化树木修剪与雨污管道清淤施工">绿化树木修剪与雨污管道清淤施工</option>
+              <option value="市政消防通道改造临时占用">市政消防通道改造临时占用</option>
+            </select>
+          </div>
+
+          <div class="p-3 bg-amber-950/40 border border-amber-800/40 rounded-xl space-y-1">
+            <span class="text-[11px] font-bold text-amber-300 block">💡 业务防插队提示</span>
+            <p class="text-[10px] text-slate-400 leading-relaxed">
+              车位设为维修停用后，系统排位引擎将跳过该车位；当修缮完毕并点击“恢复可用”时，调度引擎将严格依据 FIFO 公正分发给轮候首位业主。
+            </p>
+          </div>
+
+          <div class="flex items-center gap-2 pt-2">
+            <button
+              @click="quickMaintenanceModal = false"
+              class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 font-semibold"
+            >
+              取消
+            </button>
+            <button
+              @click="handleConfirmQuickMaintenance"
+              :disabled="!quickMaintenanceSpaceId || actionLoading"
+              class="flex-1 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold disabled:opacity-40"
+            >
+              <span v-if="actionLoading">提交中...</span>
+              <span v-else>确认设为维修停用</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -358,11 +490,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
 import api from '../../api'
-import SeedAccountBar from '../../components/SeedAccountBar.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -376,10 +507,22 @@ const panels = [
 
 const stats = ref({})
 const spaceList = ref([])
+const statusFilter = ref('ALL')
 const selectedSpaceModal = ref(false)
 const currentSpace = ref({})
 const terminateReason = ref('房屋买卖过户且原业主失联')
+const maintenanceReason = ref('地面沉降破损与路砖平整修补')
 const actionLoading = ref(false)
+
+// 快捷报修弹窗变量
+const quickMaintenanceModal = ref(false)
+const quickMaintenanceSpaceId = ref(null)
+const quickMaintenanceReason = ref('地面沉降破损与路砖平整修补')
+
+const filteredSpaces = computed(() => {
+  if (statusFilter.value === 'ALL') return spaceList.value
+  return spaceList.value.filter(s => s.status === statusFilter.value)
+})
 
 const loadData = async () => {
   try {
@@ -396,6 +539,31 @@ const loadData = async () => {
 onMounted(() => {
   loadData()
 })
+
+const openQuickMaintenanceModal = () => {
+  const firstVacant = spaceList.value.find(s => s.status === 'VACANT')
+  quickMaintenanceSpaceId.value = firstVacant ? firstVacant.id : (spaceList.value[0]?.id || null)
+  quickMaintenanceModal.value = true
+}
+
+const handleConfirmQuickMaintenance = async () => {
+  if (!quickMaintenanceSpaceId.value) return
+  actionLoading.value = true
+  try {
+    const res = await api.post('/property/set-maintenance', {
+      space_id: quickMaintenanceSpaceId.value,
+      action: 'SET_MAINTENANCE',
+      reason: quickMaintenanceReason.value
+    })
+    alert(res.message || '车位已成功设为维修停用！')
+    quickMaintenanceModal.value = false
+    await loadData()
+  } catch (err) {
+    alert('操作失败: ' + err.message)
+  } finally {
+    actionLoading.value = false
+  }
+}
 
 const handleFastSwitch = async ({ identifier, password }) => {
   try {
@@ -426,6 +594,7 @@ const selectSpace = async (sp) => {
   currentSpace.value = sp
   selectedSpaceModal.value = true
   spaceArchive.value = null
+  maintenanceReason.value = '地面沉降破损与路砖平整修补'
   try {
     const res = await api.get(`/property/space-history/${sp.id}`)
     if (res.code === 200) spaceArchive.value = res.data
@@ -502,16 +671,20 @@ const handleConfirmDelivery = async () => {
 }
 
 const handleToggleMaintenance = async (action) => {
+  actionLoading.value = true
   try {
     const res = await api.post('/property/set-maintenance', {
       space_id: currentSpace.value.id,
-      action
+      action,
+      reason: action === 'SET_MAINTENANCE' ? maintenanceReason.value : '检修验收合格恢复上线'
     })
     alert(res.message || '操作成功')
     selectedSpaceModal.value = false
     await loadData()
   } catch (err) {
     alert('操作失败: ' + err.message)
+  } finally {
+    actionLoading.value = false
   }
 }
 

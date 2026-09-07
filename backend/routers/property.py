@@ -139,12 +139,12 @@ def set_maintenance(req: MaintenanceRequest, admin: User = Depends(get_property_
 
     if req.action == "SET_MAINTENANCE":
         if sp.status in ("RENTED", "ALLOCATED", "OFFLINE_PENDING"):
-            raise HTTPException(status_code=400, detail="该车位当前已在使用或处于分配确认中，不可置为维修！")
+            raise HTTPException(status_code=400, detail="该车位当前已在使用或处于分配确认中，不可直接置为维修！请先代办退租清退。")
         sp.status = "MAINTENANCE"
-        msg = f"车位【{sp.space_no}】已置为维修停用，已移出自动排位池"
+        msg = f"车位【{sp.space_no}】已成功置为维修停用状态（原因：{req.reason}），已移出自动排位分配池"
     elif req.action == "RESTORE":
         sp.status = "VACANT"
-        msg = f"车位【{sp.space_no}】已恢复可用，将自动参与顺位分配"
+        msg = f"车位【{sp.space_no}】检修验收完毕，已恢复可用并重新纳入自动排位调度池！"
     else:
         raise HTTPException(status_code=400, detail="无效的操作类型")
 
@@ -154,16 +154,17 @@ def set_maintenance(req: MaintenanceRequest, admin: User = Depends(get_property_
     if req.action == "RESTORE":
         trigger_recalculate_queue(db, admin.community_id)
 
+    event_summary = f"物业登记车位【{sp.space_no}】设为维修停用 (原因: {req.reason})" if req.action == "SET_MAINTENANCE" else f"物业验收车位【{sp.space_no}】维修完毕，恢复正常投入使用"
     create_evidence_record(
         db=db,
         community_id=admin.community_id,
         user_id=admin.id,
-        event_type="MAINTENANCE",
-        summary=f"物业管理员操作车位【{sp.space_no}】：{'维修停用' if req.action=='SET_MAINTENANCE' else '恢复可用'}",
-        payload={"space_no": sp.space_no, "action": req.action}
+        event_type="MAINTENANCE" if req.action == "SET_MAINTENANCE" else "RESTORE",
+        summary=event_summary,
+        payload={"space_no": sp.space_no, "action": req.action, "reason": req.reason, "operator": admin.real_name}
     )
 
-    return ResponseModel(code=200, message=msg)
+    return ResponseModel(code=200, message=msg, data={"space_id": sp.id, "space_no": sp.space_no, "status": sp.status})
 
 @router.post("/confirm-delivery", response_model=ResponseModel)
 def confirm_delivery(req: ConfirmDeliveryRequest, admin: User = Depends(get_property_admin), db: Session = Depends(get_db)):

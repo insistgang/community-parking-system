@@ -1,8 +1,5 @@
 <template>
   <div class="min-h-screen bg-slate-100 flex flex-col pb-20">
-    <!-- 顶部演示控制条 -->
-    <SeedAccountBar @fill="handleFastSwitch" />
-
     <!-- 顶部导航栏 -->
     <NavBar />
 
@@ -201,17 +198,14 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '../store/user'
 import api from '../api'
 import NavBar from '../components/NavBar.vue'
-import SeedAccountBar from '../components/SeedAccountBar.vue'
 import CountdownCard from '../components/CountdownCard.vue'
 import AiWaitingCard from '../components/AiWaitingCard.vue'
 import BottomNav from '../components/BottomNav.vue'
 
-const router = useRouter()
 const userStore = useUserStore()
 
 let pollTimer = null
@@ -236,24 +230,6 @@ onMounted(() => {
 onUnmounted(() => {
   if (pollTimer) clearInterval(pollTimer)
 })
-
-const handleFastSwitch = async ({ identifier, password }) => {
-  try {
-    const res = await api.post('/auth/login', {
-      identifier,
-      password,
-      login_type: 'PASSWORD'
-    })
-    userStore.setAuth(res.data.user, res.data.token)
-    if (res.data.user.role === 'PROPERTY_ADMIN') {
-      router.push('/property/dashboard')
-    } else {
-      await loadData()
-    }
-  } catch (err) {
-    alert('切换失败: ' + err.message)
-  }
-}
 
 const handleCancelApply = async () => {
   if (!confirm('警告：撤销排队申请后，您当前的顺位将立即释放给后续业主，重新申请需重新核验并排至队尾。确认撤销吗？')) return

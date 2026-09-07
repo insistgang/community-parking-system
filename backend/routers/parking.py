@@ -172,6 +172,10 @@ def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_use
     """
     车位排队三证合一申请
     """
+    # 铁律：物业管理员坚决禁止作为业主申请车位
+    if user.role == "PROPERTY_ADMIN":
+        raise HTTPException(status_code=403, detail="物业管理员账号负责资产统筹与履约监管，坚决禁止作为业主申请车位！")
+
     # 铁律：外区房拦截校验
     if "浦东" in req.property_no or "世纪大道" in req.property_no or "外区" in req.property_no:
         raise HTTPException(status_code=400, detail="仅限本小区产权房屋可申请车位，外区房产无法通过核验！")

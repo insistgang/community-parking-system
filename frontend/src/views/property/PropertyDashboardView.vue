@@ -30,14 +30,6 @@
 
       <div class="flex items-center gap-2 flex-wrap text-xs">
         <button
-          @click="switchToOwnerH5"
-          class="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition active:scale-95 flex items-center gap-1.5 shadow-md shadow-blue-600/30"
-          title="演示快捷通道：切换为张欣欣账号并打开业主申请页"
-        >
-          <span>👤 演示切为张欣欣</span>
-        </button>
-
-        <button
           @click="handleResetDemo"
           class="px-3 py-1.5 rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-semibold transition active:scale-95 flex items-center gap-1.5 shadow-sm"
           title="防翻车：一键将所有车位和账号重置为初始演示状态"
@@ -571,29 +563,6 @@ const handleConfirmQuickMaintenance = async () => {
   } finally {
     actionLoading.value = false
   }
-}
-
-const handleFastSwitch = async ({ identifier, password }) => {
-  try {
-    const res = await api.post('/auth/login', {
-      identifier,
-      password,
-      login_type: 'PASSWORD'
-    })
-    userStore.setAuth(res.data.user, res.data.token)
-    if (res.data.user.role === 'PROPERTY_ADMIN') {
-      await loadData()
-    } else {
-      router.push('/')
-    }
-  } catch (err) {
-    alert('切换失败: ' + err.message)
-  }
-}
-
-const switchToOwnerH5 = async () => {
-  // 快速切为张欣欣并跳转业主端
-  await handleFastSwitch({ identifier: '13800000001', password: '123456' })
 }
 
 const spaceArchive = ref(null)

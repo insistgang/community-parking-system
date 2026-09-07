@@ -151,7 +151,8 @@ def init_db_and_seed():
         db.commit()
 
         # 5. 创建排队队列初始数据
-        now = datetime.now()
+        # 统一使用 UTC 时间，与 scheduler.py / parking.py 的 48h 倒计时计算保持一致
+        now = datetime.utcnow()
         # 李雷: 已处于 ALLOCATED 待确认 (分配了 A-012，倒计时起始点设为 10 分钟前)
         app_li = QueueApplication(
             user_id=user_li.id,

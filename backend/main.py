@@ -1,9 +1,12 @@
 import os
+import asyncio
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from database import engine, Base
+from database import engine, Base, SessionLocal
+from models import Community
 from seed import init_db_and_seed
+from scheduler import check_expired_allocations
 from routers import auth, parking, property, evidence, dev
 
 # 确保启动时表存在
@@ -38,6 +41,23 @@ app.include_router(parking.router)
 app.include_router(property.router)
 app.include_router(evidence.router)
 app.include_router(dev.router)
+
+async def _timeout_sweeper():
+    """后台定时任务: 每分钟全量扫描所有小区，自动收回超过 48 小时未确认的中签车位"""
+    while True:
+        await asyncio.sleep(60)
+        db = SessionLocal()
+        try:
+            for (cid,) in db.query(Community.id).all():
+                check_expired_allocations(db, cid)
+        except Exception:
+            db.rollback()
+        finally:
+            db.close()
+
+@app.on_event("startup")
+async def start_timeout_sweeper():
+    asyncio.create_task(_timeout_sweeper())
 
 @app.get("/")
 def root():

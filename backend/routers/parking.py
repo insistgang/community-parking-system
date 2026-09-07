@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community
 from schemas import ApplyParkingRequest, CancelApplyRequest, ResponseModel
-from scheduler import trigger_recalculate_queue, estimate_waiting_duration
+from scheduler import trigger_recalculate_queue, estimate_waiting_duration, check_expired_allocations
 from evidence import create_evidence_record
 
 router = APIRouter(prefix="/api", tags=["Parking & User"])
@@ -22,6 +22,9 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
     动态返回 4 重视图状态 (RENTED | NO_APPLY | WAITING | ALLOCATED | OFFLINE_PENDING)
     """
     community = db.query(Community).filter(Community.id == user.community_id).first()
+
+    # 惰性触发 48h 超时清扫: 前端每 3 秒轮询本接口，超时中签单将被自动收回并顺延
+    check_expired_allocations(db, user.community_id)
 
     # 1. 检查是否有在租车位
     contract = db.query(RentalContract).filter(

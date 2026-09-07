@@ -286,13 +286,25 @@ const handleCancelApply = async () => {
   }
 }
 
-const handleRenew = () => {
-  alert('您已提交续租意向，请携带相关证明材料前往小区物业管理处办理 1 年期续费合同！')
+const handleRenew = async () => {
+  if (!confirm('确认为当前车位申请续租 1 年吗？续租成功后租约自动顺延并生成区块链存证。')) return
+  try {
+    const res = await api.post('/parking/renew')
+    alert(res.message || '续租成功')
+    await loadData()
+  } catch (err) {
+    alert('续租失败: ' + err.message)
+  }
 }
 
-const handleTerminate = () => {
-  if (confirm('确认申请退租吗？物业核验车位腾空与无欠费后将释放车位。')) {
-    alert('退租申请已提交至物业管理中心待办列表！')
+const handleTerminate = async () => {
+  if (!confirm('确认申请退租吗？车位将立即释放并由系统自动顺延分配给排队业主，操作实时上链不可撤销。')) return
+  try {
+    const res = await api.post('/parking/terminate-rental')
+    alert(res.message || '退租成功')
+    await loadData()
+  } catch (err) {
+    alert('退租失败: ' + err.message)
   }
 }
 </script>

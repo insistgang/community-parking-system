@@ -1,4 +1,4 @@
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from database import get_db
@@ -181,14 +181,19 @@ def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_use
     if active_app:
         raise HTTPException(status_code=400, detail="您已有正在生效或轮候中的申请，不可重复发起！")
 
-    # 一房多车判定: 检查本房屋是否已有排队或在租车位
+    # 一房多车判定: 本房屋已有排队/历史申请，或本人名下已有生效租约 → 二车自动降权
     exist_house = db.query(QueueApplication).filter(
         QueueApplication.community_id == user.community_id,
         QueueApplication.property_no == req.property_no,
         QueueApplication.status.in_(["WAITING", "ALLOCATED", "OFFLINE_PENDING", "COMPLETED"])
     ).first()
 
-    priority = 2 if exist_house else 1 # 家庭二车自动降权
+    exist_contract = db.query(RentalContract).filter(
+        RentalContract.user_id == user.id,
+        RentalContract.status.in_(["ACTIVE", "EXPIRING", "OVERDUE"])
+    ).first()
+
+    priority = 2 if (exist_house or exist_contract) else 1 # 家庭二车自动降权，严格排在一车之后
 
     # 创建申请
     app = QueueApplication(
@@ -323,6 +328,99 @@ def give_up_allocation(user: User = Depends(get_current_user), db: Session = Dep
 
     return ResponseModel(code=200, message="您已放弃本次车位分配，机会已顺延给下一位业主")
 
+@router.post("/parking/terminate-rental", response_model=ResponseModel)
+def terminate_rental(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    业主主动退租: 终止本人名下生效租约，车位释放回 VACANT 并自动顺延分配给队首
+    """
+    contract = db.query(RentalContract).filter(
+        RentalContract.user_id == user.id,
+        RentalContract.status.in_(["ACTIVE", "EXPIRING", "OVERDUE"])
+    ).first()
+    if not contract:
+        raise HTTPException(status_code=400, detail="未查询到您名下正在生效的车位租约")
+
+    sp = db.query(ParkingSpace).filter(ParkingSpace.id == contract.space_id).first()
+
+    contract.status = "TERMINATED"
+    if sp:
+        sp.status = "VACANT"
+        sp.current_user_id = None
+    db.commit()
+
+    space_no = sp.space_no if sp else "--"
+
+    create_evidence_record(
+        db=db,
+        community_id=user.community_id,
+        user_id=user.id,
+        event_type="TERMINATE",
+        summary=f"业主【{user.real_name}】主动退租车位【{space_no}】，租约终止车位释放回炉",
+        payload={"contract_no": contract.contract_no, "space_no": space_no, "mode": "OWNER_INITIATED"}
+    )
+
+    db.add(Notification(
+        user_id=user.id,
+        title="退租办理完成通知",
+        content=f"您的车位【{space_no}】退租手续已办结，租约终止并已上链存证。车位将由系统按排队顺位自动顺延分配。",
+        type="SYSTEM",
+        action_type=None
+    ))
+    db.commit()
+
+    # 释放的车位立即参与 FIFO 自动顺延分配
+    trigger_recalculate_queue(db, user.community_id)
+
+    return ResponseModel(code=200, message=f"退租成功！车位【{space_no}】已释放，系统已自动顺延分配给排队顺位业主。")
+
+@router.post("/parking/renew", response_model=ResponseModel)
+def renew_contract(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    业主申请续租: 临期(到期前30天内)/逾期租约一键续租 1 年，全流程上链
+    """
+    contract = db.query(RentalContract).filter(
+        RentalContract.user_id == user.id,
+        RentalContract.status.in_(["ACTIVE", "EXPIRING", "OVERDUE"])
+    ).first()
+    if not contract:
+        raise HTTPException(status_code=400, detail="未查询到您名下正在生效的车位租约，无法续租")
+
+    days_left = (contract.end_date - date.today()).days
+    if contract.status == "ACTIVE" and days_left > 30:
+        raise HTTPException(status_code=400, detail=f"租约尚未进入续租期 (到期前 30 天内开放)，当前剩余 {days_left} 天")
+
+    old_end = contract.end_date
+    contract.end_date = contract.end_date + timedelta(days=365)
+    contract.status = "ACTIVE"
+    db.commit()
+
+    sp = db.query(ParkingSpace).filter(ParkingSpace.id == contract.space_id).first()
+    space_no = sp.space_no if sp else "--"
+
+    create_evidence_record(
+        db=db,
+        community_id=user.community_id,
+        user_id=user.id,
+        event_type="RENEW",
+        summary=f"业主【{user.real_name}】完成车位【{space_no}】续租 1 年",
+        payload={"contract_no": contract.contract_no, "old_end_date": str(old_end), "new_end_date": str(contract.end_date)}
+    )
+
+    db.add(Notification(
+        user_id=user.id,
+        title="车位续租成功通知",
+        content=f"您的车位【{space_no}】已成功续租 1 年，租约有效期顺延至 {contract.end_date}，本次续租已上链存证。",
+        type="SYSTEM",
+        action_type="GO_CONFIRM"
+    ))
+    db.commit()
+
+    return ResponseModel(
+        code=200,
+        message=f"续租成功！租约已顺延至 {contract.end_date} (1年期)，存证已上链。",
+        data={"contract_no": contract.contract_no, "new_end_date": str(contract.end_date)}
+    )
+
 @router.get("/parking/queue", response_model=ResponseModel)
 def get_public_queue(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
@@ -337,19 +435,23 @@ def get_public_queue(user: User = Depends(get_current_user), db: Session = Depen
     ).all()
 
     result = []
-    for app in apps:
+    # 排位号以实时 FIFO 顺序枚举生成，确保公示大盘与调度引擎真实顺序严格一致
+    for idx, app in enumerate(apps, start=1):
+        if app.current_rank != idx:
+            app.current_rank = idx
         u = db.query(User).filter(User.id == app.user_id).first()
         name_masked = (u.real_name[0] + "**") if u else "匿*"
         phone_masked = (u.phone[:3] + "****" + u.phone[-4:]) if u else "138****0000"
 
         result.append({
-            "rank": app.current_rank,
+            "rank": idx,
             "masked_name": name_masked,
             "masked_phone": phone_masked,
             "priority_type": "家庭一车" if app.priority_level == 1 else "家庭二车",
             "apply_time": app.apply_time.strftime("%Y-%m-%d %H:%M:%S"),
             "is_me": (app.user_id == user.id)
         })
+    db.commit()
 
     return ResponseModel(code=200, data=result)
 

@@ -134,3 +134,21 @@ def check_expired_allocations(db: Session, community_id: int):
     if expired_apps:
         db.commit()
         trigger_recalculate_queue(db, community_id)
+
+def init_community_spaces(db: Session, community_id: int, count: int = 50):
+    """
+    为新小区生成默认车位资产台账:
+    前缀字母按小区ID递增 (A-/B-/C-...)，保证 space_no 全局唯一
+    """
+    prefix = chr(ord('A') + (community_id - 1) % 26)
+    spaces = []
+    for i in range(1, count + 1):
+        spaces.append(ParkingSpace(
+            community_id=community_id,
+            space_no=f"{prefix}-{i:03d}",
+            area_type="GROUND" if i <= 30 else "UNDERGROUND",
+            status="VACANT"
+        ))
+    db.add_all(spaces)
+    db.commit()
+    return spaces

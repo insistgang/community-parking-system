@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community
 from schemas import MaintenanceRequest, ConfirmDeliveryRequest, ForceTerminateRequest, ResponseModel
-from scheduler import trigger_recalculate_queue
+from scheduler import trigger_recalculate_queue, init_community_spaces
 from evidence import create_evidence_record
 
 router = APIRouter(prefix="/api/property", tags=["Property Management"])
@@ -28,9 +28,14 @@ def get_property_stats(admin: User = Depends(get_property_admin), db: Session = 
     allocated_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == comm_id, ParkingSpace.status.in_(["ALLOCATED", "OFFLINE_PENDING"])).count()
     waiting_users = db.query(QueueApplication).filter(QueueApplication.community_id == comm_id, QueueApplication.status == "WAITING").count()
 
-    # 待办预警数 (即将到期 + 待确认中签)
-    expiring_count = db.query(RentalContract).filter(RentalContract.status == "EXPIRING").count()
-    pending_delivery = db.query(QueueApplication).filter(QueueApplication.status == "OFFLINE_PENDING").count()
+    # 待办预警数 (即将到期 + 待确认中签)，严格限定本小区范围
+    expiring_count = db.query(RentalContract).join(
+        ParkingSpace, RentalContract.space_id == ParkingSpace.id
+    ).filter(ParkingSpace.community_id == comm_id, RentalContract.status == "EXPIRING").count()
+    pending_delivery = db.query(QueueApplication).filter(
+        QueueApplication.community_id == comm_id,
+        QueueApplication.status == "OFFLINE_PENDING"
+    ).count()
 
     return ResponseModel(
         code=200,
@@ -140,16 +145,29 @@ def confirm_delivery(req: ConfirmDeliveryRequest, admin: User = Depends(get_prop
     if not sp or not u:
         raise HTTPException(status_code=404, detail="车位或业主不存在")
 
+    # 防插队铁律: 仅允许交付"系统已自动分配给该业主"的车位，坚决禁止任何手动指派后门
+    if sp.status not in ("ALLOCATED", "OFFLINE_PENDING") or sp.current_user_id != u.id:
+        raise HTTPException(status_code=400, detail="该车位当前并非分配给此业主的中签车位，禁止人工指定交付！车位只能由系统按排队顺位自动分发。")
+
     app = db.query(QueueApplication).filter(
         QueueApplication.user_id == u.id,
+        QueueApplication.allocated_space_id == sp.id,
         QueueApplication.status.in_(["ALLOCATED", "OFFLINE_PENDING"])
     ).first()
+    if not app:
+        raise HTTPException(status_code=400, detail="未找到该业主对应该车位的中签申请单，无法交付")
+
+    # 防止同一车位重复生成交付合同
+    exist_ct = db.query(RentalContract).filter(
+        RentalContract.space_id == sp.id,
+        RentalContract.status != "TERMINATED"
+    ).first()
+    if exist_ct:
+        raise HTTPException(status_code=400, detail="该车位已存在生效租约，不可重复交付")
 
     sp.status = "RENTED"
     sp.current_user_id = u.id
-
-    if app:
-        app.status = "COMPLETED"
+    app.status = "COMPLETED"
 
     # 生成正式租约
     today = date.today()
@@ -196,6 +214,8 @@ def force_terminate(req: ForceTerminateRequest, admin: User = Depends(get_proper
     sp = db.query(ParkingSpace).filter(ParkingSpace.id == req.space_id).first()
     if not sp:
         raise HTTPException(status_code=404, detail="未找到指定车位")
+    if sp.status in ("VACANT", "MAINTENANCE"):
+        raise HTTPException(status_code=400, detail="该车位当前未被租用占用，无需清退")
 
     old_user_id = sp.current_user_id
     old_user_name = "老业主"
@@ -203,6 +223,23 @@ def force_terminate(req: ForceTerminateRequest, admin: User = Depends(get_proper
         ou = db.query(User).filter(User.id == old_user_id).first()
         if ou:
             old_user_name = ou.real_name
+
+    # 若车位处于中签确认期 (ALLOCATED/OFFLINE_PENDING)，同步作废关联申请单，杜绝一车位两申请单的数据错乱
+    pending_app = db.query(QueueApplication).filter(
+        QueueApplication.allocated_space_id == sp.id,
+        QueueApplication.status.in_(["ALLOCATED", "OFFLINE_PENDING"])
+    ).first()
+    if pending_app:
+        pending_app.status = "CANCELLED"
+        pending_app.allocated_space_id = None
+        pending_app.allocated_time = None
+        db.add(Notification(
+            user_id=pending_app.user_id,
+            title="中签分配撤销通知",
+            content=f"很抱歉，您中签的车位【{sp.space_no}】因物业原因({req.reason})被收回，本次分配已作废。如需车位请重新提交排队申请。",
+            type="SYSTEM",
+            action_type="GO_QUEUE"
+        ))
 
     # 终止旧合同
     old_ct = db.query(RentalContract).filter(
@@ -236,3 +273,32 @@ def force_terminate(req: ForceTerminateRequest, admin: User = Depends(get_proper
     trigger_recalculate_queue(db, admin.community_id)
 
     return ResponseModel(code=200, message=f"车位【{sp.space_no}】已成功清退释放，系统已自动触发后序顺位流转分配！")
+
+@router.post("/init-demo-spaces", response_model=ResponseModel)
+def init_demo_spaces(admin: User = Depends(get_property_admin), db: Session = Depends(get_db)):
+    """
+    一键注入 50 个车位演示数据 (仅限当前小区尚无车位资产时)
+    """
+    exist = db.query(ParkingSpace).filter(ParkingSpace.community_id == admin.community_id).count()
+    if exist > 0:
+        raise HTTPException(status_code=400, detail="当前小区已存在车位台账，无需重复初始化")
+
+    spaces = init_community_spaces(db, admin.community_id, 50)
+
+    community = db.query(Community).filter(Community.id == admin.community_id).first()
+    if community:
+        community.total_spaces = 50
+        db.commit()
+
+    create_evidence_record(
+        db=db,
+        community_id=admin.community_id,
+        user_id=admin.id,
+        event_type="INIT",
+        summary=f"物业管理员【{admin.real_name}】完成本小区 50 个车位台账初始化导入锁定",
+        payload={"total_spaces": 50, "manager": admin.real_name}
+    )
+
+    first_no = spaces[0].space_no if spaces else "--"
+    last_no = spaces[-1].space_no if spaces else "--"
+    return ResponseModel(code=200, message=f"已成功注入 50 个车位资产 ({first_no} ~ {last_no})，台账已上链锁定！")

@@ -7,6 +7,8 @@ from database import get_db
 from models import User, Community
 from schemas import LoginRequest, RegisterRequest, SendSmsRequest, ResponseModel
 from districts import SHANGHAI_DISTRICTS, get_all_districts_list
+from scheduler import init_community_spaces
+from evidence import create_evidence_record
 
 router = APIRouter(prefix="/api", tags=["Auth & Common"])
 
@@ -119,6 +121,17 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         db.add(community)
         db.commit()
         db.refresh(community)
+
+        # 新小区同步生成 50 个空闲车位资产台账并上链，避免注册后无车位可申请
+        init_community_spaces(db, community.id, 50)
+        create_evidence_record(
+            db=db,
+            community_id=community.id,
+            user_id=None,
+            event_type="INIT",
+            summary=f"【{community.name}】车位资产台账随首位业主注册自动初始化 (50个空闲车位)",
+            payload={"total_spaces": 50, "community": community.name, "trigger": "AUTO_ON_REGISTER"}
+        )
 
     user = User(
         phone=req.phone,

@@ -107,20 +107,28 @@
             <span class="font-mono font-bold text-slate-800">310104********1111</span>
           </div>
           <div class="flex justify-between">
-            <span class="text-slate-500">政务人证比对:</span>
-            <span class="font-semibold text-emerald-600 flex items-center gap-1">
-              <span>✓ 比对通过 (公安实人认证库一致)</span>
-            </span>
+            <span class="text-slate-500">OCR 证号核验:</span>
+            <span class="font-semibold text-emerald-600">✓ 公安实人认证库一致</span>
           </div>
         </div>
 
+        <FaceCaptureBox
+          v-if="idCardScanned"
+          :name="userStore.realName"
+          persona="zhang"
+          title="实人认证 · 采集申请人人脸"
+          hint="采集完成后自动与身份证照片完成人证比对"
+          @matched="faceMatched = true"
+        />
+
         <button
           @click="step = 2"
-          :disabled="!idCardScanned"
+          :disabled="!idCardScanned || !faceMatched"
           class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-1.5"
         >
-          <span>第一证已核验，下一步核验第二证(房产证)</span>
-          <span>➔</span>
+          <span v-if="!idCardScanned">请先上传身份证</span>
+          <span v-else-if="!faceMatched">请先完成人脸人证比对</span>
+          <span v-else>人证比对通过，下一步核验第二证(房产证) ➔</span>
         </button>
       </div>
 
@@ -477,12 +485,14 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import api from '../api'
 import OcrUploadBox from '../components/OcrUploadBox.vue'
+import FaceCaptureBox from '../components/FaceCaptureBox.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 const step = ref(1)
 const idCardScanned = ref(false)
+const faceMatched = ref(false)
 const propertyCertScanned = ref(false)
 const selectedProperty = ref('某某新村12号楼302室')
 const externalWarning = ref(false)
@@ -501,7 +511,7 @@ const propertyVerified = computed(() => propertyCertScanned.value && !!selectedP
 
 // 综合三证合一判定
 const isThreeCertValid = computed(() => {
-  if (!idCardScanned.value) return false
+  if (!idCardScanned.value || !faceMatched.value) return false
   if (!propertyCertScanned.value) return false
   if (!selectedProperty.value || selectedProperty.value.includes('浦东')) return false
   if (!inputPlate.value || !inputPlate.value.trim()) return false

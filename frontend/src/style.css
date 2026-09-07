@@ -21,3 +21,132 @@
   background: #cbd5e1;
   border-radius: 4px;
 }
+
+/* ========== 暗夜主题 (html.dark 全局覆盖) ========== */
+html.dark body {
+  background-color: #0b1220;
+  color: #e2e8f0;
+}
+/* 页面与卡片底色 */
+html.dark .bg-slate-100 { background-color: #0f172a !important; }
+html.dark .bg-slate-50 { background-color: #1e293b !important; }
+html.dark .bg-white { background-color: #1e293b !important; }
+html.dark .bg-white\/95 { background-color: rgba(15, 23, 42, .95) !important; }
+html.dark .bg-blue-50 { background-color: rgba(30, 64, 175, .25) !important; }
+html.dark .bg-blue-50\/60 { background-color: rgba(30, 64, 175, .22) !important; }
+html.dark .bg-emerald-50 { background-color: rgba(6, 95, 70, .25) !important; }
+html.dark .bg-amber-50 { background-color: rgba(146, 64, 14, .28) !important; }
+html.dark .bg-amber-50\/90 { background-color: rgba(146, 64, 14, .30) !important; }
+html.dark .bg-rose-50 { background-color: rgba(136, 19, 55, .25) !important; }
+html.dark .bg-orange-50 { background-color: rgba(154, 52, 18, .28) !important; }
+/* 文字色阶 */
+html.dark .text-slate-900, html.dark .text-slate-800 { color: #f1f5f9 !important; }
+html.dark .text-slate-700 { color: #e2e8f0 !important; }
+html.dark .text-slate-600 { color: #cbd5e1 !important; }
+html.dark .text-slate-500 { color: #94a3b8 !important; }
+html.dark .text-slate-400 { color: #8ca0bd !important; }
+html.dark .text-blue-700 { color: #93c5fd !important; }
+html.dark .text-emerald-700 { color: #6ee7b7 !important; }
+html.dark .text-amber-700, html.dark .text-amber-800, html.dark .text-amber-900 { color: #fcd34d !important; }
+html.dark .text-rose-700, html.dark .text-rose-600 { color: #fda4af !important; }
+html.dark .text-orange-700 { color: #fdba74 !important; }
+/* 边框 */
+html.dark .border-slate-200 { border-color: #334155 !important; }
+html.dark .border-slate-100 { border-color: #263449 !important; }
+html.dark .border-blue-100 { border-color: rgba(59, 130, 246, .35) !important; }
+html.dark .border-emerald-100 { border-color: rgba(16, 185, 129, .30) !important; }
+html.dark .border-amber-100, html.dark .border-amber-200 { border-color: rgba(217, 119, 6, .35) !important; }
+html.dark .border-rose-100, html.dark .border-rose-200 { border-color: rgba(225, 29, 72, .35) !important; }
+html.dark .border-orange-100 { border-color: rgba(234, 88, 12, .35) !important; }
+/* 表单控件 */
+html.dark input, html.dark select, html.dark textarea {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border-color: #334155 !important;
+}
+html.dark input::placeholder, html.dark textarea::placeholder { color: #64748b !important; }
+/* 阴影在深色下减弱 */
+html.dark .shadow-sm, html.dark .shadow-md, html.dark .shadow-lg, html.dark .shadow-xl {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .45) !important;
+}
+/* hover 亮底 */
+html.dark .hover\:bg-slate-100:hover, html.dark .hover\:bg-slate-50:hover { background-color: #263449 !important; }
+/* 分割线与滚动条 */
+html.dark .divide-slate-100 > * + * { border-color: #263449 !important; }
+html.dark ::-webkit-scrollbar-thumb { background: #334155; }
+
+/* ========== 物业中台浅色主题 (全局浅色模式下生效，默认深色大屏) ========== */
+html:not(.dark) .property-dashboard { background-color: #f1f5f9 !important; color: #1e293b !important; }
+html:not(.dark) .property-dashboard .bg-slate-900 { background-color: #f1f5f9 !important; }
+html:not(.dark) .property-dashboard .bg-slate-900\/80 { background-color: #f8fafc !important; }
+html:not(.dark) .property-dashboard .bg-slate-800\/90 { background-color: rgba(255, 255, 255, .92) !important; }
+html:not(.dark) .property-dashboard .bg-slate-800 { background-color: #ffffff !important; }
+html:not(.dark) .property-dashboard .bg-slate-700 { background-color: #e2e8f0 !important; }
+html:not(.dark) .property-dashboard .bg-slate-700\/80 { background-color: #f1f5f9 !important; }
+/* 文字 (按钮与彩底元素保持白字) */
+html:not(.dark) .property-dashboard .text-white { color: #0f172a !important; }
+html:not(.dark) .property-dashboard button.text-white,
+html:not(.dark) .property-dashboard button .text-white,
+html:not(.dark) .property-dashboard .bg-purple-600 .font-black { color: #ffffff !important; }
+html:not(.dark) .property-dashboard .text-slate-100 { color: #1e293b !important; }
+html:not(.dark) .property-dashboard .text-slate-200 { color: #334155 !important; }
+html:not(.dark) .property-dashboard .text-slate-300 { color: #475569 !important; }
+html:not(.dark) .property-dashboard .text-slate-400 { color: #64748b !important; }
+html:not(.dark) .property-dashboard .hover\:text-white:hover { color: #0f172a !important; }
+/* 边框 */
+html:not(.dark) .property-dashboard .border-slate-700 { border-color: #e2e8f0 !important; }
+html:not(.dark) .property-dashboard .border-slate-600 { border-color: #cbd5e1 !important; }
+/* 指标卡彩色数字 400→600  deepen for light bg */
+html:not(.dark) .property-dashboard .text-blue-400 { color: #2563eb !important; }
+html:not(.dark) .property-dashboard .text-emerald-400 { color: #059669 !important; }
+html:not(.dark) .property-dashboard .text-amber-400 { color: #d97706 !important; }
+html:not(.dark) .property-dashboard .text-purple-400 { color: #9333ea !important; }
+html:not(.dark) .property-dashboard .text-rose-400 { color: #e11d48 !important; }
+html:not(.dark) .property-dashboard .text-orange-400 { color: #ea580c !important; }
+/* 头部徽章 */
+html:not(.dark) .property-dashboard .bg-purple-900\/60 { background-color: #f3e8ff !important; }
+html:not(.dark) .property-dashboard .text-purple-300 { color: #7e22ce !important; }
+html:not(.dark) .property-dashboard .border-purple-500\/40 { border-color: #d8b4fe !important; }
+/* 弹窗操作区 (清退/交付) */
+html:not(.dark) .property-dashboard .bg-rose-950\/40 { background-color: #fff1f2 !important; }
+html:not(.dark) .property-dashboard .border-rose-800\/60 { border-color: #fecdd3 !important; }
+html:not(.dark) .property-dashboard .text-rose-300 { color: #be123c !important; }
+html:not(.dark) .property-dashboard .bg-amber-950\/40 { background-color: #fffbeb !important; }
+html:not(.dark) .property-dashboard .border-amber-800\/60 { border-color: #fde68a !important; }
+html:not(.dark) .property-dashboard .text-amber-300 { color: #b45309 !important; }
+/* 车位矩阵卡片深色半透明 → 浅色 */
+html:not(.dark) .property-dashboard .bg-blue-900\/60 { background-color: #dbeafe !important; }
+html:not(.dark) .property-dashboard .text-blue-200 { color: #1e40af !important; }
+html:not(.dark) .property-dashboard .border-blue-500\/50 { border-color: #93c5fd !important; }
+html:not(.dark) .property-dashboard .bg-amber-900\/60 { background-color: #fef3c7 !important; }
+html:not(.dark) .property-dashboard .text-amber-200 { color: #92400e !important; }
+html:not(.dark) .property-dashboard .border-amber-500\/60 { border-color: #fcd34d !important; }
+html:not(.dark) .property-dashboard .bg-emerald-900\/60 { background-color: #d1fae5 !important; }
+html:not(.dark) .property-dashboard .text-emerald-200 { color: #065f46 !important; }
+html:not(.dark) .property-dashboard .border-emerald-500\/50 { border-color: #6ee7b7 !important; }
+html:not(.dark) .property-dashboard .bg-rose-950\/70 { background-color: #ffe4e6 !important; }
+html:not(.dark) .property-dashboard .border-rose-600\/50 { border-color: #fda4af !important; }
+/* 下拉框 */
+html:not(.dark) .property-dashboard select.bg-slate-900 {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+/* hover 行为 */
+html:not(.dark) .property-dashboard .hover\:bg-slate-700:hover { background-color: #e2e8f0 !important; }
+html:not(.dark) .property-dashboard .hover\:bg-slate-600:hover { background-color: #cbd5e1 !important; }
+/* 车位卡片内分割线 */
+html:not(.dark) .property-dashboard .border-white\/20 { border-color: rgba(100, 116, 139, .25) !important; }
+/* 顶部演示控制台条始终保持深色 */
+html:not(.dark) .property-dashboard .demo-console .bg-slate-700\/80 { background-color: rgba(51, 65, 85, .8) !important; }
+html:not(.dark) .property-dashboard .demo-console .text-white { color: #ffffff !important; }
+
+/* 演示控制台条完整豁免浅色覆盖 (保持深色工具条) */
+html:not(.dark) .property-dashboard .demo-console .text-blue-200 { color: #bfdbfe !important; }
+html:not(.dark) .property-dashboard .demo-console .text-amber-200 { color: #fde68a !important; }
+html:not(.dark) .property-dashboard .demo-console .text-emerald-200 { color: #a7f3d0 !important; }
+html:not(.dark) .property-dashboard .demo-console .text-purple-200 { color: #e9d5ff !important; }
+html:not(.dark) .property-dashboard .demo-console .bg-blue-900\/60 { background-color: rgba(30, 58, 138, .6) !important; }
+html:not(.dark) .property-dashboard .demo-console .bg-amber-900\/60 { background-color: rgba(120, 53, 15, .6) !important; }
+html:not(.dark) .property-dashboard .demo-console .bg-emerald-900\/60 { background-color: rgba(6, 78, 59, .6) !important; }
+html:not(.dark) .property-dashboard .demo-console .bg-purple-900\/60 { background-color: rgba(88, 28, 135, .6) !important; }

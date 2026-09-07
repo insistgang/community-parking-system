@@ -29,6 +29,7 @@ class ApplyParkingRequest(BaseModel):
     property_no: str
     plate_no: str
     is_spouse_car: bool = False
+    property_cert_no: Optional[str] = None # 不动产权证号 (OCR 提取)
     marriage_cert_no: Optional[str] = None
 
 class CancelApplyRequest(BaseModel):

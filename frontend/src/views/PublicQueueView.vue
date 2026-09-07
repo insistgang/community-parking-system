@@ -44,6 +44,40 @@
           </p>
         </div>
 
+        <!-- 中签待签公示 (48h 待确认 / 线下签约中) -->
+        <div v-if="allocatedList.length > 0" class="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl shadow-sm border border-amber-200 overflow-hidden">
+          <div class="px-3.5 pt-3 pb-2 flex items-center justify-between">
+            <span class="text-xs font-bold text-amber-800 flex items-center gap-1">
+              <span>🎉</span>
+              <span>中签待签公示</span>
+            </span>
+            <span class="text-[10px] text-amber-600 font-medium">超时未办将自动收回顺延</span>
+          </div>
+          <div class="divide-y divide-amber-100 text-xs">
+            <div
+              v-for="item in allocatedList"
+              :key="item.space_no"
+              class="p-3.5 flex items-center justify-between"
+              :class="item.is_me ? 'bg-amber-100/60 border-l-4 border-amber-500' : ''"
+            >
+              <div>
+                <div class="flex items-center gap-1.5 font-bold text-slate-800">
+                  <span>{{ item.masked_name }}</span>
+                  <span v-if="item.is_me" class="text-[10px] bg-amber-500 text-white px-1.5 py-0.2 rounded font-semibold">本人</span>
+                  <span class="text-[10px] text-slate-400 font-normal">({{ item.masked_phone }})</span>
+                </div>
+                <span class="text-[10px] text-slate-400 block mt-0.5">中签时间: {{ item.allocated_time }}</span>
+              </div>
+              <div class="text-right">
+                <span class="font-black text-amber-700 font-mono text-sm block">{{ item.space_no }}</span>
+                <span class="text-[10px] px-2 py-0.5 rounded-full font-semibold bg-amber-100 text-amber-700 border border-amber-300">
+                  {{ item.status_label }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div class="divide-y divide-slate-100 text-xs">
             <div
@@ -119,13 +153,15 @@ import api from '../api'
 
 const tab = ref('QUEUE')
 const queueList = ref([])
+const allocatedList = ref([])
 const timelineList = ref([])
 
 const loadData = async () => {
   try {
     const qRes = await api.get('/parking/queue')
     if (qRes.code === 200) {
-      queueList.value = qRes.data
+      queueList.value = qRes.data?.waiting || []
+      allocatedList.value = qRes.data?.allocated || []
     }
     const tRes = await api.get('/parking/my-timeline')
     if (tRes.code === 200) {

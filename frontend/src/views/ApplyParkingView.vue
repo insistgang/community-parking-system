@@ -35,11 +35,11 @@
             {{ idCardScanned ? '✓ 证一:身份证' : '证一:身份证' }}
           </div>
           <div
-            @click="selectedProperty ? step = 2 : null"
+            @click="propertyVerified ? step = 2 : null"
             class="rounded-lg py-1 px-1 border transition cursor-pointer"
-            :class="selectedProperty ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 font-bold' : 'bg-white/10 text-slate-300 border-white/10'"
+            :class="propertyVerified ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/40 font-bold' : 'bg-white/10 text-slate-300 border-white/10'"
           >
-            {{ selectedProperty ? '✓ 证二:房产证' : '证二:房产证' }}
+            {{ propertyVerified ? '✓ 证二:房产证' : '证二:房产证' }}
           </div>
           <div
             @click="licenseScanned || inputPlate ? step = 3 : null"
@@ -68,16 +68,16 @@
           <button
             @click="idCardScanned ? step = 2 : null"
             class="flex items-center gap-1.5 transition"
-            :class="step === 2 ? 'text-blue-600 font-black' : (selectedProperty ? 'text-emerald-600' : 'text-slate-400')"
+            :class="step === 2 ? 'text-blue-600 font-black' : (propertyVerified ? 'text-emerald-600' : 'text-slate-400')"
           >
-            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="step === 2 ? 'bg-blue-600 text-white' : (selectedProperty ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500')">
-              {{ selectedProperty && step !== 2 ? '✓' : '2' }}
+            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" :class="step === 2 ? 'bg-blue-600 text-white' : (propertyVerified ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500')">
+              {{ propertyVerified && step !== 2 ? '✓' : '2' }}
             </span>
             <span>② 房产核定</span>
           </button>
           <span class="text-slate-300">──</span>
           <button
-            @click="idCardScanned && selectedProperty ? step = 3 : null"
+            @click="idCardScanned && propertyVerified ? step = 3 : null"
             class="flex items-center gap-1.5 transition"
             :class="step === 3 ? 'text-blue-600 font-black' : (licenseScanned ? 'text-emerald-600' : 'text-slate-400')"
           >
@@ -138,15 +138,47 @@
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-black text-slate-900">第二证：本小区不动产权属证明</h3>
-            <p class="text-[11px] text-slate-400 mt-0.5">调取市大数据不动产电子证照，严禁外区房蹭停</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">上传房产证原件 OCR 核验 + 调取市大数据电子证照交叉比对，严禁外区房蹭停</p>
           </div>
           <span class="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-            电子证照调取
+            上传+调取双通道
           </span>
         </div>
 
-        <!-- 调取出的名下房产列表 -->
-        <div class="space-y-2.5">
+        <!-- 房产证原件上传与拟真 OCR 识别 -->
+        <OcrUploadBox
+          label="拍摄 / 上传不动产权证书 (房产证) 原件"
+          tip="系统自动 OCR 提取产证编号、权利人与房屋坐落 (图片不落盘)"
+          mockType="property_cert"
+          @scanned="propertyCertScanned = true"
+        />
+
+        <!-- OCR 识别出的产证信息卡 -->
+        <div v-if="propertyCertScanned" class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-xs animate-fade-in">
+          <div class="flex justify-between">
+            <span class="text-slate-500">产证编号:</span>
+            <span class="font-mono font-bold text-slate-800">沪(2022)徐字不动产权第019823号</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">权利人:</span>
+            <span class="font-bold text-slate-800">{{ userStore.realName }} (与第一证一致)</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">房屋坐落:</span>
+            <span class="font-bold text-slate-800">某某新村 12号楼 302室</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">不动产登记库比对:</span>
+            <span class="font-semibold text-emerald-600">✓ 核验通过 (权属真实有效)</span>
+          </div>
+        </div>
+
+        <!-- 调取出的名下房产列表 (须先完成房产证上传) -->
+        <div class="space-y-2.5" :class="{ 'opacity-40 pointer-events-none': !propertyCertScanned }">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">市大数据中心调取名下房产清单</span>
+            <span v-if="!propertyCertScanned" class="text-[10px] text-amber-600 font-semibold">⚠️ 请先上传房产证原件</span>
+          </div>
           <!-- 房产 1: 本小区 (可选) -->
           <div
             @click="selectedProperty = '某某新村12号楼302室'"
@@ -201,7 +233,7 @@
           </button>
           <button
             @click="step = 3"
-            :disabled="!selectedProperty"
+            :disabled="!propertyVerified"
             class="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-1.5"
           >
             <span>第二证已核定，下一步核验第三证(行驶证)</span>
@@ -462,6 +494,7 @@ const userStore = useUserStore()
 
 const step = ref(1)
 const idCardScanned = ref(false)
+const propertyCertScanned = ref(false)
 const selectedProperty = ref('某某新村12号楼302室')
 const externalWarning = ref(false)
 
@@ -474,9 +507,13 @@ const showSpouseConfirmModal = ref(false)
 const marriageCertUploaded = ref(false)
 const submitting = ref(false)
 
+// 第二证完成判定: 房产证原件已上传 OCR 核验 + 已勾选本小区房产
+const propertyVerified = computed(() => propertyCertScanned.value && !!selectedProperty.value)
+
 // 综合三证合一判定
 const isThreeCertValid = computed(() => {
   if (!idCardScanned.value) return false
+  if (!propertyCertScanned.value) return false
   if (!selectedProperty.value || selectedProperty.value.includes('浦东')) return false
   if (!inputPlate.value || !inputPlate.value.trim()) return false
   if (isSpouseCar.value && !marriageCertUploaded.value) return false
@@ -536,6 +573,7 @@ const handleSubmitApplication = async () => {
       property_no: selectedProperty.value,
       plate_no: inputPlate.value.trim().toUpperCase(),
       is_spouse_car: isSpouseCar.value,
+      property_cert_no: '沪(2022)徐字不动产权第019823号',
       marriage_cert_no: isSpouseCar.value ? 'J310104-2022-0089' : null
     })
     alert(res.message || '三证合一核验完全通过！已成功进入排队队列')

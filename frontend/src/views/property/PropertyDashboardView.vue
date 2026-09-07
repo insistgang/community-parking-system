@@ -1,14 +1,14 @@
 <template>
-  <div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+  <div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col property-dashboard">
     <!-- 顶部演示控制条 (随时一键免密切换任意角色，绝不迷路) -->
     <SeedAccountBar @fill="handleFastSwitch" />
 
     <!-- 顶部导航栏 -->
-    <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 px-6 py-3 flex items-center justify-between sticky top-0 z-30 shadow-md">
-      <div class="flex items-center gap-3">
+    <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 sticky top-0 z-30 shadow-md">
+      <div class="flex items-center gap-3 min-w-0">
         <router-link
           to="/"
-          class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-700/80 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition border border-slate-600"
+          class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-700/80 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition border border-slate-600 shrink-0"
           title="返回业主端首页"
         >
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -17,21 +17,21 @@
           <span>返回业主端</span>
         </router-link>
 
-        <div class="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold shadow-md shadow-purple-600/30">
+        <div class="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold shadow-md shadow-purple-600/30 shrink-0">
           🏢
         </div>
-        <div>
-          <div class="flex items-center gap-2">
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 flex-wrap">
             <h1 class="text-base font-black text-white tracking-wide">老旧小区车位资产综合调度中台</h1>
-            <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-900/60 text-purple-300 border border-purple-500/40 font-semibold">
+            <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-900/60 text-purple-300 border border-purple-500/40 font-semibold whitespace-nowrap">
               物业管理 PC 端
             </span>
           </div>
-          <p class="text-xs text-slate-400">服务小区：某某新村 (总车位 50 个) | 当前管理员：{{ userStore.realName }}</p>
+          <p class="text-xs text-slate-400 truncate">服务小区：某某新村 (总车位 50 个) | 当前管理员：{{ userStore.realName }}</p>
         </div>
       </div>
 
-      <div class="flex items-center gap-2.5 text-xs">
+      <div class="flex items-center gap-2 flex-wrap text-xs">
         <button
           @click="switchToOwnerH5"
           class="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold transition active:scale-95 flex items-center gap-1.5 shadow-md shadow-blue-600/30"
@@ -65,34 +65,38 @@
     </header>
 
     <div class="flex-1 max-w-7xl w-full mx-auto p-6 space-y-6">
-      <!-- 顶部 6 大关键大屏看板指标 -->
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+      <!-- 顶部 7 大关键大屏看板指标 -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
           <span class="text-xs text-slate-400 block font-medium">总规划车位数</span>
-          <span class="text-2xl font-black text-white mt-1 block font-mono">{{ stats.total_spaces || 50 }}</span>
+          <span class="text-2xl font-black text-white mt-1 block font-mono">{{ stats.total_spaces ?? 50 }}</span>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
           <span class="text-xs text-blue-400 block font-medium">已租车位 (出租率)</span>
           <div class="flex items-baseline gap-1 mt-1">
-            <span class="text-2xl font-black text-blue-400 font-mono">{{ stats.rented_spaces || 0 }}</span>
+            <span class="text-2xl font-black text-blue-400 font-mono">{{ stats.rented_spaces ?? 0 }}</span>
             <span class="text-xs text-slate-400">({{ stats.occupancy_rate || '0%' }})</span>
           </div>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
           <span class="text-xs text-emerald-400 block font-medium">空闲待分车位</span>
-          <span class="text-2xl font-black text-emerald-400 mt-1 block font-mono">{{ stats.vacant_spaces || 0 }}</span>
+          <span class="text-2xl font-black text-emerald-400 mt-1 block font-mono">{{ stats.vacant_spaces ?? 0 }}</span>
+        </div>
+        <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
+          <span class="text-xs text-orange-400 block font-medium">维修停用车位</span>
+          <span class="text-2xl font-black text-orange-400 mt-1 block font-mono">{{ stats.maintenance_spaces ?? 0 }}</span>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
           <span class="text-xs text-amber-400 block font-medium">中签/线下确认中</span>
-          <span class="text-2xl font-black text-amber-400 mt-1 block font-mono">{{ stats.allocated_spaces || 0 }}</span>
+          <span class="text-2xl font-black text-amber-400 mt-1 block font-mono">{{ stats.allocated_spaces ?? 0 }}</span>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
           <span class="text-xs text-purple-400 block font-medium">排队轮候总人数</span>
-          <span class="text-2xl font-black text-purple-400 mt-1 block font-mono">{{ stats.waiting_count || 0 }}</span>
+          <span class="text-2xl font-black text-purple-400 mt-1 block font-mono">{{ stats.waiting_count ?? 0 }}</span>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
           <span class="text-xs text-rose-400 block font-medium">待办预警 (临期/待交割)</span>
-          <span class="text-2xl font-black text-rose-400 mt-1 block font-mono">{{ stats.pending_warnings || 0 }}</span>
+          <span class="text-2xl font-black text-rose-400 mt-1 block font-mono">{{ stats.pending_warnings ?? 0 }}</span>
         </div>
       </div>
 

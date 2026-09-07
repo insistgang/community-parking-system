@@ -107,9 +107,26 @@ def init_db_and_seed(force: bool = False):
         db.add_all([user_zhang, user_li, user_han, user_wang, user_zhao, user_qian, user_sun])
         db.commit()
 
+        # 46 位虚拟在租业主 (为全部已租车位补齐真实持有人与生效租约，保证台账/公示/导出数据完整)
+        surnames = "陈林黄张李王吴刘蔡杨许郑谢郭洪曾邱赖廖周"
+        givens = ["伟", "芳", "娜", "敏", "静", "秀", "强", "磊", "军", "洋", "勇", "艳", "杰", "娟", "涛", "明", "超", "兰", "霞", "平"]
+        virtual_owners = []
+        for i in range(1, 47):
+            virtual_owners.append(User(
+                phone=f"1391{i:07d}",
+                id_card=f"310104{(197001010101 + i * 137):012d}",
+                password_hash=make_pwd("123456"),
+                real_name=surnames[i % len(surnames)] + givens[(i * 7) % len(givens)],
+                role="OWNER",
+                community_id=community.id
+            ))
+        db.add_all(virtual_owners)
+        db.commit()
+
         # 3. 创建 50 个车位资产 (A-001 ~ A-050)
         # 初始全部占满: 48个RENTED, 1个ALLOCATED(A-012), 1个MAINTENANCE(A-050), 0个VACANT
         spaces = []
+        v_idx = 0
         for i in range(1, 51):
             space_no = f"A-{i:03d}"
             status = "RENTED"
@@ -124,7 +141,8 @@ def init_db_and_seed(force: bool = False):
             elif i == 50:
                 status = "MAINTENANCE" # 维修停用车位
             else:
-                curr_user_id = None # 其余虚拟已租
+                curr_user_id = virtual_owners[v_idx].id # 虚拟在租业主
+                v_idx += 1
 
             sp = ParkingSpace(
                 community_id=community.id,
@@ -160,6 +178,25 @@ def init_db_and_seed(force: bool = False):
             status="OVERDUE"
         )
         db.add_all([c_han, c_sun])
+        db.commit()
+
+        # 46 条虚拟业主生效租约 (租期错落，台账/公示/导出数据完整)
+        v_idx2 = 0
+        for i in range(1, 50):
+            if i in (8, 12, 15):
+                continue
+            vu = virtual_owners[v_idx2]
+            v_idx2 += 1
+            start = today - timedelta(days=10 + (i * 7) % 300)
+            db.add(RentalContract(
+                contract_no=f"AGY-CT-{start.strftime('%Y%m%d')}-A{i:03d}",
+                space_id=spaces[i - 1].id,
+                user_id=vu.id,
+                plate_no=f"沪{chr(65 + i % 6)}·{(10000 + i * 37) % 90000 + 10000:05d}",
+                start_date=start,
+                end_date=start + timedelta(days=365),
+                status="ACTIVE"
+            ))
         db.commit()
 
         # 5. 创建排队队列初始数据

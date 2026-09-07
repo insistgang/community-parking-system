@@ -11,7 +11,7 @@
       <div v-if="viewState === 'ALLOCATED' || viewState === 'OFFLINE_PENDING'">
         <CountdownCard
           :spaceNo="myQueue?.allocated_space_no || 'A-012'"
-          :initialSeconds="myQueue?.countdown_seconds || 172800"
+          :initialSeconds="myQueue?.countdown_seconds ?? 172800"
           :isOfflinePending="viewState === 'OFFLINE_PENDING'"
           @refresh="loadData"
         />
@@ -168,28 +168,32 @@
             <span class="w-1.5 h-3.5 bg-blue-600 rounded-full"></span>
             <span>小区车位宏观概况</span>
           </h3>
-          <span class="text-[11px] text-slate-400">总车位 {{ overview?.total_spaces || 50 }} 个</span>
+          <span class="text-[11px] text-slate-400">总车位 {{ overview?.total_spaces ?? 50 }} 个</span>
         </div>
 
-        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+        <div class="grid grid-cols-4 gap-2 text-center text-xs">
           <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
             <span class="text-slate-400 text-[10px] block">已租车位</span>
-            <span class="text-base font-extrabold text-slate-800 mt-0.5 block">{{ overview?.rented_spaces || 46 }}</span>
+            <span class="text-base font-extrabold text-slate-800 mt-0.5 block">{{ overview?.rented_spaces ?? 46 }}</span>
           </div>
           <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
             <span class="text-emerald-600 text-[10px] block font-medium">空闲可用</span>
-            <span class="text-base font-extrabold text-emerald-700 mt-0.5 block">{{ overview?.vacant_spaces || 0 }}</span>
+            <span class="text-base font-extrabold text-emerald-700 mt-0.5 block">{{ overview?.vacant_spaces ?? 0 }}</span>
           </div>
           <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-100">
-            <span class="text-amber-600 text-[10px] block font-medium">维修停用</span>
-            <span class="text-base font-extrabold text-amber-700 mt-0.5 block">{{ overview?.maintenance_spaces || 1 }}</span>
+            <span class="text-amber-600 text-[10px] block font-medium">中签待签</span>
+            <span class="text-base font-extrabold text-amber-700 mt-0.5 block">{{ overview?.allocated_spaces ?? 0 }}</span>
+          </div>
+          <div class="bg-orange-50 p-2.5 rounded-xl border border-orange-100">
+            <span class="text-orange-600 text-[10px] block font-medium">维修停用</span>
+            <span class="text-base font-extrabold text-orange-700 mt-0.5 block">{{ overview?.maintenance_spaces ?? 1 }}</span>
           </div>
         </div>
 
         <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
           <span>🔒 业主隐私安全：个人车位信息互不可见</span>
           <router-link to="/queue" class="text-blue-600 font-semibold hover:underline">
-            查看脱敏排队大盘 ➔
+            查看排队情况 ➔
           </router-link>
         </div>
       </div>

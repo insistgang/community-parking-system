@@ -5,13 +5,15 @@ export const useUserStore = defineStore('user', {
   state: () => ({
     user: JSON.parse(localStorage.getItem('parking_user') || 'null'),
     token: localStorage.getItem('parking_token') || '',
-    homeData: null
+    homeData: null,
+    theme: localStorage.getItem('parking_theme') || 'light'
   }),
   getters: {
     isLoggedIn: (state) => !!state.token && !!state.user,
     isPropertyAdmin: (state) => state.user?.role === 'PROPERTY_ADMIN',
     realName: (state) => state.user?.real_name || '业主',
-    communityName: (state) => state.user?.community_name || '某某新村'
+    communityName: (state) => state.user?.community_name || '某某新村',
+    isDark: (state) => state.theme === 'dark'
   },
   actions: {
     setAuth(userData, token) {
@@ -19,6 +21,14 @@ export const useUserStore = defineStore('user', {
       this.token = token
       localStorage.setItem('parking_user', JSON.stringify(userData))
       localStorage.setItem('parking_token', token)
+    },
+    initTheme() {
+      document.documentElement.classList.toggle('dark', this.theme === 'dark')
+    },
+    toggleTheme() {
+      this.theme = this.theme === 'dark' ? 'light' : 'dark'
+      localStorage.setItem('parking_theme', this.theme)
+      this.initTheme()
     },
     logout() {
       this.user = null

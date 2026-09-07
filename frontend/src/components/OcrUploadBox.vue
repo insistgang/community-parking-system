@@ -73,7 +73,7 @@ const props = defineProps({
   },
   mockType: {
     type: String,
-    default: 'id_card' // 'id_card' | 'license' | 'marriage'
+    default: 'id_card' // 'id_card' | 'property_cert' | 'license' | 'marriage'
   }
 })
 
@@ -88,7 +88,9 @@ const triggerUpload = () => {
 }
 
 const getMockSvg = (type) => {
-  if (type === 'license') {
+  if (type === 'property_cert') {
+    return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250"><rect width="100%" height="100%" rx="16" fill="%23b91c1c"/><rect x="15" y="15" width="370" height="220" rx="12" fill="%23dc2626" stroke="%23fbbf24" stroke-width="2"/><text x="200" y="58" font-family="sans-serif" font-size="17" fill="%23fde68a" font-weight="bold" text-anchor="middle">中华人民共和国不动产权证书</text><text x="200" y="82" font-family="sans-serif" font-size="10" fill="%23fecaca" text-anchor="middle">自然资源部监制</text><rect x="35" y="100" width="330" height="110" rx="8" fill="%23fef2f2"/><text x="50" y="128" font-family="monospace" font-size="11" fill="%231e293b" font-weight="bold">沪(2022)徐字不动产权第019823号</text><text x="50" y="152" font-family="sans-serif" font-size="11" fill="%23475569">权利人: 张欣欣</text><text x="50" y="174" font-family="sans-serif" font-size="11" fill="%23475569">坐落: 某某新村12号楼302室</text><text x="50" y="196" font-family="sans-serif" font-size="11" fill="%23475569">用途: 城镇住宅用地/住宅</text></svg>'
+  } else if (type === 'license') {
     return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250"><rect width="100%" height="100%" rx="16" fill="%23fef3c7"/><rect x="20" y="20" width="360" height="210" rx="10" fill="%23fffbeb" stroke="%23f59e0b" stroke-width="2"/><text x="100" y="52" font-family="sans-serif" font-size="14" fill="%23b45309" font-weight="bold">中华人民共和国机动车行驶证</text><rect x="35" y="80" width="70" height="8" rx="4" fill="%23d97706"/><rect x="115" y="80" width="120" height="10" rx="4" fill="%231e293b"/><rect x="35" y="105" width="70" height="8" rx="4" fill="%23d97706"/><rect x="115" y="105" width="90" height="10" rx="4" fill="%231e293b"/><rect x="35" y="145" width="330" height="65" rx="6" fill="%23fef3c7" stroke="%23fde68a"/><text x="45" y="172" font-family="monospace" font-size="13" fill="%231e293b" font-weight="bold">号牌号码: 沪A·12345</text><text x="45" y="195" font-family="sans-serif" font-size="11" fill="%23475569">车辆类型: 小型轿车 | 所有人: 张欣欣</text></svg>'
   } else if (type === 'marriage') {
     return 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="250" viewBox="0 0 400 250"><rect width="100%" height="100%" rx="16" fill="%23881337"/><rect x="15" y="15" width="370" height="220" rx="12" fill="%239f1239" stroke="%23fbbf24" stroke-width="2"/><circle cx="200" cy="75" r="28" fill="%23fbbf24" opacity="0.9"/><text x="200" y="135" font-family="sans-serif" font-size="18" fill="%23fbbf24" font-weight="bold" text-anchor="middle">结 婚 证</text><text x="200" y="165" font-family="sans-serif" font-size="11" fill="%23fecdd3" text-anchor="middle">中华人民共和国民政部监制</text><text x="200" y="195" font-family="monospace" font-size="11" fill="%23fde047" text-anchor="middle">字号: J310104-2022-0089 (夫妻共有)</text></svg>'

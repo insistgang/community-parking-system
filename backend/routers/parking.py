@@ -105,6 +105,7 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
     rented_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == user.community_id, ParkingSpace.status == "RENTED").count()
     vacant_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == user.community_id, ParkingSpace.status == "VACANT").count()
     maint_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == user.community_id, ParkingSpace.status == "MAINTENANCE").count()
+    alloc_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == user.community_id, ParkingSpace.status.in_(["ALLOCATED", "OFFLINE_PENDING"])).count()
 
     # 5. 公开展出的车位列表 (脱敏)
     public_spaces = []
@@ -158,7 +159,8 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
                 "total_spaces": total_sp,
                 "rented_spaces": rented_sp,
                 "vacant_spaces": vacant_sp,
-                "maintenance_spaces": maint_sp
+                "maintenance_spaces": maint_sp,
+                "allocated_spaces": alloc_sp
             },
             "public_spaces": public_spaces
         }
@@ -222,6 +224,8 @@ def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_use
             "property_no": req.property_no,
             "plate_no": req.plate_no,
             "is_spouse": req.is_spouse_car,
+            "property_cert_no": req.property_cert_no,
+            "marriage_cert_no": req.marriage_cert_no,
             "priority": priority
         }
     )
@@ -453,7 +457,27 @@ def get_public_queue(user: User = Depends(get_current_user), db: Session = Depen
         })
     db.commit()
 
-    return ResponseModel(code=200, data=result)
+    # 中签待签公示 (ALLOCATED 48h待确认 / OFFLINE_PENDING 线下签约中)
+    allocated_apps = db.query(QueueApplication).filter(
+        QueueApplication.community_id == user.community_id,
+        QueueApplication.status.in_(["ALLOCATED", "OFFLINE_PENDING"])
+    ).order_by(QueueApplication.allocated_time.asc()).all()
+
+    allocated = []
+    for app in allocated_apps:
+        u = db.query(User).filter(User.id == app.user_id).first()
+        sp = db.query(ParkingSpace).filter(ParkingSpace.id == app.allocated_space_id).first()
+        allocated.append({
+            "masked_name": (u.real_name[0] + "**") if u else "匿*",
+            "masked_phone": (u.phone[:3] + "****" + u.phone[-4:]) if u else "--",
+            "space_no": sp.space_no if sp else "--",
+            "status": app.status,
+            "status_label": "中签待确认(48h)" if app.status == "ALLOCATED" else "线下签约办理中",
+            "allocated_time": app.allocated_time.strftime("%Y-%m-%d %H:%M:%S") if app.allocated_time else "--",
+            "is_me": (app.user_id == user.id)
+        })
+
+    return ResponseModel(code=200, data={"waiting": result, "allocated": allocated})
 
 @router.get("/parking/my-timeline", response_model=ResponseModel)
 def get_my_timeline(user: User = Depends(get_current_user), db: Session = Depends(get_db)):

@@ -112,24 +112,9 @@
           </div>
         </div>
 
-        <div class="pt-1 space-y-2">
-          <label class="block font-bold text-slate-700">居民身份证原件（OCR 核验）</label>
-          <OcrUploadBox
-            label="拍摄 / 上传居民身份证照片"
-            tip="系统自动识别姓名与身份证号，图片不落盘"
-            mockType="id_card"
-            @scanned="handleIdCardScanned"
-          />
-        </div>
-
-        <FaceCaptureBox
-          v-if="idCardScanned"
-          :name="form.real_name || '业主'"
-          persona="zhang"
-          title="实人认证 · 人脸采集"
-          hint="采集完成后自动与身份证照片进行人证比对"
-          @matched="faceMatched = true"
-        />
+        <p class="text-[11px] text-slate-400 leading-relaxed">
+          实人认证（身份证核验与人脸比对）将在申请车位时进行，注册阶段仅需填写账号资料。
+        </p>
 
         <div v-if="errorMsg" class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-xs font-medium">
           ⚠️ {{ errorMsg }}
@@ -137,12 +122,10 @@
 
         <button
           type="submit"
-          :disabled="loading || !idCardScanned || !faceMatched"
+          :disabled="loading"
           class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md transition active:scale-[0.98] mt-2 disabled:opacity-40 disabled:pointer-events-none"
         >
           <span v-if="loading">正在注册并接入存证...</span>
-          <span v-else-if="!idCardScanned">请先上传身份证</span>
-          <span v-else-if="!faceMatched">请先完成人脸人证比对</span>
           <span v-else>确认注册进入系统</span>
         </button>
       </form>
@@ -154,14 +137,10 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
-import OcrUploadBox from '../components/OcrUploadBox.vue'
-import FaceCaptureBox from '../components/FaceCaptureBox.vue'
 
 const router = useRouter()
 const loading = ref(false)
 const errorMsg = ref('')
-const idCardScanned = ref(false)
-const faceMatched = ref(false)
 
 // 完整的上海市 16 个行政区与全量街道/镇字典
 const defaultDistricts = [
@@ -266,17 +245,7 @@ onMounted(async () => {
   }
 })
 
-const handleIdCardScanned = () => {
-  idCardScanned.value = true
-  if (!form.value.real_name) form.value.real_name = '张欣欣'
-  if (!form.value.id_card) form.value.id_card = '310104199201011111'
-}
-
 const handleRegister = async () => {
-  if (!idCardScanned.value || !faceMatched.value) {
-    errorMsg.value = '请先完成身份证上传与人脸人证比对'
-    return
-  }
   if (form.value.password !== form.value.confirm_pwd) {
     errorMsg.value = '两次输入的密码不一致'
     return

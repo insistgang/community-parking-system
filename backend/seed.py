@@ -244,13 +244,16 @@ def init_db_and_seed(force: bool = False):
         db.commit()
 
         # 6. 初始化初始存证记录
+        # 台账导入必须早于所有历史租约 (最早约 370 天前)，否则会出现“人已有车位、台账却刚建立”
+        init_at = datetime(2024, 6, 1, 1, 0, 0)  # 北京时间 2024-06-01 09:00
         create_evidence_record(
             db=db,
             community_id=community.id,
             user_id=user_wang.id,
             event_type="INIT",
             summary="物业管理员王建国完成【某某新村】50个车位台账初始化导入锁定",
-            payload={"total_spaces": 50, "manager": "王建国", "community": "某某新村"}
+            payload={"total_spaces": 50, "manager": "王建国", "community": "某某新村"},
+            occurred_at=init_at
         )
 
         create_evidence_record(
@@ -259,7 +262,8 @@ def init_db_and_seed(force: bool = False):
             user_id=user_li.id,
             event_type="ALLOCATE",
             summary="系统自动分配车位【A-012】给李雷 (启动48小时倒计时)",
-            payload={"space_no": "A-012", "user": "李雷"}
+            payload={"space_no": "A-012", "user": "李雷"},
+            occurred_at=now - timedelta(minutes=10)
         )
 
         # 7. 李雷的 48h 中签通知

@@ -18,7 +18,7 @@
         v-for="item in notifList"
         :key="item.id"
         class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-2.5 transition"
-        :class="item.type === 'ALLOCATION' ? 'border-amber-300 bg-amber-50/40' : item.type === 'RANK_CHANGE' ? 'border-blue-200' : ''"
+        :class="item.type === 'ALLOCATION' ? 'border-amber-300 bg-amber-50/40' : item.type === 'RANK_CHANGE' ? 'border-blue-200' : item.type === 'SYSTEM' ? 'border-indigo-200' : ''"
       >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-1.5 font-bold text-xs">

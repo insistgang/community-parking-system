@@ -7,7 +7,7 @@ from io import BytesIO
 from database import get_db
 from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community, ChainEvidence
 from schemas import MaintenanceRequest, ConfirmDeliveryRequest, ForceTerminateRequest, ResponseModel
-from scheduler import trigger_recalculate_queue, init_community_spaces
+from scheduler import trigger_recalculate_queue, init_community_spaces, notify_space_change_to_applicants
 from evidence import create_evidence_record
 from utils import fmt_bj
 
@@ -137,15 +137,24 @@ def set_maintenance(req: MaintenanceRequest, admin: User = Depends(get_property_
     if not sp:
         raise HTTPException(status_code=404, detail="未找到指定车位")
 
+    affected_user_id = sp.current_user_id
     if req.action == "SET_MAINTENANCE":
         orig_status = sp.status
         # 若车位当前处于中签分配中，车位报修将原中签申请单平稳退回排队池重新排队分配
         if sp.status in ("ALLOCATED", "OFFLINE_PENDING"):
             active_app = db.query(QueueApplication).filter(QueueApplication.allocated_space_id == sp.id).first()
             if active_app:
+                affected_user_id = active_app.user_id
                 active_app.status = "WAITING"
                 active_app.allocated_space_id = None
                 active_app.allocated_time = None
+                db.add(Notification(
+                    user_id=active_app.user_id,
+                    title="中签车位转入维修通知",
+                    content=f"您中签的车位【{sp.space_no}】已由物业置为维修停用（原因: {req.reason}），本次分配已退回排队，系统将为您保留排队资格。",
+                    type="SYSTEM",
+                    action_type="GO_QUEUE"
+                ))
 
         # 若车位当前处于在租状态，记录合同流转
         elif sp.status == "RENTED":
@@ -154,15 +163,34 @@ def set_maintenance(req: MaintenanceRequest, admin: User = Depends(get_property_
                 RentalContract.status.in_(["ACTIVE", "EXPIRING", "OVERDUE"])
             ).first()
             if contract:
+                affected_user_id = contract.user_id
                 contract.status = "TERMINATED"
+                db.add(Notification(
+                    user_id=contract.user_id,
+                    title="承租车位维修停用通知",
+                    content=f"您承租的车位【{sp.space_no}】已由物业置为维修停用（原因: {req.reason}），原租约已终止并上链存证。",
+                    type="SYSTEM",
+                    action_type=None
+                ))
 
         sp.status = "MAINTENANCE"
         sp.current_user_id = None
         msg = f"车位【{sp.space_no}】已直接置为维修停用状态（原状态: {orig_status}，原因: {req.reason}），已移出自动排位池"
+        notify_space_change_to_applicants(
+            db, admin.community_id,
+            title="车位维修停用公告",
+            content=f"车位【{sp.space_no}】已置为维修停用（原因: {req.reason}），暂不参与自动分配。您的排队资格保留，请继续关注顺位变化。",
+            exclude_user_ids=[affected_user_id] if affected_user_id else None
+        )
     elif req.action == "RESTORE":
         sp.status = "VACANT"
         sp.current_user_id = None
         msg = f"车位【{sp.space_no}】检修验收完毕，已恢复可用并重新纳入自动排位调度池！"
+        notify_space_change_to_applicants(
+            db, admin.community_id,
+            title="车位恢复可用公告",
+            content=f"车位【{sp.space_no}】已验收恢复可用，系统将按排队顺位自动分配。请关注您的排位与中签通知。"
+        )
     else:
         raise HTTPException(status_code=400, detail="无效的操作类型")
 
@@ -250,6 +278,12 @@ def confirm_delivery(req: ConfirmDeliveryRequest, admin: User = Depends(get_prop
         type="SYSTEM",
         action_type="GO_CONFIRM"
     ))
+    notify_space_change_to_applicants(
+        db, admin.community_id,
+        title="车位签约生效公告",
+        content=f"车位【{sp.space_no}】已完成线下签约并正式出租，本轮不再进入分配池。请继续关注后续释放与您的排队顺位。",
+        exclude_user_ids=[u.id]
+    )
     db.commit()
 
     return ResponseModel(code=200, message=f"车位【{sp.space_no}】已成功交付业主【{u.real_name}】，正式租约已生效！")
@@ -298,9 +332,28 @@ def force_terminate(req: ForceTerminateRequest, admin: User = Depends(get_proper
     if old_ct:
         old_ct.status = "TERMINATED"
 
+    if old_user_id and (not pending_app or pending_app.user_id != old_user_id):
+        db.add(Notification(
+            user_id=old_user_id,
+            title="车位强制清退通知",
+            content=f"您名下的车位【{sp.space_no}】已由物业强制清退（事由: {req.reason}），租约终止并已上链存证。",
+            type="SYSTEM",
+            action_type=None
+        ))
+
     # 释放车位为 VACANT
     sp.status = "VACANT"
     sp.current_user_id = None
+
+    exclude_ids = [old_user_id] if old_user_id else []
+    if pending_app:
+        exclude_ids.append(pending_app.user_id)
+    notify_space_change_to_applicants(
+        db, admin.community_id,
+        title="车位清退释放公告",
+        content=f"车位【{sp.space_no}】已由物业强制清退释放（事由: {req.reason}）。系统将按排队规则自动顺延分配，请关注您的排位与中签通知。",
+        exclude_user_ids=exclude_ids
+    )
     db.commit()
 
     # 全流程上链存证 (带清退原因和凭据)

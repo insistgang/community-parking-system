@@ -16,14 +16,14 @@
         <!-- 登录方式 Tab -->
         <div class="flex border-b border-slate-200 mb-6">
           <button
-            @click="loginType = 'PASSWORD'"
+            @click="switchLoginType('PASSWORD')"
             class="flex-1 pb-3 text-xs font-bold transition border-b-2"
             :class="loginType === 'PASSWORD' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'"
           >
             身份证号密码登录
           </button>
           <button
-            @click="loginType = 'SMS'"
+            @click="switchLoginType('SMS')"
             class="flex-1 pb-3 text-xs font-bold transition border-b-2"
             :class="loginType === 'SMS' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-400 hover:text-slate-600'"
           >
@@ -142,15 +142,28 @@ import api from '../api'
 const router = useRouter()
 const userStore = useUserStore()
 
+const DEMO_ID_CARD = '310104199201011111'
+const DEMO_PHONE = '13800000001'
+
 const loginType = ref('PASSWORD')
 const loading = ref(false)
 const errorMsg = ref('')
 
 const form = ref({
-  identifier: '310104199201011111',
+  identifier: DEMO_ID_CARD,
   password: '123456',
   verify_code: ''
 })
+
+const switchLoginType = (t) => {
+  loginType.value = t
+  if (t === 'SMS') {
+    form.value.identifier = DEMO_PHONE
+  } else {
+    form.value.identifier = DEMO_ID_CARD
+  }
+  errorMsg.value = ''
+}
 
 const sendingSms = ref(false)
 const smsCountdown = ref(0)

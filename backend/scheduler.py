@@ -3,6 +3,43 @@ from sqlalchemy.orm import Session
 from models import ParkingSpace, QueueApplication, Notification, User
 from evidence import create_evidence_record
 
+def notify_space_change_to_applicants(
+    db: Session,
+    community_id: int,
+    title: str,
+    content: str,
+    extra_user_ids: list[int] | None = None,
+    exclude_user_ids: list[int] | None = None,
+    notif_type: str = "SYSTEM",
+    action_type: str = "GO_QUEUE",
+):
+    """
+    车位状态变化广播: 通知本小区所有仍在申请流程中的业主
+    (排队中 / 中签待确认 / 线下办理中), 并可附带通知被清退的原承租人。
+    """
+    exclude = {uid for uid in (exclude_user_ids or []) if uid}
+    user_ids: set[int] = set()
+    rows = db.query(QueueApplication.user_id).filter(
+        QueueApplication.community_id == community_id,
+        QueueApplication.status.in_(["WAITING", "ALLOCATED", "OFFLINE_PENDING"])
+    ).distinct().all()
+    for (uid,) in rows:
+        if uid:
+            user_ids.add(uid)
+    for uid in extra_user_ids or []:
+        if uid:
+            user_ids.add(uid)
+    for uid in user_ids:
+        if uid in exclude:
+            continue
+        db.add(Notification(
+            user_id=uid,
+            title=title,
+            content=content,
+            type=notif_type,
+            action_type=action_type
+        ))
+
 def estimate_waiting_duration(rank: int, total_spaces: int = 50) -> tuple[str, str]:
     """
     大模型 AI 预估等待时长:
@@ -130,9 +167,11 @@ def check_expired_allocations(db: Session, community_id: int):
 
     for app in expired_apps:
         app.status = "TIMEOUT_CANCELLED"
+        space_no = "--"
         if app.allocated_space_id:
             space = db.query(ParkingSpace).filter(ParkingSpace.id == app.allocated_space_id).first()
             if space:
+                space_no = space.space_no
                 space.status = "VACANT"
                 space.current_user_id = None
         
@@ -153,6 +192,12 @@ def check_expired_allocations(db: Session, community_id: int):
             type="OVERDUE",
             action_type="GO_QUEUE"
         ))
+        notify_space_change_to_applicants(
+            db, community_id,
+            title="中签车位超时释放公告",
+            content=f"车位【{space_no}】因中签业主超时未确认，已释放回池。系统将按排队顺位自动顺延，请关注您的排位与中签通知。",
+            exclude_user_ids=[app.user_id]
+        )
 
     if expired_apps:
         db.commit()

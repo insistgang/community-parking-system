@@ -1,11 +1,11 @@
 import hashlib
-import time
 import uuid
 import json
+from datetime import datetime
 from sqlalchemy.orm import Session
 from models import ChainEvidence
 
-def create_evidence_record(db: Session, community_id: int, user_id: int | None, event_type: str, summary: str, payload: dict) -> ChainEvidence:
+def create_evidence_record(db: Session, community_id: int, user_id: int | None, event_type: str, summary: str, payload: dict, occurred_at: datetime | None = None) -> ChainEvidence:
     """
     虚拟区块链存证核心算法:
     1. 查询链上最近一条存证的 tx_hash 作为 prev_hash 构建链式结构
@@ -17,7 +17,8 @@ def create_evidence_record(db: Session, community_id: int, user_id: int | None, 
     prev_hash = last_record.tx_hash if last_record else "0x0000000000000000000000000000000000000000000000000000000000000000"
     last_height = last_record.block_height if last_record else 1829000
 
-    timestamp_ms = str(int(time.time() * 1000))
+    occurred = occurred_at or datetime.utcnow()
+    timestamp_ms = str(int(occurred.timestamp() * 1000))
     payload_str = json.dumps(payload, ensure_ascii=False, sort_keys=True)
     
     raw_str = f"{event_type}_{community_id}_{user_id}_{timestamp_ms}_{prev_hash}_{payload_str}"
@@ -34,7 +35,8 @@ def create_evidence_record(db: Session, community_id: int, user_id: int | None, 
         prev_hash=prev_hash,
         event_summary=summary,
         raw_payload_json=payload_str,
-        timestamp=timestamp_ms
+        timestamp=timestamp_ms,
+        created_at=occurred
     )
     db.add(record)
     db.commit()

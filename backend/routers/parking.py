@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community
 from schemas import ApplyParkingRequest, CancelApplyRequest, ResponseModel
-from scheduler import trigger_recalculate_queue, estimate_waiting_duration, check_expired_allocations
+from scheduler import trigger_recalculate_queue, estimate_waiting_duration, check_expired_allocations, notify_space_change_to_applicants
 from evidence import create_evidence_record
 from utils import fmt_bj
 
@@ -284,11 +284,19 @@ def accept_allocation(user: User = Depends(get_current_user), db: Session = Depe
         raise HTTPException(status_code=400, detail="未查询到待确认的中签申请")
 
     app.status = "OFFLINE_PENDING"
+    space_no = "--"
     if app.allocated_space_id:
         sp = db.query(ParkingSpace).filter(ParkingSpace.id == app.allocated_space_id).first()
         if sp:
             sp.status = "OFFLINE_PENDING"
+            space_no = sp.space_no
 
+    notify_space_change_to_applicants(
+        db, user.community_id,
+        title="中签业主确认办理公告",
+        content=f"车位【{space_no}】的中签业主已确认前往线下办理，该车位进入签约流程。请继续关注您的排队顺位。",
+        exclude_user_ids=[user.id]
+    )
     db.commit()
 
     create_evidence_record(
@@ -315,12 +323,20 @@ def give_up_allocation(user: User = Depends(get_current_user), db: Session = Dep
         raise HTTPException(status_code=400, detail="未查询到待确认的中签申请")
 
     app.status = "CANCELLED"
+    space_no = "--"
     if app.allocated_space_id:
         sp = db.query(ParkingSpace).filter(ParkingSpace.id == app.allocated_space_id).first()
         if sp:
+            space_no = sp.space_no
             sp.status = "VACANT"
             sp.current_user_id = None
 
+    notify_space_change_to_applicants(
+        db, user.community_id,
+        title="中签车位放弃释放公告",
+        content=f"车位【{space_no}】的中签业主已放弃本次机会，车位已释放回池。系统将按排队顺位自动顺延，请关注您的排位与中签通知。",
+        exclude_user_ids=[user.id]
+    )
     db.commit()
 
     create_evidence_record(
@@ -375,6 +391,12 @@ def terminate_rental(user: User = Depends(get_current_user), db: Session = Depen
         type="SYSTEM",
         action_type=None
     ))
+    notify_space_change_to_applicants(
+        db, user.community_id,
+        title="车位退租释放公告",
+        content=f"车位【{space_no}】已退租释放。系统将按排队顺位自动分配，请关注您的排位与中签通知。",
+        exclude_user_ids=[user.id]
+    )
     db.commit()
 
     # 释放的车位立即参与 FIFO 自动顺延分配

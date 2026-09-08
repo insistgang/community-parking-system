@@ -137,10 +137,10 @@
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-black text-slate-900">第二证：本小区不动产权属证明</h3>
-            <p class="text-[11px] text-slate-400 mt-0.5">上传房产证原件 OCR 核验 + 调取市大数据电子证照交叉比对，严禁外区房蹭停</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">可直接勾选市大数据调取的电子证照，也可选传房产证原件；严禁外区房蹭停</p>
           </div>
           <span class="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-            上传+调取双通道
+            调取证照可直接使用
           </span>
         </div>
 
@@ -172,11 +172,11 @@
           </div>
         </div>
 
-        <!-- 调取出的名下房产列表 (须先完成房产证上传) -->
-        <div class="space-y-2.5" :class="{ 'opacity-40 pointer-events-none': !propertyCertScanned }">
+        <!-- 调取出的名下房产列表 (电子证照可直接勾选使用，无需先上传) -->
+        <div class="space-y-2.5">
           <div class="flex items-center justify-between">
             <span class="text-xs font-bold text-slate-700">市大数据中心调取名下房产清单</span>
-            <span v-if="!propertyCertScanned" class="text-[10px] text-amber-600 font-semibold">⚠️ 请先上传房产证原件</span>
+            <span class="text-[10px] text-emerald-600 font-semibold">可直接勾选使用</span>
           </div>
           <!-- 房产 1: 本小区 (可选) -->
           <div
@@ -513,13 +513,12 @@ const showSpouseConfirmModal = ref(false)
 const marriageCertUploaded = ref(false)
 const submitting = ref(false)
 
-// 第二证完成判定: 房产证原件已上传 OCR 核验 + 已勾选本小区房产
-const propertyVerified = computed(() => propertyCertScanned.value && !!selectedProperty.value)
+// 第二证完成判定: 勾选本小区调取房产即可 (上传原件为可选)
+const propertyVerified = computed(() => !!selectedProperty.value && !selectedProperty.value.includes('浦东'))
 
 // 综合三证合一判定
 const isThreeCertValid = computed(() => {
   if (!idCardScanned.value || !faceMatched.value) return false
-  if (!propertyCertScanned.value) return false
   if (!selectedProperty.value || selectedProperty.value.includes('浦东')) return false
   if (!inputPlate.value || !inputPlate.value.trim()) return false
   if (isSpouseCar.value && !marriageCertUploaded.value) return false

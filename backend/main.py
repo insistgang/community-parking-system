@@ -9,8 +9,12 @@ from seed import init_db_and_seed
 from scheduler import check_expired_allocations
 from routers import auth, parking, property, evidence, dev
 
-# 确保启动时表存在
+# 确保启动时表存在并安全检查种子数据
 Base.metadata.create_all(bind=engine)
+try:
+    init_db_and_seed(force=False)
+except Exception as e:
+    print(f"[Startup Warning] Seed initialization check skipped: {e}")
 
 app = FastAPI(
     title="慧停管家 · 老旧小区停车位管理平台 API",

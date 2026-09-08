@@ -108,6 +108,54 @@ bash run.sh
 
 ---
 
+## 🐳 Docker 生产与服务器部署
+
+系统已提供企业级 Docker 化支持，支持 **Docker Compose 多容器微服务架构** 与 **单容器一体化极速部署**，内置 Nginx 高性能反向代理、静态资源 Gzip 压缩与 SQLite 宿主机数据持久化。
+
+### 方式一：一键自动化部署（最省心推荐）
+在服务器拉取代码后，执行一键部署脚本即可（自动检测 Docker / Compose 环境并智能拉起）：
+```bash
+bash docker-deploy.sh
+```
+
+### 方式二：Docker Compose 标准编排
+```bash
+# 1. 复制环境变量（默认对外暴露 80 端口，可按需修改）
+cp .env.example .env
+
+# 2. 构建镜像并后台拉起
+docker compose up -d --build
+
+# 3. 运维常用命令
+docker compose ps               # 查看容器状态
+docker compose logs -f          # 查看实时运行日志
+docker compose down             # 停止并移除容器
+```
+
+### 方式三：单容器一体化运行（无需 Compose）
+```bash
+# 1. 构建一体化单镜像（同时打包 Vue 3 + FastAPI + Nginx）
+docker build -t community-parking .
+
+# 2. 创建持久化数据目录并启动容器
+mkdir -p data
+docker run -d \
+  --name parking-app \
+  --restart always \
+  -p 80:80 \
+  -p 8000:8000 \
+  -v $(pwd)/data:/app/data \
+  community-parking
+```
+
+### 部署网络与存储说明
+- **统一访问入口**：直接访问 `http://<服务器IP>/` 即可进入移动端，PC 打开自动适配宽屏
+- **物业管理中台**：`http://<服务器IP>/property/dashboard`
+- **Swagger 接口文档**：`http://<服务器IP>/docs`
+- **数据持久化**：所有车位资产、排位与存证数据持久化保存在宿主机 `./data/parking.db`，容器重新构建或重启升级数据 100% 不丢失。
+
+---
+
 ## 👤 演示账号（密码均为 `123456`）
 
 > 💡 **提示**：登录页顶部已内置四大账号一键免密填入按钮，点击即可瞬间填充并体验对应业务视角！

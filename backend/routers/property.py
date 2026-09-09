@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import urllib.parse
+import uuid
 from io import BytesIO
 from database import get_db
 from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community, ChainEvidence
@@ -246,16 +247,34 @@ def confirm_delivery(req: ConfirmDeliveryRequest, admin: User = Depends(get_prop
     sp.current_user_id = u.id
     app.status = "COMPLETED"
 
-    # 生成正式租约
+    months = req.months if req.months else 6
+    if months == 12:
+        delta_days = 365
+        term_label = "1 年 (12个月)"
+    elif months == 6:
+        delta_days = 180
+        term_label = "半年 (6个月)"
+    elif months == 3:
+        delta_days = 90
+        term_label = "一季度 (3个月)"
+    elif months == 1:
+        delta_days = 30
+        term_label = "1 个月"
+    else:
+        delta_days = months * 30
+        term_label = f"{months} 个月"
+
+    # 生成正式租约 (加随机哈希后缀防同一车位多次流转重复冲突)
     today = date.today()
-    contract_no = f"AGY-CT-{today.strftime('%Y%m%d')}-{sp.space_no.replace('-', '')}"
+    seq_suffix = uuid.uuid4().hex[:4].upper()
+    contract_no = f"AGY-CT-{today.strftime('%Y%m%d')}-{sp.space_no.replace('-', '')}-{seq_suffix}"
     contract = RentalContract(
         contract_no=contract_no,
         space_id=sp.id,
         user_id=u.id,
         plate_no=app.plate_no if app else "沪A·88888",
         start_date=today,
-        end_date=today + timedelta(days=365),
+        end_date=today + timedelta(days=delta_days),
         status="ACTIVE"
     )
     db.add(contract)
@@ -267,14 +286,21 @@ def confirm_delivery(req: ConfirmDeliveryRequest, admin: User = Depends(get_prop
         community_id=admin.community_id,
         user_id=u.id,
         event_type="SIGN",
-        summary=f"物业与业主【{u.real_name}】完成车位【{sp.space_no}】线下签约履约交付",
-        payload={"contract_no": contract_no, "space_no": sp.space_no, "term": "1年"}
+        summary=f"物业与业主【{u.real_name}】完成车位【{sp.space_no}】线下签约履约交付 ({term_label})",
+        payload={
+            "contract_no": contract_no,
+            "space_no": sp.space_no,
+            "term": term_label,
+            "months": months,
+            "start_date": str(today),
+            "end_date": str(contract.end_date)
+        }
     )
 
     db.add(Notification(
         user_id=u.id,
         title="车位签约成功生效通知",
-        content=f"恭喜！您与物业已完成车位【{sp.space_no}】的线下签约缴费，租期 1 年已正式生效！",
+        content=f"恭喜！您与物业已完成车位【{sp.space_no}】的线下签约缴费，租期 {term_label} 已正式生效（有效期至 {contract.end_date}）！",
         type="SYSTEM",
         action_type="GO_CONFIRM"
     ))

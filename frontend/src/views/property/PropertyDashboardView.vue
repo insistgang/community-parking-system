@@ -333,11 +333,48 @@
           </div>
 
           <!-- 场景 B: 线下签约完成交付 (仅中签锁定/办理中时可用) -->
-          <div v-if="currentSpace.status === 'ALLOCATED' || currentSpace.status === 'OFFLINE_PENDING'" class="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl space-y-2">
-            <h4 class="text-xs font-bold text-amber-300">📝 线下履约交付确认</h4>
+          <div v-if="currentSpace.status === 'ALLOCATED' || currentSpace.status === 'OFFLINE_PENDING'" class="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl space-y-2.5">
+            <div class="flex items-center justify-between">
+              <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                <span>📝 线下履约交付确认</span>
+              </h4>
+              <span class="text-[10px] text-amber-400 bg-amber-900/60 px-2 py-0.5 rounded border border-amber-500/30">
+                待签约交付
+              </span>
+            </div>
             <p class="text-[11px] text-slate-400 leading-relaxed">
               已完成现场纸质合同签署并收缴租金，点击确认后正式转为“已租”，生成正式电子租约与区块链存证。
             </p>
+
+            <!-- 签约租期时长选择 -->
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <label class="block text-[11px] text-slate-300 font-bold">签约租期时长：</label>
+                <span class="text-[10px] text-amber-300 font-medium">默认半年 (支持自选)</span>
+              </div>
+              <div class="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+                <button
+                  v-for="term in deliveryTerms"
+                  :key="term.months"
+                  type="button"
+                  @click="selectedDeliveryMonths = term.months"
+                  class="p-2 rounded-lg border text-center transition cursor-pointer"
+                  :class="selectedDeliveryMonths === term.months
+                    ? 'border-amber-400 bg-amber-500/20 text-amber-200 font-bold ring-1 ring-amber-400/50'
+                    : 'border-slate-700 bg-slate-900/80 text-slate-400 hover:text-slate-200'"
+                >
+                  <div class="text-xs">{{ term.label }}</div>
+                  <div class="text-[9px] opacity-70">{{ term.desc }}</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- 动态预览起止日期 -->
+            <div class="p-2 bg-slate-900/90 border border-slate-700/80 rounded-lg flex items-center justify-between text-[11px]">
+              <span class="text-slate-400">预计租期起止：</span>
+              <span class="font-mono text-amber-300 font-bold">{{ todayStr }} ~ {{ calculatedDeliveryEndDate }}</span>
+            </div>
+
             <button
               @click="handleConfirmDelivery"
               :disabled="actionLoading"
@@ -540,6 +577,34 @@ const quickMaintenanceSpaceOptions = computed(() => {
   }))
 })
 
+// 线下交付签约租期选项
+const selectedDeliveryMonths = ref(6) // 默认半年
+const deliveryTerms = [
+  { months: 6, label: '半年 (6个月)', desc: '180 天' },
+  { months: 12, label: '一年 (12个月)', desc: '365 天' },
+  { months: 3, label: '一季度 (3个月)', desc: '90 天' },
+  { months: 1, label: '一个月 (短期)', desc: '30 天' }
+]
+
+const calculatedDeliveryEndDate = computed(() => {
+  const base = new Date()
+  const daysMap = { 12: 365, 6: 180, 3: 90, 1: 30 }
+  const days = daysMap[selectedDeliveryMonths.value] || (selectedDeliveryMonths.value * 30)
+  base.setDate(base.getDate() + days)
+  const y = base.getFullYear()
+  const m = String(base.getMonth() + 1).padStart(2, '0')
+  const d = String(base.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+})
+
+const todayStr = computed(() => {
+  const d = new Date()
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${day}`
+})
+
 const filteredSpaces = computed(() => {
   if (statusFilter.value === 'ALL') return spaceList.value
   return spaceList.value.filter(s => s.status === statusFilter.value)
@@ -668,7 +733,8 @@ const handleConfirmDelivery = async () => {
   try {
     const res = await api.post('/property/confirm-delivery', {
       space_id: currentSpace.value.id,
-      user_id: currentSpace.value.user_id
+      user_id: currentSpace.value.user_id,
+      months: selectedDeliveryMonths.value
     })
     showToast(res.message || '交付成功，租约已生效！', 'success')
     selectedSpaceModal.value = false

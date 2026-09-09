@@ -44,6 +44,8 @@ class MaintenanceRequest(BaseModel):
 class ConfirmDeliveryRequest(BaseModel):
     space_id: int
     user_id: int
+    months: Optional[int] = 6 # 签约周期，默认半年(6个月)，可选1/3/6/12等
+
 
 class ForceTerminateRequest(BaseModel):
     space_id: int

@@ -49,3 +49,7 @@ class ForceTerminateRequest(BaseModel):
     space_id: int
     reason: str
     attachment_url: Optional[str] = "proof_document_mock.jpg"
+
+class RenewRequest(BaseModel):
+    months: Optional[int] = 6 # 默认半年(6个月)，支持1、3、6、12等周期
+

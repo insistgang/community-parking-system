@@ -230,11 +230,95 @@
     </main>
 
     <BottomNav />
+
+    <!-- 续租周期选择弹窗 (支持半年/一年/季度/月度，默认半年) -->
+    <div v-if="showRenewModal && mySpace" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div class="bg-white rounded-3xl max-w-sm w-full p-5 text-slate-800 shadow-2xl border border-slate-100 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
+              ⏳
+            </span>
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">车位续租申请</h3>
+              <p class="text-xs text-slate-400">车位：{{ mySpace.space_no }} ({{ mySpace.plate_no }})</p>
+            </div>
+          </div>
+          <button @click="showRenewModal = false" class="text-slate-400 hover:text-slate-600 p-1 text-base">✕</button>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div class="bg-slate-50 p-3 rounded-xl border border-slate-100 space-y-1">
+            <div class="flex justify-between text-slate-500">
+              <span>当前到期日：</span>
+              <span class="font-mono text-slate-700 font-semibold">{{ mySpace.end_date }}</span>
+            </div>
+            <div class="flex justify-between text-slate-500">
+              <span>剩余有效期：</span>
+              <span class="font-bold text-amber-600">{{ mySpace.days_left }} 天</span>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label class="block font-bold text-slate-700">选择续租周期：</label>
+              <span class="text-[10px] text-emerald-600 font-medium">默认半年 (可依需自选)</span>
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <button
+                v-for="term in renewTerms"
+                :key="term.months"
+                type="button"
+                @click="selectedRenewMonths = term.months"
+                class="p-2.5 rounded-xl border text-left transition relative"
+                :class="selectedRenewMonths === term.months
+                  ? 'border-emerald-500 bg-emerald-50/70 text-emerald-800 font-bold ring-2 ring-emerald-400/40'
+                  : 'border-slate-200 hover:border-slate-300 text-slate-600'"
+              >
+                <div class="flex items-center justify-between">
+                  <span>{{ term.label }}</span>
+                  <span v-if="term.recommended" class="text-[9px] bg-emerald-600 text-white px-1 py-0.2 rounded font-normal">默认</span>
+                </div>
+                <span class="text-[10px] text-slate-400 block mt-0.5">{{ term.desc }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- 预计顺延新到期日 -->
+          <div class="p-3 bg-emerald-50 border border-emerald-200/60 rounded-xl flex items-center justify-between text-xs">
+            <span class="text-emerald-700 font-medium">顺延后新到期日：</span>
+            <span class="font-mono font-bold text-emerald-800 text-sm">{{ calculatedNewEndDate }}</span>
+          </div>
+
+          <p class="text-[11px] text-slate-400 leading-relaxed">
+            💡 提示：线上提交申请后，系统将自动顺延租期并生成区块链防伪存证；请根据小区管理规约于 7 日内前往物业服务中心办理线下缴费核验。
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button
+            type="button"
+            @click="showRenewModal = false"
+            class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition"
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            @click="submitRenew"
+            :disabled="renewLoading"
+            class="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition disabled:opacity-50"
+          >
+            {{ renewLoading ? '提交中...' : '确认续租' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '../store/user'
 import api from '../api'
 import NavBar from '../components/NavBar.vue'
@@ -246,6 +330,30 @@ import { showConfirm, showToast } from '../utils/dialog'
 const userStore = useUserStore()
 
 let pollTimer = null
+
+const showRenewModal = ref(false)
+const renewLoading = ref(false)
+const selectedRenewMonths = ref(6)
+
+const renewTerms = [
+  { months: 6, label: '半年 (6个月)', desc: '顺延 180 天', recommended: true },
+  { months: 12, label: '一年 (12个月)', desc: '顺延 365 天', recommended: false },
+  { months: 3, label: '一季度 (3个月)', desc: '顺延 90 天', recommended: false },
+  { months: 1, label: '一个月 (短期)', desc: '顺延 30 天', recommended: false }
+]
+
+const calculatedNewEndDate = computed(() => {
+  if (!mySpace.value?.end_date) return '--'
+  const base = new Date(mySpace.value.end_date)
+  if (isNaN(base.getTime())) return '--'
+  const daysMap = { 12: 365, 6: 180, 3: 90, 1: 30 }
+  const days = daysMap[selectedRenewMonths.value] || (selectedRenewMonths.value * 30)
+  base.setDate(base.getDate() + days)
+  const y = base.getFullYear()
+  const m = String(base.getMonth() + 1).padStart(2, '0')
+  const d = String(base.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+})
 
 const viewState = computed(() => userStore.homeData?.view_state || 'NO_APPLY')
 const mySpace = computed(() => userStore.homeData?.my_space)
@@ -285,20 +393,22 @@ const handleCancelApply = async () => {
   }
 }
 
-const handleRenew = async () => {
-  const ok = await showConfirm({
-    title: '车位续租申请',
-    message: '确认向物业提交当前车位续租申请吗？提交后租约将自动顺延并生成区块链数字存证。',
-    confirmText: '确认续租',
-    type: 'info'
-  })
-  if (!ok) return
+const handleRenew = () => {
+  selectedRenewMonths.value = 6 // 默认半年
+  showRenewModal.value = true
+}
+
+const submitRenew = async () => {
+  renewLoading.value = true
   try {
-    const res = await api.post('/parking/renew')
+    const res = await api.post('/parking/renew', { months: selectedRenewMonths.value })
     showToast(res.message || '续租成功', 'success')
+    showRenewModal.value = false
     await loadData()
   } catch (err) {
     showToast('续租失败: ' + err.message, 'error')
+  } finally {
+    renewLoading.value = false
   }
 }
 

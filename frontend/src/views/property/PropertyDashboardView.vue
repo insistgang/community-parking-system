@@ -336,7 +336,7 @@
           <div v-if="currentSpace.status === 'ALLOCATED' || currentSpace.status === 'OFFLINE_PENDING'" class="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl space-y-2">
             <h4 class="text-xs font-bold text-amber-300">📝 线下履约交付确认</h4>
             <p class="text-[11px] text-slate-400 leading-relaxed">
-              已完成现场纸质合同签署并收缴租金，点击确认后正式转为“已租”，生成 1 年期正式租约与区块链存证。
+              已完成现场纸质合同签署并收缴租金，点击确认后正式转为“已租”，生成正式电子租约与区块链存证。
             </p>
             <button
               @click="handleConfirmDelivery"

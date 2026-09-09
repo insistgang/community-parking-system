@@ -1,9 +1,10 @@
+from typing import Optional
 from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community
-from schemas import ApplyParkingRequest, CancelApplyRequest, ResponseModel
+from schemas import ApplyParkingRequest, CancelApplyRequest, ResponseModel, RenewRequest
 from scheduler import trigger_recalculate_queue, estimate_waiting_duration, check_expired_allocations, notify_space_change_to_applicants
 from evidence import create_evidence_record
 from utils import fmt_bj
@@ -405,9 +406,9 @@ def terminate_rental(user: User = Depends(get_current_user), db: Session = Depen
     return ResponseModel(code=200, message=f"退租成功！车位【{space_no}】已释放，系统已自动顺延分配给排队顺位业主。")
 
 @router.post("/parking/renew", response_model=ResponseModel)
-def renew_contract(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def renew_contract(req: Optional[RenewRequest] = None, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
-    业主申请续租: 临期(到期前30天内)/逾期租约一键续租 1 年，全流程上链
+    业主申请续租: 临期(到期前30天内)/逾期租约续租，支持指定周期(默认半年/6个月，可选1/3/6/12个月)，全流程上链
     """
     contract = db.query(RentalContract).filter(
         RentalContract.user_id == user.id,
@@ -420,8 +421,25 @@ def renew_contract(user: User = Depends(get_current_user), db: Session = Depends
     if contract.status == "ACTIVE" and days_left > 30:
         raise HTTPException(status_code=400, detail=f"租约尚未进入续租期 (到期前 30 天内开放)，当前剩余 {days_left} 天")
 
+    months = req.months if (req and req.months) else 6
+    if months == 12:
+        delta_days = 365
+        term_label = "1 年 (12个月)"
+    elif months == 6:
+        delta_days = 180
+        term_label = "半年 (6个月)"
+    elif months == 3:
+        delta_days = 90
+        term_label = "一季度 (3个月)"
+    elif months == 1:
+        delta_days = 30
+        term_label = "1 个月"
+    else:
+        delta_days = months * 30
+        term_label = f"{months} 个月"
+
     old_end = contract.end_date
-    contract.end_date = contract.end_date + timedelta(days=365)
+    contract.end_date = contract.end_date + timedelta(days=delta_days)
     contract.status = "ACTIVE"
     db.commit()
 
@@ -433,14 +451,21 @@ def renew_contract(user: User = Depends(get_current_user), db: Session = Depends
         community_id=user.community_id,
         user_id=user.id,
         event_type="RENEW",
-        summary=f"业主【{user.real_name}】完成车位【{space_no}】续租申请",
-        payload={"contract_no": contract.contract_no, "old_end_date": str(old_end), "new_end_date": str(contract.end_date)}
+        summary=f"业主【{user.real_name}】完成车位【{space_no}】续租申请 ({term_label})",
+        payload={
+            "contract_no": contract.contract_no,
+            "term": term_label,
+            "months": months,
+            "delta_days": delta_days,
+            "old_end_date": str(old_end),
+            "new_end_date": str(contract.end_date)
+        }
     )
 
     db.add(Notification(
         user_id=user.id,
         title="车位续租成功通知",
-        content=f"您的车位【{space_no}】已成功办理续租，租约有效期已顺延至 {contract.end_date}，本次续租已上链存证。",
+        content=f"您的车位【{space_no}】已成功办理续租，租约有效期已顺延 {term_label} 至 {contract.end_date}，本次续租已上链存证。",
         type="SYSTEM",
         action_type="GO_CONFIRM"
     ))
@@ -448,8 +473,8 @@ def renew_contract(user: User = Depends(get_current_user), db: Session = Depends
 
     return ResponseModel(
         code=200,
-        message=f"续租成功！租约已顺延至 {contract.end_date}，存证已上链。",
-        data={"contract_no": contract.contract_no, "new_end_date": str(contract.end_date)}
+        message=f"续租成功！租约已顺延 {term_label} 至 {contract.end_date}，存证已上链。",
+        data={"contract_no": contract.contract_no, "term": term_label, "new_end_date": str(contract.end_date)}
     )
 
 @router.get("/parking/queue", response_model=ResponseModel)

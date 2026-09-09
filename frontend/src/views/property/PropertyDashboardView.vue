@@ -316,11 +316,11 @@
             </p>
 
             <div class="space-y-2 text-xs pt-1">
-              <select v-model="terminateReason" class="w-full px-3 py-2 rounded-lg bg-slate-900 border border-slate-700 text-white">
-                <option value="房屋买卖过户且原业主失联">房屋买卖过户且原业主失联</option>
-                <option value="租约逾期未续租且车位被占">租约逾期未续租且车位被占</option>
-                <option value="业主自愿委托物业代办退租">业主自愿委托物业代办退租</option>
-              </select>
+              <CustomSelect
+                v-model="terminateReason"
+                :options="terminateReasonOptions"
+                :dark="true"
+              />
 
               <button
                 @click="handleForceTerminate"
@@ -363,13 +363,11 @@
             <div class="space-y-2 text-xs pt-1">
               <div>
                 <label class="block text-[11px] text-slate-400 mb-1">报修维护原因：</label>
-                <select v-model="maintenanceReason" class="w-full px-3 py-2 rounded-lg bg-slate-800 border border-slate-700 text-white text-xs">
-                  <option value="地面沉降破损与路砖平整修补">地面沉降破损与路砖平整修补</option>
-                  <option value="车位标线模糊翻新与反光漆重涂">车位标线模糊翻新与反光漆重涂</option>
-                  <option value="智能地锁检修与慢充充电桩线路维护">智能地锁检修与慢充充电桩线路维护</option>
-                  <option value="绿化树木修剪与雨污管道清淤施工">绿化树木修剪与雨污管道清淤施工</option>
-                  <option value="突发管道漏水应急维修抢修">突发管道漏水应急维修抢修</option>
-                </select>
+                <CustomSelect
+                  v-model="maintenanceReason"
+                  :options="maintenanceReasonOptions"
+                  :dark="true"
+                />
               </div>
               <button
                 @click="handleToggleMaintenance('SET_MAINTENANCE')"
@@ -432,28 +430,24 @@
         <div class="space-y-3 text-xs">
           <div>
             <label class="block text-slate-300 font-bold mb-1">选择车位：</label>
-            <select v-model="quickMaintenanceSpaceId" class="w-full px-3 py-2.5 rounded-xl bg-slate-900 border border-slate-700 text-white font-mono text-xs">
-              <option :value="null" disabled>请选择需要设为维修状态的车位...</option>
-              <option
-                v-for="sp in spaceList"
-                :key="sp.id"
-                :value="sp.id"
-              >
-                {{ sp.space_no }} ({{ getStatusLabel(sp.status) }}) {{ sp.area_type === 'GROUND' ? '地面' : '地下' }} {{ sp.user_name ? '[' + sp.user_name + ']' : '' }}
-              </option>
-            </select>
+            <CustomSelect
+              v-model="quickMaintenanceSpaceId"
+              :options="quickMaintenanceSpaceOptions"
+              placeholder="请选择需要设为维修状态的车位..."
+              :dark="true"
+              btn-class="py-2.5 rounded-xl font-mono"
+            />
             <p class="text-[10px] text-slate-400 mt-1">支持选择本小区任意车位直接进入维修状态。修缮验收完成后可随时一键恢复上线。</p>
           </div>
 
           <div>
             <label class="block text-slate-300 font-bold mb-1">报修原因：</label>
-            <select v-model="quickMaintenanceReason" class="w-full px-3 py-2 rounded-xl bg-slate-900 border border-slate-700 text-white">
-              <option value="地面沉降破损与路砖平整修补">地面沉降破损与路砖平整修补</option>
-              <option value="车位标线模糊翻新与反光漆重涂">车位标线模糊翻新与反光漆重涂</option>
-              <option value="智能地锁检修与慢充充电桩线路维护">智能地锁检修与慢充充电桩线路维护</option>
-              <option value="绿化树木修剪与雨污管道清淤施工">绿化树木修剪与雨污管道清淤施工</option>
-              <option value="突发管道漏水应急维修抢修">突发管道漏水应急维修抢修</option>
-            </select>
+            <CustomSelect
+              v-model="quickMaintenanceReason"
+              :options="quickMaintenanceReasonOptions"
+              :dark="true"
+              btn-class="py-2.5 rounded-xl"
+            />
           </div>
 
           <div class="p-3 bg-amber-950/40 border border-amber-800/40 rounded-xl space-y-1">
@@ -491,6 +485,7 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
 import api from '../../api'
 import { showConfirm, showToast } from '../../utils/dialog'
+import CustomSelect from '../../components/CustomSelect.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -511,10 +506,39 @@ const terminateReason = ref('房屋买卖过户且原业主失联')
 const maintenanceReason = ref('地面沉降破损与路砖平整修补')
 const actionLoading = ref(false)
 
+const terminateReasonOptions = [
+  '房屋买卖过户且原业主失联',
+  '租约逾期未续租且车位被占',
+  '业主自愿委托物业代办退租'
+]
+
+const maintenanceReasonOptions = [
+  '地面沉降破损与路砖平整修补',
+  '车位标线模糊翻新与反光漆重涂',
+  '智能地锁检修与慢充充电桩线路维护',
+  '绿化树木修剪与雨污管道清淤施工',
+  '突发管道漏水应急维修抢修'
+]
+
+const quickMaintenanceReasonOptions = [
+  '地面沉降破损与路砖平整修补',
+  '车位标线模糊翻新与反光漆重涂',
+  '智能地锁检修与慢充充电桩线路维护',
+  '绿化树木修剪与雨污管道清淤施工',
+  '突发管道漏水应急维修抢修'
+]
+
 // 快捷报修弹窗变量
 const quickMaintenanceModal = ref(false)
 const quickMaintenanceSpaceId = ref(null)
 const quickMaintenanceReason = ref('地面沉降破损与路砖平整修补')
+
+const quickMaintenanceSpaceOptions = computed(() => {
+  return spaceList.value.map(sp => ({
+    label: `${sp.space_no} (${getStatusLabel(sp.status)}) ${sp.area_type === 'GROUND' ? '地面' : '地下'}${sp.user_name ? ' [' + sp.user_name + ']' : ''}`,
+    value: sp.id
+  }))
+})
 
 const filteredSpaces = computed(() => {
   if (statusFilter.value === 'ALL') return spaceList.value

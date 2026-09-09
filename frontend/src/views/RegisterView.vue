@@ -19,29 +19,25 @@
               <label class="block font-bold text-slate-700">所属行政区</label>
               <span class="text-[10px] text-slate-400">16区全量</span>
             </div>
-            <select
+            <CustomSelect
               v-model="form.district"
+              :options="districtOptions"
+              :dark="false"
+              btn-class="py-2.5 rounded-xl border-slate-200 bg-white text-slate-800"
               @change="handleDistrictChange"
-              class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 font-medium bg-white cursor-pointer"
-            >
-              <option v-for="item in districtsData" :key="item.district" :value="item.district">
-                {{ item.district }}
-              </option>
-            </select>
+            />
           </div>
           <div>
             <div class="flex items-center justify-between mb-1">
               <label class="block font-bold text-slate-700">所属街道/镇</label>
               <span class="text-[10px] text-emerald-600 font-bold">级联自动联动</span>
             </div>
-            <select
+            <CustomSelect
               v-model="form.subdistrict"
-              class="w-full px-3 py-2 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 font-medium bg-white cursor-pointer"
-            >
-              <option v-for="sub in currentSubdistricts" :key="sub" :value="sub">
-                {{ sub }}
-              </option>
-            </select>
+              :options="currentSubdistricts"
+              :dark="false"
+              btn-class="py-2.5 rounded-xl border-slate-200 bg-white text-slate-800"
+            />
           </div>
         </div>
 
@@ -138,6 +134,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
 import { showToast } from '../utils/dialog'
+import CustomSelect from '../components/CustomSelect.vue'
 
 const router = useRouter()
 const loading = ref(false)
@@ -222,6 +219,10 @@ const form = ref({
   phone: '',
   password: '',
   confirm_pwd: ''
+})
+
+const districtOptions = computed(() => {
+  return districtsData.value.map(d => d.district)
 })
 
 const currentSubdistricts = computed(() => {

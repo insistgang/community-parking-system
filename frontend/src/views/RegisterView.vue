@@ -137,6 +137,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'
+import { showToast } from '../utils/dialog'
 
 const router = useRouter()
 const loading = ref(false)
@@ -262,7 +263,7 @@ const handleRegister = async () => {
       phone: form.value.phone,
       password: form.value.password
     })
-    alert(res.message || '注册成功！请前往登录')
+    showToast(res.message || '注册成功！请前往登录', 'success')
     router.push('/login')
   } catch (err) {
     errorMsg.value = err.message

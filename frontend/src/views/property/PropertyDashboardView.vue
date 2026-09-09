@@ -490,6 +490,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
 import api from '../../api'
+import { showConfirm, showToast } from '../../utils/dialog'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -555,11 +556,11 @@ const handleConfirmQuickMaintenance = async () => {
       action: 'SET_MAINTENANCE',
       reason: quickMaintenanceReason.value
     })
-    alert(res.message || '车位已成功设为维修停用！')
+    showToast(res.message || '车位已成功设为维修停用！', 'success')
     quickMaintenanceModal.value = false
     await loadData()
   } catch (err) {
-    alert('操作失败: ' + err.message)
+    showToast('操作失败: ' + err.message, 'error')
   } finally {
     actionLoading.value = false
   }
@@ -608,7 +609,15 @@ const getSpaceColorClass = (sp) => {
 }
 
 const handleForceTerminate = async () => {
-  if (!confirm(`确认强制清退车位【${currentSpace.value.space_no}】吗？此操作将立即释放该车位，后序排队业主将秒级自动顺延前移！`)) return
+  const confirmed = await showConfirm({
+    title: '强制代清退车位确认',
+    content: `确认强制清退车位【${currentSpace.value.space_no}】吗？\n此操作将立即释放该车位，后序排队业主将秒级自动顺延前移，并生成区块链存证！`,
+    type: 'danger',
+    confirmText: '确认清退',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
+
   actionLoading.value = true
   try {
     const res = await api.post('/property/force-terminate', {
@@ -616,11 +625,11 @@ const handleForceTerminate = async () => {
       reason: terminateReason.value,
       attachment_url: 'mock_property_deed_proof.jpg'
     })
-    alert(res.message || '清退成功！后序排位已自动前移')
+    showToast(res.message || '清退成功！后序排位已自动前移', 'success')
     selectedSpaceModal.value = false
     await loadData()
   } catch (err) {
-    alert('清退失败: ' + err.message)
+    showToast('清退失败: ' + err.message, 'error')
   } finally {
     actionLoading.value = false
   }
@@ -628,7 +637,7 @@ const handleForceTerminate = async () => {
 
 const handleConfirmDelivery = async () => {
   if (!currentSpace.value.user_id) {
-    alert('该车位暂无关联中签用户')
+    showToast('该车位暂无关联中签用户', 'warning')
     return
   }
   actionLoading.value = true
@@ -637,11 +646,11 @@ const handleConfirmDelivery = async () => {
       space_id: currentSpace.value.id,
       user_id: currentSpace.value.user_id
     })
-    alert(res.message || '交付成功，租约已生效！')
+    showToast(res.message || '交付成功，租约已生效！', 'success')
     selectedSpaceModal.value = false
     await loadData()
   } catch (err) {
-    alert('交付失败: ' + err.message)
+    showToast('交付失败: ' + err.message, 'error')
   } finally {
     actionLoading.value = false
   }
@@ -649,7 +658,14 @@ const handleConfirmDelivery = async () => {
 
 const handleToggleMaintenance = async (action) => {
   if (action === 'SET_MAINTENANCE') {
-    if (!confirm(`确认将车位【${currentSpace.value.space_no}】直接设为维修停用状态吗？`)) return
+    const confirmed = await showConfirm({
+      title: '车位维修停用确认',
+      content: `确认将车位【${currentSpace.value.space_no}】直接设为维修停用状态吗？\n停用期间车位将暂时移出分配资产池并存证上链。`,
+      type: 'warning',
+      confirmText: '确认停用',
+      cancelText: '取消'
+    })
+    if (!confirmed) return
   }
   actionLoading.value = true
   try {
@@ -658,25 +674,33 @@ const handleToggleMaintenance = async (action) => {
       action,
       reason: action === 'SET_MAINTENANCE' ? maintenanceReason.value : '检修验收合格恢复上线'
     })
-    alert(res.message || '操作成功')
+    showToast(res.message || '操作成功', 'success')
     selectedSpaceModal.value = false
     await loadData()
   } catch (err) {
-    alert('操作失败: ' + err.message)
+    showToast('操作失败: ' + err.message, 'error')
   } finally {
     actionLoading.value = false
   }
 }
 
 const handleResetDemo = async () => {
-  if (!confirm('确认将全系统所有车位和账号数据一键重置为初始演示状态吗？')) return
+  const confirmed = await showConfirm({
+    title: '全系统演示数据重置确认',
+    content: '确认将全系统所有车位和账号数据一键重置为初始演示状态吗？',
+    type: 'danger',
+    confirmText: '确认重置',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
+
   try {
     const res = await api.post('/dev/reset-seed')
-    alert(res.message || '已成功重置为初始状态！')
+    showToast(res.message || '已成功重置为初始状态！', 'success')
     selectedSpaceModal.value = false
     await loadData()
   } catch (err) {
-    alert('重置失败: ' + err.message)
+    showToast('重置失败: ' + err.message, 'error')
   }
 }
 
@@ -692,7 +716,7 @@ const handleExcelTemplate = async () => {
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
   } catch (err) {
-    alert('导出失败: ' + err.message)
+    showToast('导出失败: ' + err.message, 'error')
   }
 }
 

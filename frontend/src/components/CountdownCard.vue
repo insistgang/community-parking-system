@@ -67,6 +67,7 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '../api'
+import { showConfirm, showToast } from '../utils/dialog'
 
 const props = defineProps({
   spaceNo: {
@@ -110,28 +111,40 @@ onUnmounted(() => {
 })
 
 const handleAccept = async () => {
-  if (!confirm('确认接受本次车位分配，并前往物业办公室办理线下签约缴费吗？')) return
+  const ok = await showConfirm({
+    title: '确认接受车位分配',
+    message: `确认接受车位【${props.spaceNo}】分配，并前往物业办公室办理线下签约缴费吗？`,
+    confirmText: '确认接受',
+    type: 'success'
+  })
+  if (!ok) return
   loading.value = true
   try {
     const res = await api.post('/parking/accept-allocation')
-    alert(res.message || '确认成功！')
+    showToast(res.message || '确认成功！请于规定时间内前往物业签署合同', 'success')
     emit('refresh')
   } catch (err) {
-    alert('操作失败: ' + err.message)
+    showToast('操作失败: ' + err.message, 'error')
   } finally {
     loading.value = false
   }
 }
 
 const handleGiveUp = async () => {
-  if (!confirm('确定要放弃本次车位分配机会吗？放弃后该车位将自动顺延给下一位业主，且不可撤销！')) return
+  const ok = await showConfirm({
+    title: '放弃车位分配确认',
+    message: `确定要放弃车位【${props.spaceNo}】的分配机会吗？放弃后该车位将自动顺延给下一位业主，且不可撤销！`,
+    confirmText: '放弃车位',
+    type: 'danger'
+  })
+  if (!ok) return
   loading.value = true
   try {
     const res = await api.post('/parking/give-up-allocation')
-    alert(res.message || '已放弃分配')
+    showToast(res.message || '已放弃分配，车位已顺延流转', 'info')
     emit('refresh')
   } catch (err) {
-    alert('操作失败: ' + err.message)
+    showToast('操作失败: ' + err.message, 'error')
   } finally {
     loading.value = false
   }

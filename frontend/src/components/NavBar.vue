@@ -69,6 +69,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
+import { showConfirm } from '../utils/dialog'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -77,8 +78,14 @@ const unreadCount = computed(() => {
   return userStore.homeData?.unread_notifications ?? 0
 })
 
-const handleLogout = () => {
-  if (confirm('确认退出当前账号吗？')) {
+const handleLogout = async () => {
+  const ok = await showConfirm({
+    title: '退出登录确认',
+    message: '确认退出当前账号登录吗？',
+    confirmText: '退出登录',
+    type: 'warning'
+  })
+  if (ok) {
     userStore.logout()
     router.push('/login')
   }

@@ -498,13 +498,14 @@ import { useUserStore } from '../store/user'
 import api from '../api'
 import OcrUploadBox from '../components/OcrUploadBox.vue'
 import FaceCaptureBox from '../components/FaceCaptureBox.vue'
+import { showToast, showAlert } from '../utils/dialog'
 
 const router = useRouter()
 const userStore = useUserStore()
 
 onMounted(() => {
   if (userStore.isPropertyAdmin) {
-    alert('当前为物业企业管理账号，无权发起车位申请！请切换为业主账号（如张欣欣）。')
+    showToast('当前为物业企业管理账号，无权发起车位申请！请切换为业主账号（如张欣欣）。', 'warning')
     router.replace('/property/dashboard')
   }
 })
@@ -585,7 +586,7 @@ const confirmSpouseMode = () => {
 
 const handleSubmitApplication = async () => {
   if (!isThreeCertValid.value) {
-    alert('三证核验未完全通过，请核对材料！')
+    showToast('三证核验未完全通过，请核对材料！', 'warning')
     return
   }
 
@@ -598,11 +599,11 @@ const handleSubmitApplication = async () => {
       property_cert_no: '沪(2022)徐字不动产权第019823号',
       marriage_cert_no: isSpouseCar.value ? 'J310104-2022-0089' : null
     })
-    alert(res.message || '三证合一核验完全通过！已成功进入排队队列')
+    showToast(res.message || '三证合一核验完全通过！已成功进入排队队列', 'success')
     await userStore.fetchHomeData()
     router.push('/')
   } catch (err) {
-    alert('提交失败: ' + err.message)
+    showToast('提交失败: ' + err.message, 'error')
   } finally {
     submitting.value = false
   }

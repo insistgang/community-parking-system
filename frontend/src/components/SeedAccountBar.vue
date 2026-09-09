@@ -83,6 +83,7 @@
 <script setup>
 import { ref, watch, onUnmounted } from 'vue'
 import api from '../api'
+import { showConfirm, showToast } from '../utils/dialog'
 
 const emit = defineEmits(['fill'])
 const pinned = ref(false)
@@ -130,13 +131,21 @@ onUnmounted(() => {
 
 const handleResetSeed = async () => {
   close()
-  if (!confirm('确定要将系统演示数据一键重置回初始状态吗？')) return
+  const ok = await showConfirm({
+    title: '重置演示数据确认',
+    message: '确定要将系统演示数据一键重置回初始状态吗？所有测试账号排位、租约与存证将恢复为预置基准。',
+    confirmText: '确认重置',
+    type: 'danger'
+  })
+  if (!ok) return
   try {
     const res = await api.post('/dev/reset-seed')
-    alert(res.message || '重置成功！')
-    window.location.reload()
+    showToast(res.message || '演示数据重置成功！', 'success')
+    setTimeout(() => {
+      window.location.reload()
+    }, 500)
   } catch (err) {
-    alert('重置失败: ' + err.message)
+    showToast('重置失败: ' + err.message, 'error')
   }
 }
 </script>

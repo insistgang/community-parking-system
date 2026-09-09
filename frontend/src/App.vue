@@ -2,6 +2,8 @@
   <div class="min-h-screen bg-slate-100 text-slate-800">
     <SeedAccountBar @fill="handleFill" />
     <router-view />
+    <!-- 全局现代拟真模态弹窗与 Toast 容器 -->
+    <GlobalDialog />
   </div>
 </template>
 
@@ -10,6 +12,8 @@ import { useRouter } from 'vue-router'
 import { useUserStore } from './store/user'
 import api from './api'
 import SeedAccountBar from './components/SeedAccountBar.vue'
+import GlobalDialog from './components/GlobalDialog.vue'
+import { showToast } from './utils/dialog'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -32,7 +36,7 @@ const handleFill = async ({ identifier, password }) => {
       }
     }
   } catch (err) {
-    alert('切换失败: ' + err.message)
+    showToast('切换失败: ' + err.message, 'error')
   }
 }
 </script>

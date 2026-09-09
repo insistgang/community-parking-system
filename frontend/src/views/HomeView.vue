@@ -241,6 +241,7 @@ import NavBar from '../components/NavBar.vue'
 import CountdownCard from '../components/CountdownCard.vue'
 import AiWaitingCard from '../components/AiWaitingCard.vue'
 import BottomNav from '../components/BottomNav.vue'
+import { showConfirm, showToast } from '../utils/dialog'
 
 const userStore = useUserStore()
 
@@ -268,35 +269,53 @@ onUnmounted(() => {
 })
 
 const handleCancelApply = async () => {
-  if (!confirm('警告：撤销排队申请后，您当前的顺位将立即释放给后续业主，重新申请需重新核验并排至队尾。确认撤销吗？')) return
+  const ok = await showConfirm({
+    title: '撤销排队申请确认',
+    message: '撤销申请后，您当前的顺位将立即释放给后续业主。重新申请需重新核验并排至队尾。确认撤销吗？',
+    confirmText: '确认撤销',
+    type: 'danger'
+  })
+  if (!ok) return
   try {
     const res = await api.post('/parking/cancel-apply', { reason: '自愿放弃申请' })
-    alert(res.message || '申请已撤销')
+    showToast(res.message || '申请已成功撤销', 'success')
     await loadData()
   } catch (err) {
-    alert('撤销失败: ' + err.message)
+    showToast('撤销失败: ' + err.message, 'error')
   }
 }
 
 const handleRenew = async () => {
-  if (!confirm('确认向物业提交当前车位续租申请吗？提交后租约将自动顺延并生成区块链数字存证。')) return
+  const ok = await showConfirm({
+    title: '车位续租申请',
+    message: '确认向物业提交当前车位续租申请吗？提交后租约将自动顺延并生成区块链数字存证。',
+    confirmText: '确认续租',
+    type: 'info'
+  })
+  if (!ok) return
   try {
     const res = await api.post('/parking/renew')
-    alert(res.message || '续租成功')
+    showToast(res.message || '续租成功', 'success')
     await loadData()
   } catch (err) {
-    alert('续租失败: ' + err.message)
+    showToast('续租失败: ' + err.message, 'error')
   }
 }
 
 const handleTerminate = async () => {
-  if (!confirm('确认申请退租吗？车位将立即释放并由系统自动顺延分配给排队业主，操作实时上链不可撤销。')) return
+  const ok = await showConfirm({
+    title: '车位主动退租确认',
+    message: '确认申请退租吗？车位将立即释放并由系统自动顺延分配给排队业主，操作实时上链不可撤销。',
+    confirmText: '确认退租',
+    type: 'danger'
+  })
+  if (!ok) return
   try {
     const res = await api.post('/parking/terminate-rental')
-    alert(res.message || '退租成功')
+    showToast(res.message || '退租成功，车位已释放并自动顺延', 'success')
     await loadData()
   } catch (err) {
-    alert('退租失败: ' + err.message)
+    showToast('退租失败: ' + err.message, 'error')
   }
 }
 </script>

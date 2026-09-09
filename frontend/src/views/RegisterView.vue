@@ -146,7 +146,7 @@ const errorMsg = ref('')
 const defaultDistricts = [
   {
     district: '徐汇区',
-    subdistricts: ['湖南路街道', '天平路街道', '斜土路街道', '枫林路街道', '徐家汇街道', '康健新村街道', '虹梅路街道', '田林街道', '长桥街道', '华泾镇', '漕河泾街道', '凌云路街道']
+    subdistricts: ['湖南路街道', '天平路街道', '斜土路街道', '枫林路街道', '徐家汇街道', '康健新村街道', '虹梅路街道', '田林街道', '长桥街道', '龙华街道', '华泾镇', '漕河泾街道', '凌云路街道']
   },
   {
     district: '黄浦区',
@@ -214,8 +214,8 @@ const districtsData = ref(defaultDistricts)
 
 const form = ref({
   district: '徐汇区',
-  subdistrict: '湖南路街道',
-  community_name: '某某新村',
+  subdistrict: '龙华街道',
+  community_name: '龙华新村',
   real_name: '',
   id_card: '',
   phone: '',

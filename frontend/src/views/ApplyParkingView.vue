@@ -137,88 +137,100 @@
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-black text-slate-900">第二证：本小区不动产权属证明</h3>
-            <p class="text-[11px] text-slate-400 mt-0.5">可直接勾选市大数据调取的电子证照，也可选传房产证原件；严禁外区房蹭停</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">依据政务隐私合规要求，请上传产证原件由系统提取坐落并反向比对</p>
           </div>
-          <span class="text-[11px] text-emerald-600 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
-            调取证照可直接使用
+          <span class="text-[11px] font-bold px-2 py-0.5 rounded-full border transition" :class="propertyVerified ? 'text-emerald-600 bg-emerald-50 border-emerald-200' : 'text-blue-600 bg-blue-50 border-blue-200'">
+            {{ propertyVerified ? '✓ 核验通过' : '政务隐私合规' }}
           </span>
         </div>
 
-        <!-- 房产证原件上传与拟真 OCR 识别 -->
+        <!-- 强化“拍摄/上传不动产权证书原件”按钮与 OCR 识别 -->
         <OcrUploadBox
           label="拍摄 / 上传不动产权证书 (房产证) 原件"
-          tip="系统自动 OCR 提取产证编号、权利人与房屋坐落 (图片不落盘)"
+          tip="系统自动 OCR 提取产证编号、权利人与房屋坐落，并与市不动产中心联网反向比对 (图片不落盘)"
           mockType="property_cert"
-          @scanned="propertyCertScanned = true"
+          @scanned="handlePropertyScanned"
         />
 
-        <!-- OCR 识别出的产证信息卡 -->
-        <div v-if="propertyCertScanned" class="bg-slate-50 p-3.5 rounded-xl border border-slate-200 space-y-2 text-xs animate-fade-in">
-          <div class="flex justify-between">
-            <span class="text-slate-500">产证编号:</span>
-            <span class="font-mono font-bold text-slate-800">沪(2022)徐字不动产权第019823号</span>
+        <!-- 未上传时的政务隐私合规引导说明 -->
+        <div v-if="!propertyCertScanned" class="bg-blue-50/80 border border-blue-200/70 rounded-2xl p-4 text-xs text-blue-900 space-y-1.5 animate-fade-in">
+          <div class="flex items-center gap-1.5 font-bold text-blue-950">
+            <span class="text-sm">🔒</span>
+            <span>政务数据隐私保护合规规范</span>
           </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">权利人:</span>
-            <span class="font-bold text-slate-800">{{ userStore.realName }} (与第一证一致)</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">房屋坐落:</span>
-            <span class="font-bold text-slate-800">某某新村 12号楼 302室</span>
-          </div>
-          <div class="flex justify-between">
-            <span class="text-slate-500">不动产登记库比对:</span>
-            <span class="font-semibold text-emerald-600">✓ 核验通过 (权属真实有效)</span>
-          </div>
+          <p class="text-[11px] text-blue-800 leading-relaxed">
+            为严格保障居民不动产隐私，系统遵循政务最小必要原则，<strong>严禁预先枚举用户名下全量房产</strong>。请先拍照或上传不动产权证，系统将基于证照信息与本小区产权数据库进行反向验真。
+          </p>
         </div>
 
-        <!-- 调取出的名下房产列表 (电子证照可直接勾选使用，无需先上传) -->
-        <div class="space-y-2.5">
+        <!-- 上传/模拟后：展示扫描带出的本小区核验房产及反向比对通过结果 -->
+        <div v-if="propertyCertScanned" class="space-y-3 animate-fade-in">
           <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-700">市大数据中心调取名下房产清单</span>
-            <span class="text-[10px] text-emerald-600 font-semibold">可直接勾选使用</span>
+            <span class="text-xs font-bold text-slate-700">市不动产登记中心反向比对结果</span>
+            <span class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+              联网比对完成
+            </span>
           </div>
-          <!-- 房产 1: 本小区 (可选) -->
+
+          <!-- 本小区核验房产卡片 -->
           <div
-            @click="selectedProperty = '某某新村12号楼302室'"
-            class="p-3.5 rounded-xl border-2 cursor-pointer transition flex items-start justify-between"
-            :class="selectedProperty === '某某新村12号楼302室' ? 'border-blue-600 bg-blue-50/50 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'"
+            @click="selectedProperty = '龙华新村 12号302室'"
+            class="p-4 rounded-2xl border-2 transition cursor-pointer flex items-start justify-between shadow-sm"
+            :class="selectedProperty === '龙华新村 12号302室' ? 'border-emerald-500 bg-emerald-50/70 ring-2 ring-emerald-500/20' : 'border-slate-200 bg-white hover:border-slate-300'"
           >
-            <div>
+            <div class="space-y-1.5 flex-1 pr-2">
               <div class="flex items-center gap-1.5 font-bold text-xs text-slate-800">
-                <span class="text-blue-600">🏠</span>
-                <span>某某新村 12号楼 302室</span>
-                <span class="text-[10px] text-emerald-700 bg-emerald-100 px-1.5 py-0.2 rounded font-semibold">本小区产权房</span>
+                <span class="text-blue-600 text-sm">🏠</span>
+                <span class="text-sm font-black text-slate-900">本小区核验房产：龙华新村 12号302室</span>
+                <span class="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full font-semibold border border-emerald-300">
+                  本小区产权房
+                </span>
               </div>
-              <span class="text-[11px] text-slate-500 mt-1 block">产证所有人: {{ userStore.realName }} (与第一证完全一致)</span>
-              <span class="text-[10px] text-slate-400 block font-mono mt-0.5">产证编号: 沪(2022)徐字不动产权第019823号</span>
+              <div class="text-[11px] text-slate-600 space-y-0.5 pt-0.5">
+                <div>产证所有人: <strong class="text-slate-800">{{ userStore.realName || '张欣欣' }}</strong> (与第一证完全一致)</div>
+                <div class="font-mono text-slate-500 text-[10px]">产证编号: 沪(2022)徐字不动产权第019823号</div>
+              </div>
+              <div class="pt-1 text-[11px] font-bold text-emerald-700 flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center text-[10px]">✓</span>
+                <span>已与市不动产登记中心完成核验比对通过</span>
+              </div>
             </div>
-            <span class="w-5 h-5 rounded-full border-2 flex items-center justify-center mt-0.5" :class="selectedProperty === '某某新村12号楼302室' ? 'border-blue-600 bg-blue-600 text-white text-[11px] font-bold' : 'border-slate-300'">
+            <span
+              class="w-5 h-5 rounded-full border-2 flex items-center justify-center mt-1 transition"
+              :class="selectedProperty === '龙华新村 12号302室' ? 'border-emerald-600 bg-emerald-600 text-white text-[11px] font-bold' : 'border-slate-300'"
+            >
               ✓
             </span>
           </div>
 
-          <!-- 房产 2: 外区房 (置灰 + 拦截测试) -->
-          <div
-            @click="handleSelectExternalProperty"
-            class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed flex items-start justify-between relative group"
-          >
-            <div>
-              <div class="flex items-center gap-1.5 font-bold text-xs text-slate-500">
-                <span>🏢</span>
-                <span class="line-through">浦东新区世纪大道 888弄 501室</span>
-                <span class="text-[10px] text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded font-semibold not-italic">非本小区·不可选</span>
-              </div>
-              <span class="text-[11px] text-slate-400 mt-1 block">产权人: {{ userStore.realName }} | 产证编号: 沪房地浦字(2021)第033412号</span>
+          <!-- 外区房产拦截测试示例（点击可展示拦截置灰提示） -->
+          <div class="space-y-1.5 pt-1">
+            <div class="flex items-center justify-between">
+              <span class="text-[11px] font-bold text-slate-500">外区房产拦截测试示例（点击展示拦截置灰提示）</span>
+              <span class="text-[10px] text-slate-400">领导评审演示项</span>
             </div>
-            <span class="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
-              禁止申请
-            </span>
-          </div>
+            <div
+              @click="handleSelectExternalProperty"
+              class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed flex items-start justify-between relative group hover:opacity-75 transition"
+            >
+              <div>
+                <div class="flex items-center gap-1.5 font-bold text-xs text-slate-500">
+                  <span>🏢</span>
+                  <span class="line-through">浦东新区世纪大道 888弄 501室</span>
+                  <span class="text-[10px] text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded font-semibold not-italic">非本小区·不可选</span>
+                </div>
+                <span class="text-[11px] text-slate-400 mt-1 block">产权人: {{ userStore.realName || '张欣欣' }} | 产证编号: 沪房地浦字(2021)第033412号</span>
+              </div>
+              <span class="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
+                禁止申报
+              </span>
+            </div>
 
-          <!-- 拦截警告提示 -->
-          <div v-if="externalWarning" class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-1.5 animate-bounce">
-            <span>🚫 拦截警告：仅限本小区产权房屋可申请车位，外区房产无法申报！</span>
+            <!-- 拦截警告提示 -->
+            <div v-if="externalWarning" class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-1.5 animate-bounce">
+              <span>🚫 拦截警告：仅限本小区产权房屋可申请车位，外区房产无法申报！</span>
+            </div>
           </div>
         </div>
 
@@ -235,8 +247,8 @@
             :disabled="!propertyVerified"
             class="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-md transition disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-1.5"
           >
-            <span>第二证已核定，下一步核验第三证(行驶证)</span>
-            <span>➔</span>
+            <span v-if="!propertyVerified">请先上传不动产权证书完成核验</span>
+            <span v-else>第二证已核定，下一步核验第三证(行驶证) ➔</span>
           </button>
         </div>
       </div>
@@ -501,7 +513,7 @@ const step = ref(1)
 const idCardScanned = ref(false)
 const faceMatched = ref(false)
 const propertyCertScanned = ref(false)
-const selectedProperty = ref('某某新村12号楼302室')
+const selectedProperty = ref('')
 const externalWarning = ref(false)
 
 // 车牌填报与行驶证逻辑
@@ -513,13 +525,13 @@ const showSpouseConfirmModal = ref(false)
 const marriageCertUploaded = ref(false)
 const submitting = ref(false)
 
-// 第二证完成判定: 勾选本小区调取房产即可 (上传原件为可选)
-const propertyVerified = computed(() => !!selectedProperty.value && !selectedProperty.value.includes('浦东'))
+// 第二证完成判定: 需完成产证上传/识别并锁定本小区产权
+const propertyVerified = computed(() => propertyCertScanned.value && !!selectedProperty.value && !selectedProperty.value.includes('浦东'))
 
 // 综合三证合一判定
 const isThreeCertValid = computed(() => {
   if (!idCardScanned.value || !faceMatched.value) return false
-  if (!selectedProperty.value || selectedProperty.value.includes('浦东')) return false
+  if (!propertyVerified.value) return false
   if (!inputPlate.value || !inputPlate.value.trim()) return false
   if (isSpouseCar.value && !marriageCertUploaded.value) return false
   return true
@@ -527,6 +539,11 @@ const isThreeCertValid = computed(() => {
 
 const handleIdCardScanned = () => {
   idCardScanned.value = true
+}
+
+const handlePropertyScanned = () => {
+  propertyCertScanned.value = true
+  selectedProperty.value = '龙华新村 12号302室'
 }
 
 const handleLicenseScanned = () => {

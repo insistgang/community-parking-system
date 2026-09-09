@@ -72,7 +72,7 @@
             @click="handleRenew"
             class="flex-1 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs shadow-md transition"
           >
-            申请续租 (延期1年)
+            申请续租
           </button>
           <button
             @click="handleTerminate"
@@ -279,7 +279,7 @@ const handleCancelApply = async () => {
 }
 
 const handleRenew = async () => {
-  if (!confirm('确认为当前车位申请续租 1 年吗？续租成功后租约自动顺延并生成区块链存证。')) return
+  if (!confirm('确认向物业提交当前车位续租申请吗？提交后租约将自动顺延并生成区块链数字存证。')) return
   try {
     const res = await api.post('/parking/renew')
     alert(res.message || '续租成功')

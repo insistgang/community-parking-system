@@ -433,14 +433,14 @@ def renew_contract(user: User = Depends(get_current_user), db: Session = Depends
         community_id=user.community_id,
         user_id=user.id,
         event_type="RENEW",
-        summary=f"业主【{user.real_name}】完成车位【{space_no}】续租 1 年",
+        summary=f"业主【{user.real_name}】完成车位【{space_no}】续租申请",
         payload={"contract_no": contract.contract_no, "old_end_date": str(old_end), "new_end_date": str(contract.end_date)}
     )
 
     db.add(Notification(
         user_id=user.id,
         title="车位续租成功通知",
-        content=f"您的车位【{space_no}】已成功续租 1 年，租约有效期顺延至 {contract.end_date}，本次续租已上链存证。",
+        content=f"您的车位【{space_no}】已成功办理续租，租约有效期已顺延至 {contract.end_date}，本次续租已上链存证。",
         type="SYSTEM",
         action_type="GO_CONFIRM"
     ))
@@ -448,7 +448,7 @@ def renew_contract(user: User = Depends(get_current_user), db: Session = Depends
 
     return ResponseModel(
         code=200,
-        message=f"续租成功！租约已顺延至 {contract.end_date} (1年期)，存证已上链。",
+        message=f"续租成功！租约已顺延至 {contract.end_date}，存证已上链。",
         data={"contract_no": contract.contract_no, "new_end_date": str(contract.end_date)}
     )
 

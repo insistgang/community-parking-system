@@ -51,7 +51,7 @@
             v-model="form.community_name"
             type="text"
             required
-            placeholder="如: 某某新村"
+            placeholder="如: 龙华新村"
             class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 font-medium"
           />
         </div>

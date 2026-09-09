@@ -8,9 +8,9 @@ class Community(Base):
     __tablename__ = "communities"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False) # 某某新村
+    name = Column(String(100), nullable=False) # 龙华新村
     district = Column(String(50), nullable=False) # 徐汇区
-    subdistrict = Column(String(50), nullable=False) # 湖南路街道
+    subdistrict = Column(String(50), nullable=False) # 龙华街道
     total_spaces = Column(Integer, default=50) # 总车位数 50
 
     users = relationship("User", back_populates="community")

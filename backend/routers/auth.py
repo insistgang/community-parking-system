@@ -98,7 +98,7 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
                 "real_name": user.real_name,
                 "role": user.role,
                 "community_id": user.community_id,
-                "community_name": community.name if community else "某某新村",
+                "community_name": community.name if community else "龙华新村",
                 "district": community.district if community else "徐汇区"
             }
         }

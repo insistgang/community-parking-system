@@ -25,9 +25,9 @@ def init_db_and_seed(force: bool = False):
     try:
         # 1. 创建小区
         community = Community(
-            name="某某新村",
+            name="龙华新村",
             district="徐汇区",
-            subdistrict="湖南路街道",
+            subdistrict="龙华街道",
             total_spaces=50
         )
         db.add(community)
@@ -251,8 +251,8 @@ def init_db_and_seed(force: bool = False):
             community_id=community.id,
             user_id=user_wang.id,
             event_type="INIT",
-            summary="物业管理员王建国完成【某某新村】50个车位台账初始化导入锁定",
-            payload={"total_spaces": 50, "manager": "王建国", "community": "某某新村"},
+            summary="物业管理员王建国完成【龙华新村】50个车位台账初始化导入锁定",
+            payload={"total_spaces": 50, "manager": "王建国", "community": "龙华新村"},
             occurred_at=init_at
         )
 

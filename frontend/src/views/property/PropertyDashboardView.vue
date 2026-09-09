@@ -24,7 +24,7 @@
               物业管理 PC 端
             </span>
           </div>
-          <p class="text-xs text-slate-400 break-words">服务小区：某某新村 (总车位 50 个) | 当前管理员：{{ userStore.realName }}</p>
+          <p class="text-xs text-slate-400 break-words">服务小区：{{ userStore.communityName || '龙华新村' }} (总车位 50 个) | 当前管理员：{{ userStore.realName }}</p>
         </div>
       </div>
 
@@ -152,7 +152,7 @@
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h2 class="text-sm font-bold text-white flex items-center gap-2 flex-wrap">
-              <span>某某新村 50 车位资产实时运行矩阵</span>
+              <span>{{ userStore.communityName || '龙华新村' }} 50 车位资产实时运行矩阵</span>
               <span class="text-xs text-slate-400 font-normal hidden sm:inline">(点击任意车位卡片可发起管理操作)</span>
             </h2>
           </div>

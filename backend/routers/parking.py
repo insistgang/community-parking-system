@@ -151,7 +151,7 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
                 "id": user.id,
                 "real_name": user.real_name,
                 "role": user.role,
-                "community_name": community.name if community else "某某新村"
+                "community_name": community.name if community else "龙华新村"
             },
             "unread_notifications": unread_count,
             "my_space": my_space,

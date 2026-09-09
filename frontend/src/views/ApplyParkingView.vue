@@ -197,40 +197,10 @@
               </div>
             </div>
             <span
-              class="w-5 h-5 rounded-full border-2 flex items-center justify-center mt-1 transition"
-              :class="selectedProperty === '龙华新村 12号302室' ? 'border-emerald-600 bg-emerald-600 text-white text-[11px] font-bold' : 'border-slate-300'"
+              class="w-5 h-5 rounded-full border-2 flex items-center justify-center mt-1 border-emerald-600 bg-emerald-600 text-white text-[11px] font-bold"
             >
               ✓
             </span>
-          </div>
-
-          <!-- 外区房产拦截测试示例（点击可展示拦截置灰提示） -->
-          <div class="space-y-1.5 pt-1">
-            <div class="flex items-center justify-between">
-              <span class="text-[11px] font-bold text-slate-500">外区房产拦截测试示例（点击展示拦截置灰提示）</span>
-              <span class="text-[10px] text-slate-400">领导评审演示项</span>
-            </div>
-            <div
-              @click="handleSelectExternalProperty"
-              class="p-3.5 rounded-xl border-2 border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed flex items-start justify-between relative group hover:opacity-75 transition"
-            >
-              <div>
-                <div class="flex items-center gap-1.5 font-bold text-xs text-slate-500">
-                  <span>🏢</span>
-                  <span class="line-through">浦东新区世纪大道 888弄 501室</span>
-                  <span class="text-[10px] text-rose-700 bg-rose-100 px-1.5 py-0.2 rounded font-semibold not-italic">非本小区·不可选</span>
-                </div>
-                <span class="text-[11px] text-slate-400 mt-1 block">产权人: {{ userStore.realName || '张欣欣' }} | 产证编号: 沪房地浦字(2021)第033412号</span>
-              </div>
-              <span class="text-[10px] text-rose-600 font-bold bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded">
-                禁止申报
-              </span>
-            </div>
-
-            <!-- 拦截警告提示 -->
-            <div v-if="externalWarning" class="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold flex items-center gap-1.5 animate-bounce">
-              <span>🚫 拦截警告：仅限本小区产权房屋可申请车位，外区房产无法申报！</span>
-            </div>
           </div>
         </div>
 
@@ -515,7 +485,6 @@ const idCardScanned = ref(false)
 const faceMatched = ref(false)
 const propertyCertScanned = ref(false)
 const selectedProperty = ref('')
-const externalWarning = ref(false)
 
 // 车牌填报与行驶证逻辑
 const licenseScanned = ref(false)
@@ -526,8 +495,8 @@ const showSpouseConfirmModal = ref(false)
 const marriageCertUploaded = ref(false)
 const submitting = ref(false)
 
-// 第二证完成判定: 需完成产证上传/识别并锁定本小区产权
-const propertyVerified = computed(() => propertyCertScanned.value && !!selectedProperty.value && !selectedProperty.value.includes('浦东'))
+// 第二证完成判定: 完成产证上传/识别并锁定本小区产权
+const propertyVerified = computed(() => propertyCertScanned.value && !!selectedProperty.value)
 
 // 综合三证合一判定
 const isThreeCertValid = computed(() => {
@@ -552,13 +521,6 @@ const handleLicenseScanned = () => {
   if (!isSpouseCar.value) {
     inputPlate.value = '沪A·12345'
   }
-}
-
-const handleSelectExternalProperty = () => {
-  externalWarning.value = true
-  setTimeout(() => {
-    externalWarning.value = false
-  }, 4000)
 }
 
 const quickFillPlate = (plate, isSpouse) => {

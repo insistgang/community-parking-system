@@ -384,26 +384,38 @@
               <span class="text-[10px] bg-indigo-200 text-indigo-900 px-2 py-0.5 rounded font-bold">必传</span>
             </div>
 
-            <div class="grid grid-cols-2 gap-2">
+            <div class="space-y-2.5">
               <div>
                 <label class="block text-xs font-bold text-indigo-900 mb-1">家人 (车主) 姓名</label>
                 <input
                   v-model="familyMemberName"
                   type="text"
                   placeholder="请输入家人车主姓名，如: 张建国"
-                  class="w-full px-3 py-2 rounded-xl border border-indigo-300 bg-white text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                  class="w-full px-3 py-2.5 rounded-xl border border-indigo-200 bg-white text-xs font-bold text-slate-800 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 />
               </div>
+
               <div>
-                <label class="block text-xs font-bold text-indigo-900 mb-1">与房产人关系</label>
-                <select
-                  v-model="familyRelationType"
-                  class="w-full px-3 py-2 rounded-xl border border-indigo-300 bg-white text-xs font-medium focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="PARENT">父亲 / 母亲</option>
-                  <option value="CHILD">子女 (同住/成年)</option>
-                  <option value="OTHER">其他同户直系亲属</option>
-                </select>
+                <label class="block text-xs font-bold text-indigo-900 mb-1.5">与房产所有权人直系关系</label>
+                <div class="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    v-for="item in [
+                      { value: 'PARENT', label: '父亲 / 母亲', icon: '👴' },
+                      { value: 'CHILD', label: '子女 (同住)', icon: '🧒' },
+                      { value: 'OTHER', label: '其他同户直系', icon: '👥' }
+                    ]"
+                    :key="item.value"
+                    @click="familyRelationType = item.value"
+                    class="py-2.5 px-2 rounded-xl border text-xs transition flex flex-col items-center justify-center gap-0.5 shadow-sm"
+                    :class="familyRelationType === item.value 
+                      ? 'bg-indigo-600 text-white font-bold border-indigo-600 ring-2 ring-indigo-500/30' 
+                      : 'bg-white text-slate-600 border-indigo-200 hover:border-indigo-300 hover:bg-indigo-50/50'"
+                  >
+                    <span class="text-sm">{{ item.icon }}</span>
+                    <span class="text-[11px]">{{ item.label }}</span>
+                  </button>
+                </div>
               </div>
             </div>
 

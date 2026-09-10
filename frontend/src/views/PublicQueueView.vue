@@ -105,10 +105,12 @@
 
               <div>
                 <span
-                  class="text-[10px] px-2 py-0.5 rounded-full font-semibold"
-                  :class="item.priority_type === '家庭一车' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-600'"
+                  class="text-[10px] px-2 py-0.5 rounded-full font-medium"
+                  :class="item.priority_type === '家庭二车' || item.priority_type === '同户二车' 
+                    ? 'bg-amber-50 text-amber-700 border border-amber-200 font-semibold' 
+                    : 'bg-slate-50 text-slate-500 border border-slate-200'"
                 >
-                  {{ item.priority_type }}
+                  {{ (item.priority_type === '家庭二车' || item.priority_type === '同户二车') ? '同户二车 (顺延)' : '常规轮候' }}
                 </span>
               </div>
             </div>

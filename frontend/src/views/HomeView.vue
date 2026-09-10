@@ -107,11 +107,11 @@
             </div>
 
             <div class="ml-auto text-right">
-              <span class="px-2.5 py-1 rounded-full text-xs font-bold" :class="myQueue.priority_level === 1 ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-600'">
-                {{ myQueue.priority_label }}
+              <span v-if="myQueue.priority_level === 2" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200 inline-block mb-1">
+                同户二车 (顺延轮候)
               </span>
-              <span class="text-[11px] text-slate-400 block mt-1">
-                前面还有 {{ Math.max(0, myQueue.current_rank - 1) }} 人
+              <span class="text-xs text-slate-500 font-medium block">
+                前面还有 <span class="text-blue-600 font-bold font-mono text-sm">{{ Math.max(0, myQueue.current_rank - 1) }}</span> 人
               </span>
             </div>
           </div>

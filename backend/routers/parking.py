@@ -83,7 +83,7 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
             "property_no": app.property_no,
             "plate_no": app.plate_no,
             "priority_level": app.priority_level,
-            "priority_label": "家庭一车" if app.priority_level == 1 else "家庭二车(后置)",
+            "priority_label": "常规优先轮候" if app.priority_level == 1 else "同户二车(顺延后置)",
             "current_rank": app.current_rank,
             "total_queue": total_waiting,
             "is_first_candidate": (app.current_rank == 1),
@@ -512,7 +512,8 @@ def get_public_queue(user: User = Depends(get_current_user), db: Session = Depen
             "rank": idx,
             "masked_name": name_masked,
             "masked_phone": phone_masked,
-            "priority_type": "家庭一车" if app.priority_level == 1 else "家庭二车",
+            "priority_level": app.priority_level,
+            "priority_type": "常规轮候" if app.priority_level == 1 else "同户二车",
             "apply_time": fmt_bj(app.apply_time),
             "is_me": (app.user_id == user.id)
         })

@@ -29,8 +29,10 @@ class ApplyParkingRequest(BaseModel):
     property_no: str
     plate_no: str
     is_spouse_car: bool = False
+    car_relationship: Optional[str] = "SELF" # SELF, SPOUSE, FAMILY
     property_cert_no: Optional[str] = None # 不动产权证号 (OCR 提取)
     marriage_cert_no: Optional[str] = None
+    family_cert_no: Optional[str] = None # 居民户口簿/关系证明编号
 
 class CancelApplyRequest(BaseModel):
     reason: Optional[str] = "个人原因自愿撤销"

@@ -252,21 +252,28 @@
                 申报号牌号码 <span class="text-rose-500">*</span>
               </label>
               <!-- 快捷从名下带入 -->
-              <div class="flex items-center gap-1 text-[11px]">
+              <div class="flex flex-wrap items-center gap-1.5 text-[11px]">
                 <span class="text-slate-400">快速填入:</span>
                 <button
                   type="button"
-                  @click="quickFillPlate('沪A·12345', false)"
+                  @click="quickFillPlate('沪A·12345', 'self')"
                   class="px-2 py-0.5 rounded bg-slate-100 hover:bg-blue-100 text-blue-700 font-mono font-bold border border-slate-200 transition"
                 >
                   沪A·12345 (本人车)
                 </button>
                 <button
                   type="button"
-                  @click="quickFillPlate('沪A·67890', true)"
+                  @click="quickFillPlate('沪A·67890', 'spouse')"
                   class="px-2 py-0.5 rounded bg-slate-100 hover:bg-amber-100 text-amber-700 font-mono font-bold border border-slate-200 transition"
                 >
                   沪A·67890 (配偶车)
+                </button>
+                <button
+                  type="button"
+                  @click="quickFillPlate('沪A·88888', 'family')"
+                  class="px-2 py-0.5 rounded bg-slate-100 hover:bg-indigo-100 text-indigo-700 font-mono font-bold border border-slate-200 transition"
+                >
+                  沪A·88888 (家人车)
                 </button>
               </div>
             </div>
@@ -286,38 +293,50 @@
             </div>
           </div>
 
-          <!-- 车辆权属关系单选 -->
+          <!-- 车辆权属关系单选 (本人、配偶、家人) -->
           <div class="pt-1">
             <label class="block font-bold text-xs text-slate-700 mb-2">机动车行驶证所有人权属关系</label>
-            <div class="grid grid-cols-2 gap-2.5">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <label
-                @click="handleCarTypeChange(false)"
-                class="p-3 rounded-xl border-2 cursor-pointer transition flex items-center gap-2 text-xs"
-                :class="!isSpouseCar ? 'border-blue-600 bg-blue-50/60 font-bold text-blue-900' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
+                @click="handleCarTypeChange('self')"
+                class="p-2.5 rounded-xl border-2 cursor-pointer transition flex items-center gap-2 text-xs"
+                :class="carRelationship === 'self' ? 'border-blue-600 bg-blue-50/60 font-bold text-blue-900' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
               >
-                <input type="radio" name="car_type" :checked="!isSpouseCar" class="text-blue-600" />
+                <input type="radio" name="car_type" :checked="carRelationship === 'self'" class="text-blue-600" />
                 <div>
                   <span class="block">本人名下车辆</span>
-                  <span class="text-[10px] text-slate-400 font-normal">车主 == 房产所有人</span>
+                  <span class="text-[10px] text-slate-400 font-normal">车主 == 房产人</span>
                 </div>
               </label>
 
               <label
-                @click="handleCarTypeChange(true)"
-                class="p-3 rounded-xl border-2 cursor-pointer transition flex items-center gap-2 text-xs"
-                :class="isSpouseCar ? 'border-amber-500 bg-amber-50/60 font-bold text-amber-900' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
+                @click="handleCarTypeChange('spouse')"
+                class="p-2.5 rounded-xl border-2 cursor-pointer transition flex items-center gap-2 text-xs"
+                :class="carRelationship === 'spouse' ? 'border-amber-500 bg-amber-50/60 font-bold text-amber-900' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
               >
-                <input type="radio" name="car_type" :checked="isSpouseCar" class="text-amber-600" />
+                <input type="radio" name="car_type" :checked="carRelationship === 'spouse'" class="text-amber-600" />
                 <div>
-                  <span class="block">配偶共有车辆 (夫妻车)</span>
-                  <span class="text-[10px] text-slate-400 font-normal">需补充上传结婚证</span>
+                  <span class="block">配偶车辆 (夫妻车)</span>
+                  <span class="text-[10px] text-slate-400 font-normal">需补充结婚证</span>
+                </div>
+              </label>
+
+              <label
+                @click="handleCarTypeChange('family')"
+                class="p-2.5 rounded-xl border-2 cursor-pointer transition flex items-center gap-2 text-xs"
+                :class="carRelationship === 'family' ? 'border-indigo-600 bg-indigo-50/60 font-bold text-indigo-900' : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'"
+              >
+                <input type="radio" name="car_type" :checked="carRelationship === 'family'" class="text-indigo-600" />
+                <div>
+                  <span class="block">直系亲属 / 家人车</span>
+                  <span class="text-[10px] text-slate-400 font-normal">需补充户口本</span>
                 </div>
               </label>
             </div>
           </div>
 
           <!-- 夫妻车辆结婚证上传区域 (当选择夫妻车辆时展示) -->
-          <div v-if="isSpouseCar" class="bg-amber-50/90 rounded-2xl p-4 border-2 border-amber-300 space-y-3 animate-fade-in">
+          <div v-if="carRelationship === 'spouse'" class="bg-amber-50/90 rounded-2xl p-4 border-2 border-amber-300 space-y-3 animate-fade-in">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
                 <span class="text-xl">💍</span>
@@ -349,6 +368,55 @@
             <div v-if="marriageCertUploaded" class="p-2.5 rounded-xl bg-white text-xs text-emerald-700 font-bold border border-emerald-300 flex items-center justify-between">
               <span>✓ 结婚证比对一致 (核验夫妻关系真实有效)</span>
               <span class="text-[10px] text-slate-400 font-mono">J310104-2022-0089</span>
+            </div>
+          </div>
+
+          <!-- 家人车辆户口本上传区域 (当选择直系亲属/家人车辆时展示) -->
+          <div v-if="carRelationship === 'family'" class="bg-indigo-50/90 rounded-2xl p-4 border-2 border-indigo-300 space-y-3 animate-fade-in">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">👨‍👩‍👧</span>
+                <div>
+                  <h4 class="text-xs font-bold text-indigo-900">直系亲属/家庭成员关系证明 (居民户口簿)</h4>
+                  <p class="text-[11px] text-indigo-700">证明产权人【{{ userStore.realName }}】与车主具有合法直系亲属共有权</p>
+                </div>
+              </div>
+              <span class="text-[10px] bg-indigo-200 text-indigo-900 px-2 py-0.5 rounded font-bold">必传</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label class="block text-xs font-bold text-indigo-900 mb-1">家人 (车主) 姓名</label>
+                <input
+                  v-model="familyMemberName"
+                  type="text"
+                  placeholder="请输入家人车主姓名，如: 张建国"
+                  class="w-full px-3 py-2 rounded-xl border border-indigo-300 bg-white text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-indigo-900 mb-1">与房产人关系</label>
+                <select
+                  v-model="familyRelationType"
+                  class="w-full px-3 py-2 rounded-xl border border-indigo-300 bg-white text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                >
+                  <option value="PARENT">父亲 / 母亲</option>
+                  <option value="CHILD">子女 (同住/成年)</option>
+                  <option value="OTHER">其他同户直系亲属</option>
+                </select>
+              </div>
+            </div>
+
+            <OcrUploadBox
+              label="上传中华人民共和国居民户口簿照片"
+              tip="系统自动 OCR 比对公安常住人口常住登记卡直系亲属关系"
+              mockType="family_book"
+              @scanned="familyCertUploaded = true"
+            />
+
+            <div v-if="familyCertUploaded" class="p-2.5 rounded-xl bg-white text-xs text-emerald-700 font-bold border border-emerald-300 flex items-center justify-between">
+              <span>✓ 户口本比对一致 (常住人口登记卡直系亲属关系真实有效)</span>
+              <span class="text-[10px] text-slate-400 font-mono">310104-HK-982103</span>
             </div>
           </div>
         </div>
@@ -387,13 +455,17 @@
             </div>
             <div class="flex items-center justify-between pt-2">
               <span class="text-slate-300 font-sans">证三·行驶证核验:</span>
-              <span class="text-emerald-400 font-bold flex items-center gap-1" v-if="!isSpouseCar">
+              <span class="text-emerald-400 font-bold flex items-center gap-1" v-if="carRelationship === 'self'">
                 <span>{{ inputPlate }} (车主: {{ userStore.realName }})</span>
                 <span>✓ 完全一致</span>
               </span>
-              <span class="text-amber-300 font-bold flex items-center gap-1" v-else>
+              <span class="text-amber-300 font-bold flex items-center gap-1" v-else-if="carRelationship === 'spouse'">
                 <span>{{ inputPlate }} (车主: {{ spouseName }})</span>
                 <span>{{ marriageCertUploaded ? '✓ 夫妻共有认定' : '⚠️ 待传结婚证' }}</span>
+              </span>
+              <span class="text-indigo-300 font-bold flex items-center gap-1" v-else-if="carRelationship === 'family'">
+                <span>{{ inputPlate }} (车主: {{ familyMemberName }})</span>
+                <span>{{ familyCertUploaded ? '✓ 户口本直系亲属共有认定' : '⚠️ 待传户口本' }}</span>
               </span>
             </div>
           </div>
@@ -458,6 +530,36 @@
         </div>
       </div>
     </div>
+
+    <!-- 直系亲属/家人车切换弹窗引导 -->
+    <div v-if="showFamilyConfirmModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+      <div class="bg-white rounded-3xl max-w-sm w-full p-6 text-center space-y-4 shadow-2xl border border-slate-100">
+        <div class="w-14 h-14 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto text-2xl shadow-inner">
+          👨‍👩‍👧
+        </div>
+        <div>
+          <h3 class="text-base font-extrabold text-slate-900">申报直系亲属 / 家人车辆</h3>
+          <p class="text-xs text-slate-500 mt-2 leading-relaxed">
+            若所申报车辆为父母、子女等同住直系亲属所有，依据规定需补充核验居民户口簿，系统将自动核验常住人口直系亲属共有权。
+          </p>
+        </div>
+
+        <div class="flex items-center gap-2 pt-2">
+          <button
+            @click="showFamilyConfirmModal = false"
+            class="flex-1 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition"
+          >
+            取消
+          </button>
+          <button
+            @click="confirmFamilyMode"
+            class="flex-1 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition"
+          >
+            确认开启 (上传户口本)
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -489,10 +591,20 @@ const selectedProperty = ref('')
 // 车牌填报与行驶证逻辑
 const licenseScanned = ref(false)
 const inputPlate = ref('沪A·12345')
-const isSpouseCar = ref(false)
+const carRelationship = ref('self') // 'self' | 'spouse' | 'family'
+const isSpouseCar = computed(() => carRelationship.value === 'spouse')
+
+// 配偶车状态
 const spouseName = ref('李玉霞')
 const showSpouseConfirmModal = ref(false)
 const marriageCertUploaded = ref(false)
+
+// 家人车状态 (户口本)
+const familyMemberName = ref('张建国')
+const familyRelationType = ref('PARENT')
+const showFamilyConfirmModal = ref(false)
+const familyCertUploaded = ref(false)
+
 const submitting = ref(false)
 
 // 第二证完成判定: 完成产证上传/识别并锁定本小区产权
@@ -503,7 +615,8 @@ const isThreeCertValid = computed(() => {
   if (!idCardScanned.value || !faceMatched.value) return false
   if (!propertyVerified.value) return false
   if (!inputPlate.value || !inputPlate.value.trim()) return false
-  if (isSpouseCar.value && !marriageCertUploaded.value) return false
+  if (carRelationship.value === 'spouse' && !marriageCertUploaded.value) return false
+  if (carRelationship.value === 'family' && !familyCertUploaded.value) return false
   return true
 })
 
@@ -518,32 +631,41 @@ const handlePropertyScanned = () => {
 
 const handleLicenseScanned = () => {
   licenseScanned.value = true
-  if (!isSpouseCar.value) {
+  if (carRelationship.value === 'self') {
     inputPlate.value = '沪A·12345'
   }
 }
 
-const quickFillPlate = (plate, isSpouse) => {
+const quickFillPlate = (plate, type) => {
   inputPlate.value = plate
   licenseScanned.value = true
-  if (isSpouse) {
+  if (type === 'spouse') {
     showSpouseConfirmModal.value = true
+  } else if (type === 'family') {
+    showFamilyConfirmModal.value = true
   } else {
-    isSpouseCar.value = false
+    carRelationship.value = 'self'
   }
 }
 
-const handleCarTypeChange = (isSpouse) => {
-  if (isSpouse) {
+const handleCarTypeChange = (type) => {
+  if (type === 'spouse') {
     showSpouseConfirmModal.value = true
+  } else if (type === 'family') {
+    showFamilyConfirmModal.value = true
   } else {
-    isSpouseCar.value = false
+    carRelationship.value = 'self'
   }
 }
 
 const confirmSpouseMode = () => {
-  isSpouseCar.value = true
+  carRelationship.value = 'spouse'
   showSpouseConfirmModal.value = false
+}
+
+const confirmFamilyMode = () => {
+  carRelationship.value = 'family'
+  showFamilyConfirmModal.value = false
 }
 
 const handleSubmitApplication = async () => {
@@ -557,9 +679,11 @@ const handleSubmitApplication = async () => {
     const res = await api.post('/parking/apply', {
       property_no: selectedProperty.value,
       plate_no: inputPlate.value.trim().toUpperCase(),
-      is_spouse_car: isSpouseCar.value,
+      is_spouse_car: carRelationship.value === 'spouse',
+      car_relationship: carRelationship.value.toUpperCase(),
       property_cert_no: '沪(2022)徐字不动产权第019823号',
-      marriage_cert_no: isSpouseCar.value ? 'J310104-2022-0089' : null
+      marriage_cert_no: carRelationship.value === 'spouse' ? 'J310104-2022-0089' : null,
+      family_cert_no: carRelationship.value === 'family' ? '310104-HK-982103' : null
     })
     showToast(res.message || '三证合一核验完全通过！已成功进入排队队列', 'success')
     await userStore.fetchHomeData()

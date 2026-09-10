@@ -203,14 +203,21 @@ def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_use
 
     priority = 2 if (exist_house or exist_contract) else 1 # 家庭二车自动降权，严格排在一车之后
 
+    # 权属关系处理
+    car_rel = req.car_relationship or ("SPOUSE" if req.is_spouse_car else "SELF")
+    is_spouse = (car_rel == "SPOUSE") or req.is_spouse_car
+    rel_label = "配偶车(结婚证核验)" if car_rel == "SPOUSE" else ("家人车(户口本核验)" if car_rel == "FAMILY" else "本人名下")
+
     # 创建申请
     app = QueueApplication(
         user_id=user.id,
         community_id=user.community_id,
         property_no=req.property_no,
         plate_no=req.plate_no,
-        is_spouse_car=req.is_spouse_car,
-        marriage_cert_no=req.marriage_cert_no,
+        is_spouse_car=is_spouse,
+        marriage_cert_no=req.marriage_cert_no if is_spouse else None,
+        car_relationship=car_rel,
+        family_cert_no=req.family_cert_no if car_rel == "FAMILY" else None,
         priority_level=priority,
         status="WAITING",
         apply_time=datetime.utcnow()
@@ -225,13 +232,15 @@ def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_use
         community_id=user.community_id,
         user_id=user.id,
         event_type="APPLY",
-        summary=f"业主【{user.real_name}】提交车位申请(三证核验通过·{'家庭一车' if priority==1 else '家庭二车'})",
+        summary=f"业主【{user.real_name}】提交车位申请(三证核验通过·{rel_label}·{'家庭一车' if priority==1 else '家庭二车'})",
         payload={
             "property_no": req.property_no,
             "plate_no": req.plate_no,
-            "is_spouse": req.is_spouse_car,
+            "car_relationship": car_rel,
+            "is_spouse": is_spouse,
             "property_cert_no": req.property_cert_no,
-            "marriage_cert_no": req.marriage_cert_no,
+            "marriage_cert_no": req.marriage_cert_no if is_spouse else None,
+            "family_cert_no": req.family_cert_no if car_rel == "FAMILY" else None,
             "priority": priority
         }
     )

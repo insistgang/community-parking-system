@@ -62,6 +62,8 @@ class QueueApplication(Base):
     plate_no = Column(String(20), nullable=False) # 沪A·12345
     is_spouse_car = Column(Boolean, default=False)
     marriage_cert_no = Column(String(50), nullable=True) # 结婚证编号
+    car_relationship = Column(String(20), default="SELF") # SELF(本人), SPOUSE(配偶), FAMILY(直系亲属/家人)
+    family_cert_no = Column(String(50), nullable=True) # 户口本编号
     priority_level = Column(Integer, default=1) # 1: 家庭一车, 2: 家庭二车
     current_rank = Column(Integer, default=0) # 实时排位 (1, 2, 3...)
     status = Column(String(30), default="WAITING") 

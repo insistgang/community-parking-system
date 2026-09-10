@@ -24,7 +24,7 @@
           class="flex-1 py-2 rounded-lg transition"
           :class="tab === 'QUEUE' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-500 hover:text-slate-800'"
         >
-          全队列公示大盘
+          全队列公示
         </button>
         <button
           @click="tab = 'TIMELINE'"
@@ -40,7 +40,7 @@
         <div class="bg-blue-50/60 p-3 rounded-xl border border-blue-100 text-[11px] text-blue-800 flex items-start gap-2">
           <span>ℹ️</span>
           <p class="leading-relaxed">
-            公示声明：依据基层隐私合规准则，对姓名和手机号已做星号脱敏。申请时间毫秒级精确，确保排队次序公信力与绝对防插队。
+            公示声明：依据基层隐私合规准则，对姓名和手机号已做星号脱敏。申请时间秒级精确，确保排队次序公信力与绝对防插队。
           </p>
         </div>
 

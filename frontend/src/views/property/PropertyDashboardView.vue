@@ -375,6 +375,17 @@
               <span class="font-mono text-amber-300 font-bold">{{ todayStr }} ~ {{ calculatedDeliveryEndDate }}</span>
             </div>
 
+            <div>
+              <label class="block text-[11px] text-slate-300 font-bold mb-1.5">合同签署证明：</label>
+              <label class="flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border border-dashed border-amber-500/40 bg-slate-900/80 cursor-pointer hover:border-amber-400 transition">
+                <input type="file" accept="image/*,.pdf" class="hidden" @change="onPickDeliveryProof" />
+                <span class="text-[11px] truncate" :class="deliveryProofName ? 'text-amber-200 font-medium' : 'text-slate-500'">
+                  {{ deliveryProofName || '点击上传合同签署扫描件 / 照片' }}
+                </span>
+                <span class="text-[10px] text-amber-400 shrink-0">支持文件上传</span>
+              </label>
+            </div>
+
             <button
               @click="handleConfirmDelivery"
               :disabled="actionLoading"
@@ -405,6 +416,16 @@
                   :options="maintenanceReasonOptions"
                   :dark="true"
                 />
+              </div>
+              <div>
+                <label class="block text-[11px] text-slate-300 font-bold mb-1.5">证明：</label>
+                <label class="flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border border-dashed border-amber-500/40 bg-slate-900/80 cursor-pointer hover:border-amber-400 transition">
+                  <input type="file" accept="image/*,.pdf" class="hidden" @change="onPickMaintenanceProof" />
+                  <span class="text-[11px] truncate" :class="maintenanceProofName ? 'text-amber-200 font-medium' : 'text-slate-500'">
+                    {{ maintenanceProofName || '点击上传维修现场 / 报修凭证' }}
+                  </span>
+                  <span class="text-[10px] text-amber-400 shrink-0">支持文件上传</span>
+                </label>
               </div>
               <button
                 @click="handleToggleMaintenance('SET_MAINTENANCE')"
@@ -578,6 +599,19 @@ const quickMaintenanceSpaceOptions = computed(() => {
 })
 
 // 线下交付签约租期选项
+const deliveryProofName = ref('')
+const maintenanceProofName = ref('')
+
+const onPickDeliveryProof = (e) => {
+  const f = e.target.files && e.target.files[0]
+  deliveryProofName.value = f ? f.name : ''
+}
+
+const onPickMaintenanceProof = (e) => {
+  const f = e.target.files && e.target.files[0]
+  maintenanceProofName.value = f ? f.name : ''
+}
+
 const selectedDeliveryMonths = ref(6) // 默认半年
 const deliveryTerms = [
   { months: 6, label: '半年 (6个月)', desc: '180 天' },
@@ -662,6 +696,8 @@ const selectSpace = async (sp) => {
   selectedSpaceModal.value = true
   spaceArchive.value = null
   maintenanceReason.value = '地面沉降破损与路砖平整修补'
+  deliveryProofName.value = ''
+  maintenanceProofName.value = ''
   try {
     const res = await api.get(`/property/space-history/${sp.id}`)
     if (res.code === 200) spaceArchive.value = res.data
@@ -734,7 +770,8 @@ const handleConfirmDelivery = async () => {
     const res = await api.post('/property/confirm-delivery', {
       space_id: currentSpace.value.id,
       user_id: currentSpace.value.user_id,
-      months: selectedDeliveryMonths.value
+      months: selectedDeliveryMonths.value,
+      attachment_url: deliveryProofName.value || null
     })
     showToast(res.message || '交付成功，租约已生效！', 'success')
     selectedSpaceModal.value = false
@@ -762,7 +799,8 @@ const handleToggleMaintenance = async (action) => {
     const res = await api.post('/property/set-maintenance', {
       space_id: currentSpace.value.id,
       action,
-      reason: action === 'SET_MAINTENANCE' ? maintenanceReason.value : '检修验收合格恢复上线'
+      reason: action === 'SET_MAINTENANCE' ? maintenanceReason.value : '检修验收合格恢复上线',
+      attachment_url: action === 'SET_MAINTENANCE' ? (maintenanceProofName.value || null) : null
     })
     showToast(res.message || '操作成功', 'success')
     selectedSpaceModal.value = false

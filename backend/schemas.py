@@ -42,11 +42,13 @@ class MaintenanceRequest(BaseModel):
     action: str # SET_MAINTENANCE 或 RESTORE
     reason: Optional[str] = "地砖检修与设施保养"
     estimated_days: Optional[int] = 3
+    attachment_url: Optional[str] = None # 维修证明扫描件文件名 (不落盘原图)
 
 class ConfirmDeliveryRequest(BaseModel):
     space_id: int
     user_id: int
     months: Optional[int] = 6 # 签约周期，默认半年(6个月)，可选1/3/6/12等
+    attachment_url: Optional[str] = None # 合同签署证明扫描件文件名 (不落盘原图)
 
 
 class ForceTerminateRequest(BaseModel):

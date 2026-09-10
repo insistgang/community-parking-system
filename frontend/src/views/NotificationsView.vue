@@ -26,14 +26,14 @@
             <span v-else-if="item.type === 'RANK_CHANGE'" class="text-blue-600">🚀</span>
             <span v-else-if="item.type === 'EXPIRATION'" class="text-rose-600">⏰</span>
             <span v-else class="text-slate-600">📢</span>
-            <span class="text-slate-900">{{ item.title }}</span>
+            <span class="text-slate-900">{{ displayTitle(item) }}</span>
           </div>
 
           <span class="text-[10px] text-slate-400 font-mono">{{ item.created_at }}</span>
         </div>
 
         <p class="text-xs text-slate-600 leading-relaxed bg-white/70 p-2.5 rounded-xl border border-slate-100">
-          {{ item.content }}
+          {{ displayContent(item) }}
         </p>
 
         <!-- 关联快捷操作 -->
@@ -50,7 +50,7 @@
             @click="$router.push('/queue')"
             class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm transition active:scale-95 flex items-center gap-1"
           >
-            <span>查看顺位大盘 ➔</span>
+            <span>查看顺位 ➔</span>
           </button>
         </div>
       </div>
@@ -67,6 +67,21 @@ import { ref, onMounted } from 'vue'
 import api from '../api'
 
 const notifList = ref([])
+
+const displayTitle = (item) => {
+  if (item.type === 'RANK_CHANGE') {
+    return (item.title || '').replace('前移', '')
+  }
+  return item.title
+}
+
+const displayContent = (item) => {
+  if (item.type === 'RANK_CHANGE') {
+    const m = String(item.content || '').match(/第【(\d+)】/)
+    if (m) return `您的实时排位是第【${m[1]}】位`
+  }
+  return item.content
+}
 
 const loadNotifications = async () => {
   try {

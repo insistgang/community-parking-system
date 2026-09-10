@@ -196,7 +196,7 @@
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
             <span class="w-1.5 h-3.5 bg-blue-600 rounded-full"></span>
-            <span>小区车位宏观概况</span>
+            <span>小区车辆概况</span>
           </h3>
           <span class="text-[11px] text-slate-400">总车位 {{ overview?.total_spaces ?? 50 }} 个</span>
         </div>
@@ -221,7 +221,7 @@
         </div>
 
         <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-          <span>🔒 业主隐私安全：个人车位信息互不可见</span>
+          <span>🔒 业主隐私安全：个人车辆信息互不可见</span>
           <router-link to="/queue" class="text-blue-600 font-semibold hover:underline">
             查看排队情况 ➔
           </router-link>

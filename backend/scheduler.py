@@ -141,8 +141,8 @@ def trigger_recalculate_queue(db: Session, community_id: int):
         if old_rank != rank:
             app.current_rank = rank
             if old_rank > rank or old_rank == 0:
-                title = "候补首位通知" if rank == 1 else "排队顺位前移提醒"
-                content = "恭喜！您的排队顺位已升至候补首位，一旦有空闲车位释放将优先为您锁定！" if rank == 1 else f"由于前序车位释放，您的实时排位已升至第【{rank}】位！"
+                title = "候补首位通知" if rank == 1 else "排队顺位提醒"
+                content = f"您的实时排位是第【{rank}】位"
                 db.add(Notification(
                     user_id=app.user_id,
                     title=title,

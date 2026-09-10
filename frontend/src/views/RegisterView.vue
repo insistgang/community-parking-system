@@ -108,10 +108,6 @@
           </div>
         </div>
 
-        <p class="text-[11px] text-slate-400 leading-relaxed">
-          实人认证（身份证核验与人脸比对）将在申请车位时进行，注册阶段仅需填写账号资料。
-        </p>
-
         <div v-if="errorMsg" class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-xs font-medium">
           ⚠️ {{ errorMsg }}
         </div>

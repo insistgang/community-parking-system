@@ -207,7 +207,7 @@ def set_maintenance(req: MaintenanceRequest, admin: User = Depends(get_property_
         user_id=admin.id,
         event_type="MAINTENANCE" if req.action == "SET_MAINTENANCE" else "RESTORE",
         summary=event_summary,
-        payload={"space_no": sp.space_no, "action": req.action, "reason": req.reason, "operator": admin.real_name}
+        payload={"space_no": sp.space_no, "action": req.action, "reason": req.reason, "operator": admin.real_name, "attachment": req.attachment_url}
     )
 
     return ResponseModel(code=200, message=msg, data={"space_id": sp.id, "space_no": sp.space_no, "status": sp.status})
@@ -293,7 +293,8 @@ def confirm_delivery(req: ConfirmDeliveryRequest, admin: User = Depends(get_prop
             "term": term_label,
             "months": months,
             "start_date": str(today),
-            "end_date": str(contract.end_date)
+            "end_date": str(contract.end_date),
+            "attachment": req.attachment_url
         }
     )
 

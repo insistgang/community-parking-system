@@ -191,7 +191,7 @@
         </router-link>
       </div>
 
-      <!-- 小区车位宏观总览指标 (仅展示宏观统计数据，绝不暴露邻居姓名或门牌隐私) -->
+      <!-- 小区车辆概况指标 (仅展示统计数据，绝不暴露邻居姓名或门牌隐私) -->
       <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">

@@ -124,25 +124,45 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
 
         # 新小区同步生成 50 个空闲车位资产台账并上链，避免注册后无车位可申请
         init_community_spaces(db, community.id, 50)
+        trigger_desc = "物业管理员入驻" if req.role == "PROPERTY_ADMIN" else "首位业主注册"
+        summary = f"【{community.name}】车位资产台账随{trigger_desc}自动初始化 (50个空闲车位)"
         create_evidence_record(
             db=db,
             community_id=community.id,
             user_id=None,
             event_type="INIT",
-            summary=f"【{community.name}】车位资产台账随首位业主注册自动初始化 (50个空闲车位)",
+            summary=summary,
             payload={"total_spaces": 50, "community": community.name, "trigger": "AUTO_ON_REGISTER"}
         )
 
+    target_role = "PROPERTY_ADMIN" if req.role == "PROPERTY_ADMIN" else "OWNER"
     user = User(
         phone=req.phone,
         id_card=req.id_card,
         password_hash=hash_pwd(req.password),
         real_name=req.real_name,
-        role="OWNER",
+        role=target_role,
         community_id=community.id
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    return ResponseModel(code=200, message="注册成功，请前往登录")
+    token = f"token-{user.id}-{hash_pwd(user.phone)[:8]}"
+    return ResponseModel(
+        code=200, 
+        message="注册成功",
+        data={
+            "token": token,
+            "user": {
+                "id": user.id,
+                "phone": user.phone,
+                "real_name": user.real_name,
+                "role": user.role,
+                "community_id": user.community_id,
+                "community_name": community.name,
+                "district": community.district
+            }
+        }
+    )
+

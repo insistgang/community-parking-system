@@ -46,6 +46,12 @@ const routes = [
     meta: { public: true }
   },
   {
+    path: '/property/register',
+    name: 'PropertyRegister',
+    component: () => import('../views/property/PropertyRegisterView.vue'),
+    meta: { public: true }
+  },
+  {
     path: '/property/dashboard',
     name: 'PropertyDashboard',
     component: () => import('../views/property/PropertyDashboardView.vue'),

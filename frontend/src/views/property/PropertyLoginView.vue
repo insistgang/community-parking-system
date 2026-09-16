@@ -85,11 +85,13 @@
           </div>
         </div>
 
-        <div class="pt-1 flex items-center justify-between text-xs text-slate-400">
+        <div class="pt-3 border-t border-slate-700/60 flex items-center justify-between text-xs">
+          <router-link to="/property/register" class="text-purple-400 hover:text-purple-300 font-semibold underline flex items-center gap-1">
+            <span>✨ 注册新物业账号 / 入驻新小区</span>
+          </router-link>
           <router-link to="/login" class="text-slate-400 hover:text-white underline">
             切换为业主端 H5 登录
           </router-link>
-          <span class="text-[11px] text-slate-500">龙华新村 · 物业管理服务中心</span>
         </div>
       </div>
     </div>

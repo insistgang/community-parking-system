@@ -24,6 +24,9 @@ class RegisterRequest(BaseModel):
     id_card: str
     phone: str
     password: str
+    role: Optional[str] = "OWNER" # "OWNER" 或 "PROPERTY_ADMIN"
+    company_name: Optional[str] = None # 物业服务企业名称
+
 
 class ApplyParkingRequest(BaseModel):
     property_no: str

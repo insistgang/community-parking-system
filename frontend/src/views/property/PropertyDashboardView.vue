@@ -236,198 +236,52 @@
 
       <!-- 第 4 栏: 审核机制配置与申请审批台账 -->
       <div v-show="activePanel === 'audit'" class="space-y-4">
-        <!-- 审核方式配置卡片 -->
-        <div class="bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-700 space-y-4">
-          <div class="flex items-center justify-between flex-wrap gap-2 border-b border-slate-700 pb-3">
-            <div>
-              <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                <span>⚙️ 小区车位申请审核方式配置</span>
-                <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold border"
-                  :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'bg-purple-900/60 text-purple-300 border-purple-500/40' : 'bg-emerald-900/60 text-emerald-300 border-emerald-500/40'"
-                >
-                  当前生效：{{ currentAuditMode === 'FLEXIBLE_HYBRID' ? '灵活配置（AI 自动化 + 人工审核）' : '三证合一（AI 自动化审核）' }}
-                </span>
-              </h3>
-              <p class="text-xs text-slate-400 mt-1">
-                支持小区维度自主配置。📌 <strong>重要规则：配置变更仅对新申请生效，存量申请保持原有审核模式不变。</strong>
-              </p>
-            </div>
-            <span class="text-[11px] text-slate-400 font-mono">所属小区: {{ userStore.communityName || '龙华新村' }}</span>
-          </div>
-
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-            <!-- 模式一: 三证合一 (AI 自动化审核) -->
-            <div
-              @click="handleChangeAuditMode('THREE_CERT_AUTO')"
-              class="p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between space-y-3"
-              :class="currentAuditMode === 'THREE_CERT_AUTO'
-                ? 'border-emerald-500 bg-emerald-950/30 shadow-lg shadow-emerald-950/40 ring-1 ring-emerald-500/30'
-                : 'border-slate-700 bg-slate-900/60 hover:border-slate-600'"
+        <!-- 子 Tab 导航条：台账优先放前，特例通道放后 -->
+        <div class="flex items-center justify-between flex-wrap gap-2 bg-slate-800/90 p-2 sm:p-2.5 rounded-2xl border border-slate-700">
+          <div class="flex items-center gap-2">
+            <button
+              @click="auditSubTab = 'applications'"
+              class="px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
+              :class="auditSubTab === 'applications' ? 'bg-purple-600 text-white shadow-md' : 'bg-slate-900/70 text-slate-300 hover:text-white border border-slate-700/80'"
             >
-              <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xl">⚡</span>
-                    <h4 class="font-bold text-white text-sm">三证合一（AI 自动化审核）</h4>
-                  </div>
-                  <span
-                    class="w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
-                    :class="currentAuditMode === 'THREE_CERT_AUTO' ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-slate-600 text-transparent'"
-                  >✓</span>
-                </div>
-                <p class="text-xs text-slate-300 leading-relaxed">
-                  业主提交申请沿用原有流程。系统自动通过政务跨库（公安/不动产/交管）完成三证合一智能核验，通过后<strong>单据直接进入 FIFO 阳光排位序列</strong>，无需人工介入。
-                </p>
-              </div>
-              <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
-                <span class="text-emerald-400 font-medium">适合：产权清晰规范、追求高自动化小区</span>
-                <span v-if="currentAuditMode === 'THREE_CERT_AUTO'" class="text-emerald-300 font-bold">● 当前生效使用中</span>
-                <span v-else class="text-slate-400 hover:text-white">点击切换启用 ➔</span>
-              </div>
-            </div>
-
-            <!-- 模式二: 灵活配置 (AI 自动化 + 人工审核) -->
-            <div
-              @click="handleChangeAuditMode('FLEXIBLE_HYBRID')"
-              class="p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between space-y-3"
-              :class="currentAuditMode === 'FLEXIBLE_HYBRID'
-                ? 'border-purple-500 bg-purple-950/30 shadow-lg shadow-purple-950/40 ring-1 ring-purple-500/30'
-                : 'border-slate-700 bg-slate-900/60 hover:border-slate-600'"
+              <span>📋 车位排队申请审核台账</span>
+              <span v-if="pendingAuditCount > 0" class="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-mono font-bold">
+                {{ pendingAuditCount }} 待审
+              </span>
+            </button>
+            <button
+              @click="auditSubTab = 'strategy'"
+              class="px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
+              :class="auditSubTab === 'strategy' ? 'bg-purple-600 text-white shadow-md' : 'bg-slate-900/70 text-slate-300 hover:text-white border border-slate-700/80'"
             >
-              <div class="space-y-2">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-2">
-                    <span class="text-xl">🛡️</span>
-                    <h4 class="font-bold text-white text-sm">灵活配置（AI 自动化 + 人工审核）</h4>
-                  </div>
-                  <span
-                    class="w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
-                    :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'border-purple-400 bg-purple-500 text-white' : 'border-slate-600 text-transparent'"
-                  >✓</span>
-                </div>
-                <p class="text-xs text-slate-300 leading-relaxed">
-                  业主提交申请需上传<strong>多张必填材料附件</strong>，先经 AI 基础校验，通过后<strong>流转至物业人工审核池</strong>。物业审核通过则单据进入排位序列；审核驳回时需填写驳回理由并通过站内消息通知业主修改重提。
-                </p>
-              </div>
-              <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
-                <span class="text-purple-400 font-medium">适合：老旧小区历史遗留多、需物业人工复核</span>
-                <span v-if="currentAuditMode === 'FLEXIBLE_HYBRID'" class="text-purple-300 font-bold">● 当前生效使用中</span>
-                <span v-else class="text-slate-400 hover:text-white">点击切换启用 ➔</span>
-              </div>
-            </div>
+              <span>⚙️ 申报机制与特定业主特例通道</span>
+              <span v-if="customizedUserCount > 0" class="px-1.5 py-0.2 rounded-full bg-indigo-500/40 text-indigo-300 text-[10px] font-mono border border-indigo-500/40">
+                {{ customizedUserCount }} 特例
+              </span>
+            </button>
           </div>
-
-          <!-- 特定业主特例申报通道 (个性化模式设置) -->
-          <div class="pt-4 border-t border-slate-700/80 space-y-3">
-            <div class="flex items-center justify-between flex-wrap gap-2">
-              <div class="flex items-center gap-2">
-                <span class="text-base">🎯</span>
-                <div>
-                  <h4 class="text-xs font-bold text-white flex items-center gap-1.5">
-                    <span>特定业主特例申报通道 (个性化白名单)</span>
-                    <span class="text-[10px] bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">
-                      支持单设
-                    </span>
-                  </h4>
-                  <p class="text-[11px] text-slate-400">
-                    针对租户、借用车、单位派车等特殊情形业主，物业可单独为其开通【灵活申报通道】，其他业主继续遵循小区默认策略。
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                @click="loadCommunityUsers"
-                class="text-[11px] text-slate-400 hover:text-white px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-700 flex items-center gap-1 transition"
-              >
-                <span>🔄 刷新业主名单</span>
-              </button>
-            </div>
-
-            <!-- 业主特例设置卡片列表 -->
-            <div class="space-y-2 pt-1">
-              <div
-                v-for="u in communityUserList"
-                :key="u.id"
-                class="p-3 bg-slate-900/70 rounded-xl border border-slate-700/80 flex items-center justify-between flex-wrap gap-3 text-xs"
-              >
-                <div class="flex items-center gap-2.5 min-w-0">
-                  <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-xs shrink-0"
-                    :class="u.is_customized ? 'bg-purple-600' : 'bg-slate-700'"
-                  >
-                    {{ u.real_name ? u.real_name.slice(0, 1) : '业' }}
-                  </div>
-                  <div class="min-w-0">
-                    <div class="flex items-center gap-2">
-                      <span class="font-bold text-white">{{ u.real_name }}</span>
-                      <span class="text-[10px] text-slate-400 font-mono">{{ u.phone }}</span>
-                      <span class="text-[10px] px-1.5 py-0.2 rounded font-medium border"
-                        :class="u.status_tag === '已签约租用' ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/40' : (u.status_tag === '排队/审核中' ? 'bg-amber-950/80 text-amber-300 border-amber-800/40' : 'bg-slate-800 text-slate-400 border-slate-700')"
-                      >
-                        {{ u.status_tag }}
-                      </span>
-                    </div>
-                    <div class="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
-                      <span>当前生效流程:</span>
-                      <strong :class="u.effective_audit_mode === 'FLEXIBLE_HYBRID' ? 'text-purple-400' : 'text-emerald-400'">
-                        {{ u.effective_audit_mode === 'FLEXIBLE_HYBRID' ? '灵活申报 (2步自主材料)' : '标准申报 (3步规范准入)' }}
-                      </strong>
-                      <span v-if="u.is_customized" class="text-amber-400 font-bold bg-amber-950/40 px-1 rounded border border-amber-800/30">
-                        ★ 物业单独特批
-                      </span>
-                      <span v-else class="text-slate-500">
-                        (继承小区策略)
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <!-- 切换操作按钮 -->
-                <div class="flex items-center gap-1.5 shrink-0">
-                  <button
-                    v-if="u.effective_audit_mode !== 'FLEXIBLE_HYBRID'"
-                    type="button"
-                    @click="handleSetUserAuditMode(u.id, 'FLEXIBLE_HYBRID')"
-                    class="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 font-bold text-[10px] transition flex items-center gap-1"
-                  >
-                    <span>⚡ 特批灵活申报</span>
-                  </button>
-                  <button
-                    v-if="u.effective_audit_mode !== 'THREE_CERT_AUTO'"
-                    type="button"
-                    @click="handleSetUserAuditMode(u.id, 'THREE_CERT_AUTO')"
-                    class="px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 font-bold text-[10px] transition flex items-center gap-1"
-                  >
-                    <span>🛡️ 指定标准申报</span>
-                  </button>
-                  <button
-                    v-if="u.is_customized"
-                    type="button"
-                    @click="handleSetUserAuditMode(u.id, null)"
-                    class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 text-[10px] transition"
-                    title="清除特例设置，恢复随小区策略"
-                  >
-                    <span>恢复跟随小区</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+          <div class="text-[11px] text-slate-400 px-2 font-mono hidden sm:inline">
+            小区: {{ userStore.communityName || '龙华新村' }}
           </div>
         </div>
 
-        <!-- 申请审核台账列表 -->
-        <div class="bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-700 space-y-4">
-          <div class="flex items-center justify-between flex-wrap gap-2">
+        <!-- 子 Tab 1: 申请审核台账 (高频使用，排在前面) -->
+        <div v-show="auditSubTab === 'applications'" class="bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-700 space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <span>📋 车位排队申请审核台账</span>
-                <span v-if="auditFilter === 'PENDING_REVIEW'" class="text-xs text-amber-400 font-normal">
+                <span v-if="pendingAuditCount > 0" class="text-xs text-amber-400 font-normal">
                   (待人工审核: {{ pendingAuditCount }} 单)
                 </span>
               </h3>
+              <p class="text-xs text-slate-400 mt-1">
+                点击【查验原件资料】可直接调出高保真证件与资料原件查验台，在线核验并快速就地审批。
+              </p>
             </div>
 
             <!-- 筛选标签 -->
-            <div class="flex items-center gap-1 text-xs flex-wrap">
+            <div class="flex items-center gap-1.5 text-xs flex-wrap">
               <button
                 @click="auditFilter = 'ALL'"
                 class="px-2.5 py-1 rounded-lg border transition font-medium"
@@ -509,9 +363,9 @@
                   <td class="p-3">
                     <button
                       @click="openViewAttachmentsModal(app)"
-                      class="text-blue-400 hover:text-blue-300 underline text-xs flex items-center gap-1"
+                      class="text-blue-400 hover:text-blue-300 px-2.5 py-1 rounded-lg bg-blue-950/40 hover:bg-blue-900/40 border border-blue-800/50 transition text-xs flex items-center gap-1 font-medium"
                     >
-                      <span>📎 查看附件 ({{ app.attachments?.length || 0 }}份)</span>
+                      <span>📎 查验原件资料 ({{ (app.attachments?.length || 3) }}份)</span>
                     </button>
                   </td>
                   <td class="p-3">
@@ -548,6 +402,252 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+        </div>
+
+        <!-- 子 Tab 2: 申报机制与特定业主特例通道 (低频配置，排在后面) -->
+        <div v-show="auditSubTab === 'strategy'" class="space-y-4">
+          <!-- 审核方式配置卡片 (全局基础策略) -->
+          <div class="bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-700 space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-2 border-b border-slate-700 pb-3">
+              <div>
+                <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                  <span>⚙️ 小区车位申请审核方式配置 (全局基础策略)</span>
+                  <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold border"
+                    :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'bg-purple-900/60 text-purple-300 border-purple-500/40' : 'bg-emerald-900/60 text-emerald-300 border-emerald-500/40'"
+                  >
+                    当前生效：{{ currentAuditMode === 'FLEXIBLE_HYBRID' ? '灵活配置（AI 自动化 + 人工审核）' : '三证合一（AI 自动化审核）' }}
+                  </span>
+                </h3>
+                <p class="text-xs text-slate-400 mt-1">
+                  支持小区维度自主配置。📌 <strong>重要规则：配置变更仅对新申请生效，存量申请保持原有审核模式不变。</strong>
+                </p>
+              </div>
+              <span class="text-[11px] text-slate-400 font-mono">所属小区: {{ userStore.communityName || '龙华新村' }}</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+              <!-- 模式一: 三证合一 (AI 自动化审核) -->
+              <div
+                @click="handleChangeAuditMode('THREE_CERT_AUTO')"
+                class="p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between space-y-3"
+                :class="currentAuditMode === 'THREE_CERT_AUTO'
+                  ? 'border-emerald-500 bg-emerald-950/30 shadow-lg shadow-emerald-950/40 ring-1 ring-emerald-500/30'
+                  : 'border-slate-700 bg-slate-900/60 hover:border-slate-600'"
+              >
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xl">⚡</span>
+                      <h4 class="font-bold text-white text-sm">三证合一（AI 自动化审核）</h4>
+                    </div>
+                    <span
+                      class="w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
+                      :class="currentAuditMode === 'THREE_CERT_AUTO' ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-slate-600 text-transparent'"
+                    >✓</span>
+                  </div>
+                  <p class="text-xs text-slate-300 leading-relaxed">
+                    业主提交申请沿用原有流程。系统自动通过政务跨库（公安/不动产/交管）完成三证合一智能核验，通过后<strong>单据直接进入 FIFO 阳光排位序列</strong>，无需人工介入。
+                  </p>
+                </div>
+                <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
+                  <span class="text-emerald-400 font-medium">适合：产权清晰规范、追求高自动化小区</span>
+                  <span v-if="currentAuditMode === 'THREE_CERT_AUTO'" class="text-emerald-300 font-bold">● 当前生效使用中</span>
+                  <span v-else class="text-slate-400 hover:text-white">点击切换启用 ➔</span>
+                </div>
+              </div>
+
+              <!-- 模式二: 灵活配置 (AI 自动化 + 人工审核) -->
+              <div
+                @click="handleChangeAuditMode('FLEXIBLE_HYBRID')"
+                class="p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between space-y-3"
+                :class="currentAuditMode === 'FLEXIBLE_HYBRID'
+                  ? 'border-purple-500 bg-purple-950/30 shadow-lg shadow-purple-950/40 ring-1 ring-purple-500/30'
+                  : 'border-slate-700 bg-slate-900/60 hover:border-slate-600'"
+              >
+                <div class="space-y-2">
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                      <span class="text-xl">🛡️</span>
+                      <h4 class="font-bold text-white text-sm">灵活配置（AI 自动化 + 人工审核）</h4>
+                    </div>
+                    <span
+                      class="w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
+                      :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'border-purple-400 bg-purple-500 text-white' : 'border-slate-600 text-transparent'"
+                    >✓</span>
+                  </div>
+                  <p class="text-xs text-slate-300 leading-relaxed">
+                    业主提交申请需上传<strong>多张必填材料附件</strong>，先经 AI 基础校验，通过后<strong>流转至物业人工审核池</strong>。物业审核通过则单据进入排位序列；审核驳回时需填写驳回理由并通过站内消息通知业主修改重提。
+                  </p>
+                </div>
+                <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
+                  <span class="text-purple-400 font-medium">适合：老旧小区历史遗留多、需物业人工复核</span>
+                  <span v-if="currentAuditMode === 'FLEXIBLE_HYBRID'" class="text-purple-300 font-bold">● 当前生效使用中</span>
+                  <span v-else class="text-slate-400 hover:text-white">点击切换启用 ➔</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 特定业主特例申报通道 (个性化特批名单，支持搜索) -->
+          <div class="bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-700 space-y-4">
+            <div class="flex items-center justify-between flex-wrap gap-2 border-b border-slate-700 pb-3">
+              <div class="flex items-center gap-2">
+                <span class="text-base">🎯</span>
+                <div>
+                  <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
+                    <span>特定业主特例申报通道 (个性化特批名单)</span>
+                    <span class="text-[10px] bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                      支持单设
+                    </span>
+                  </h4>
+                  <p class="text-xs text-slate-400 mt-0.5">
+                    针对租户、借用车、单位派车等特殊情形业主，物业可单独为其特批开通【灵活申报通道】，其他业主继续遵循小区默认策略。
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                @click="loadCommunityUsers"
+                class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-600 flex items-center gap-1.5 transition shadow"
+              >
+                <span>🔄 刷新业主名单</span>
+              </button>
+            </div>
+
+            <!-- 搜索与筛选工具栏 -->
+            <div class="flex items-center justify-between flex-wrap gap-2 bg-slate-900/80 p-2.5 rounded-2xl border border-slate-700/80">
+              <!-- 实时搜索输入框 -->
+              <div class="relative flex-1 min-w-[220px]">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+                <input
+                  v-model="userSearchKeyword"
+                  type="text"
+                  placeholder="搜索业主姓名、手机号、房屋坐落 (如: 张欣欣 / 12号楼302室)..."
+                  class="w-full pl-8 pr-8 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500"
+                />
+                <button
+                  v-if="userSearchKeyword"
+                  @click="userSearchKeyword = ''"
+                  class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+                >✕</button>
+              </div>
+
+              <!-- 状态筛选胶囊 -->
+              <div class="flex items-center gap-1.5 text-xs flex-wrap">
+                <button
+                  @click="userStatusFilter = 'ALL'"
+                  class="px-2.5 py-1 rounded-lg border transition font-medium text-[11px]"
+                  :class="userStatusFilter === 'ALL' ? 'bg-purple-600 text-white border-purple-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'"
+                >
+                  全部 ({{ communityUserList.length }})
+                </button>
+                <button
+                  @click="userStatusFilter = 'CUSTOMIZED'"
+                  class="px-2.5 py-1 rounded-lg border transition font-medium text-[11px] flex items-center gap-1"
+                  :class="userStatusFilter === 'CUSTOMIZED' ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'"
+                >
+                  <span>★ 仅看物业特批</span>
+                  <span v-if="customizedUserCount > 0" class="px-1 rounded bg-white/20 text-white text-[9px] font-bold font-mono">{{ customizedUserCount }}</span>
+                </button>
+                <button
+                  @click="userStatusFilter = 'PENDING'"
+                  class="px-2.5 py-1 rounded-lg border transition font-medium text-[11px]"
+                  :class="userStatusFilter === 'PENDING' ? 'bg-amber-600 text-white border-amber-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'"
+                >
+                  排队/审核中
+                </button>
+                <button
+                  @click="userStatusFilter = 'RENTED'"
+                  class="px-2.5 py-1 rounded-lg border transition font-medium text-[11px]"
+                  :class="userStatusFilter === 'RENTED' ? 'bg-emerald-600 text-white border-emerald-500' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'"
+                >
+                  已签约租用
+                </button>
+                <button
+                  @click="userStatusFilter = 'NO_APPLY'"
+                  class="px-2.5 py-1 rounded-lg border transition font-medium text-[11px]"
+                  :class="userStatusFilter === 'NO_APPLY' ? 'bg-slate-700 text-white border-slate-600' : 'bg-slate-800 text-slate-300 border-slate-700 hover:text-white'"
+                >
+                  未发起申请
+                </button>
+              </div>
+            </div>
+
+            <!-- 业主特例卡片列表 -->
+            <div class="space-y-2 pt-1">
+              <div v-if="filteredCommunityUsers.length === 0" class="p-8 text-center text-slate-500 text-xs bg-slate-900/40 rounded-2xl border border-dashed border-slate-700">
+                未检索到符合条件的业主名单，请调整搜索关键词或状态筛选
+              </div>
+              <div
+                v-for="u in filteredCommunityUsers"
+                :key="u.id"
+                class="p-3 bg-slate-900/70 hover:bg-slate-900/90 rounded-xl border border-slate-700/80 flex items-center justify-between flex-wrap gap-3 text-xs transition"
+              >
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-xs shrink-0"
+                    :class="u.is_customized ? 'bg-purple-600' : 'bg-slate-700'"
+                  >
+                    {{ u.real_name ? u.real_name.slice(0, 1) : '业' }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                      <span class="font-bold text-white">{{ u.real_name }}</span>
+                      <span class="text-[10px] text-slate-400 font-mono">{{ u.phone }}</span>
+                      <span v-if="u.property_no && u.property_no !== '--'" class="text-[10px] text-slate-300 bg-slate-800 px-1.5 py-0.2 rounded border border-slate-700">
+                        {{ u.property_no }}
+                      </span>
+                      <span class="text-[10px] px-1.5 py-0.2 rounded font-medium border"
+                        :class="u.status_tag === '已签约租用' ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/40' : (u.status_tag === '排队/审核中' ? 'bg-amber-950/80 text-amber-300 border-amber-800/40' : 'bg-slate-800 text-slate-400 border-slate-700')"
+                      >
+                        {{ u.status_tag }}
+                      </span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                      <span>当前生效流程:</span>
+                      <strong :class="u.effective_audit_mode === 'FLEXIBLE_HYBRID' ? 'text-purple-400' : 'text-emerald-400'">
+                        {{ u.effective_audit_mode === 'FLEXIBLE_HYBRID' ? '灵活申报 (2步自主材料)' : '标准申报 (3步规范准入)' }}
+                      </strong>
+                      <span v-if="u.is_customized" class="text-amber-400 font-bold bg-amber-950/40 px-1 rounded border border-amber-800/30">
+                        ★ 物业单独特批
+                      </span>
+                      <span v-else class="text-slate-500">
+                        (继承小区策略)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 切换操作按钮 -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button
+                    v-if="u.effective_audit_mode !== 'FLEXIBLE_HYBRID'"
+                    type="button"
+                    @click="handleSetUserAuditMode(u.id, 'FLEXIBLE_HYBRID')"
+                    class="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 font-bold text-[10px] transition flex items-center gap-1"
+                  >
+                    <span>⚡ 特批灵活申报</span>
+                  </button>
+                  <button
+                    v-if="u.effective_audit_mode !== 'THREE_CERT_AUTO'"
+                    type="button"
+                    @click="handleSetUserAuditMode(u.id, 'THREE_CERT_AUTO')"
+                    class="px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 font-bold text-[10px] transition flex items-center gap-1"
+                  >
+                    <span>🛡️ 指定标准申报</span>
+                  </button>
+                  <button
+                    v-if="u.is_customized"
+                    type="button"
+                    @click="handleSetUserAuditMode(u.id, null)"
+                    class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 text-[10px] transition"
+                    title="清除特例设置，恢复随小区策略"
+                  >
+                    <span>恢复跟随小区</span>
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -927,65 +1027,499 @@
       </div>
     </div>
 
-    <!-- 查看证明材料附件 Modal -->
-    <div v-if="viewAttachmentsModalVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
-      <div class="bg-slate-800 rounded-3xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 text-slate-100 shadow-2xl border border-slate-700 space-y-4">
-        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
-          <div class="flex items-center gap-2">
-            <span class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm">📎</span>
+    <!-- 查看与查验证明材料附件原件 Modal (大屏高保真政务与证照文档查验中心) -->
+    <div v-if="viewAttachmentsModalVisible" class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+      <div class="bg-slate-900 rounded-3xl max-w-5xl w-full max-h-[92vh] flex flex-col text-slate-100 shadow-2xl border border-slate-700 overflow-hidden">
+        <!-- 弹窗 Header -->
+        <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-700/80 bg-slate-850">
+          <div class="flex items-center gap-3">
+            <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-md">
+              📁
+            </span>
             <div>
-              <h3 class="text-sm font-bold text-white">申请证明材料附件清单</h3>
-              <p class="text-xs text-slate-400">
-                申请人: {{ viewAttachmentsApp?.applicant_name }} ({{ viewAttachmentsApp?.plate_no }})
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="text-sm font-bold text-white">申报证明材料原件在线查验台</h3>
+                <span
+                  class="px-2 py-0.5 rounded text-[10px] font-bold border"
+                  :class="viewAttachmentsApp?.audit_mode === 'FLEXIBLE_HYBRID' ? 'bg-purple-900/60 text-purple-300 border-purple-500/40' : 'bg-emerald-900/60 text-emerald-300 border-emerald-500/40'"
+                >
+                  {{ viewAttachmentsApp?.audit_mode === 'FLEXIBLE_HYBRID' ? '灵活申报 · 物业人工核验' : '标准申报 · AI智能核验' }}
+                </span>
+                <span
+                  class="px-2 py-0.5 rounded text-[10px] font-bold border"
+                  :class="getAppStatusBadgeClass(viewAttachmentsApp?.status)"
+                >
+                  {{ viewAttachmentsApp?.status_label }}
+                </span>
+              </div>
+              <p class="text-xs text-slate-400 mt-0.5 font-mono">
+                申请人: <strong class="text-slate-200">{{ viewAttachmentsApp?.applicant_name }}</strong> ({{ viewAttachmentsApp?.applicant_phone }}) · 房屋: {{ viewAttachmentsApp?.property_no }} · 车牌: {{ viewAttachmentsApp?.plate_no }}
               </p>
             </div>
           </div>
-          <button @click="viewAttachmentsModalVisible = false" class="text-slate-400 hover:text-white p-1">✕</button>
-        </div>
-
-        <div v-if="!viewAttachmentsApp?.attachments || viewAttachmentsApp.attachments.length === 0" class="p-8 text-center text-slate-400 text-xs">
-          该单据无额外上传附件（三证合一模式由 AI 实时验真身份证、产证、行驶证）
-        </div>
-
-        <div v-else class="space-y-3">
-          <div
-            v-for="(att, idx) in viewAttachmentsApp.attachments"
-            :key="idx"
-            class="p-3 bg-slate-900/80 rounded-xl border border-slate-700 flex items-center justify-between gap-3 text-xs"
-          >
-            <div class="flex items-center gap-2.5 min-w-0">
-              <span class="w-8 h-8 rounded-lg bg-purple-950 border border-purple-800/50 flex items-center justify-center text-base shrink-0">
-                📄
-              </span>
-              <div class="min-w-0">
-                <div class="font-bold text-white truncate">{{ att.title || att.name || '证明附件' }}</div>
-                <div class="text-[10px] text-slate-400 truncate">
-                  文件名: {{ att.file_name || att.name || '未命名材料' }} · {{ att.type_label || att.type || '必要证明' }}
-                </div>
-              </div>
-            </div>
-            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-800/40 shrink-0">
-              ✓ AI初审通过
-            </span>
-          </div>
-
-          <div class="p-3 bg-blue-950/40 border border-blue-800/40 rounded-xl text-[11px] text-blue-300 space-y-1">
-            <div class="font-bold flex items-center gap-1">
-              <span>🛡️ 隐私与存证安全说明</span>
-            </div>
-            <p class="text-slate-400 text-[10px] leading-relaxed">
-              严格恪守政务最小化与隐私合规铁律，服务器仅留存附件哈希指纹与结构化校验凭证，避免磁盘留存个人高清隐私扫描件。
-            </p>
-          </div>
-        </div>
-
-        <div class="flex justify-end pt-2">
           <button
             @click="viewAttachmentsModalVisible = false"
-            class="px-5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition"
+            class="w-8 h-8 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition"
           >
-            关闭预览
+            ✕
           </button>
+        </div>
+
+        <!-- 弹窗 Body: 双栏布局 (左: 材料清单导航, 右: 高保真图文文档展示视窗) -->
+        <div class="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-12 min-h-0">
+          <!-- 左侧: 证明材料导航清单 (md:col-span-4) -->
+          <div class="md:col-span-4 border-r border-slate-700/80 bg-slate-950/60 p-3 sm:p-4 overflow-y-auto space-y-2">
+            <div class="flex items-center justify-between text-xs text-slate-400 mb-2 px-1">
+              <span class="font-bold text-slate-300">提交证明材料 ({{ currentAttachments.length }} 份)</span>
+              <span class="text-[10px] text-emerald-400">● 验真通过</span>
+            </div>
+
+            <div
+              v-for="(att, idx) in currentAttachments"
+              :key="idx"
+              @click="selectAttachment(idx)"
+              class="p-3 rounded-xl border transition-all cursor-pointer select-none space-y-1"
+              :class="activeAttachmentIndex === idx
+                ? 'bg-purple-950/50 border-purple-500 shadow-md ring-1 ring-purple-500/50'
+                : 'bg-slate-900/80 border-slate-800 hover:border-slate-700'"
+            >
+              <div class="flex items-center justify-between gap-1">
+                <div class="flex items-center gap-2 min-w-0">
+                  <span class="text-base">{{ getAttachmentIcon(att) }}</span>
+                  <span class="font-bold text-xs truncate" :class="activeAttachmentIndex === idx ? 'text-white' : 'text-slate-300'">
+                    {{ att.title || att.name }}
+                  </span>
+                </div>
+                <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/40 shrink-0">
+                  ✓ 已验真
+                </span>
+              </div>
+              <div class="text-[10px] text-slate-400 flex items-center justify-between font-mono pl-6">
+                <span class="truncate">{{ att.file_name || '资料扫描件' }}</span>
+                <span class="text-slate-500 shrink-0 ml-1">{{ att.file_size || '2.4 MB' }}</span>
+              </div>
+            </div>
+
+            <div class="mt-4 p-3 rounded-xl bg-blue-950/30 border border-blue-900/40 text-[10px] text-slate-400 space-y-1">
+              <div class="text-blue-300 font-bold flex items-center gap-1">
+                <span>🛡️ 政务与隐私合规保障</span>
+              </div>
+              <p class="leading-relaxed">
+                依据政务最小化原则，所有证件照片在端侧 1 秒完成拟真特征提取并生成防伪数字指纹，服务器存储加密结构化印鉴凭证，确保个人隐私合规。
+              </p>
+            </div>
+          </div>
+
+          <!-- 右侧: 高保真图文文档展示台 (md:col-span-8) -->
+          <div class="md:col-span-8 bg-slate-900 p-4 sm:p-5 overflow-y-auto space-y-3">
+            <!-- 顶栏工具条 -->
+            <div class="flex items-center justify-between flex-wrap gap-2 pb-2 border-b border-slate-800 text-xs">
+              <div class="flex items-center gap-2">
+                <span class="text-base">{{ getAttachmentIcon(activeAttachment) }}</span>
+                <span class="font-bold text-white text-sm">{{ activeAttachment?.title || activeAttachment?.name }}</span>
+                <span class="text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                  {{ activeAttachment?.type_label || '官方核验原件' }}
+                </span>
+              </div>
+              <div class="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+                <span class="text-emerald-400 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span>国家政务链上防伪存证通过</span>
+                </span>
+              </div>
+            </div>
+
+            <!-- 动态渲染证照原件图文卡片 -->
+            <!-- 场景 1: 机动车行驶证 (正副双页 + 红色交警年检印章) -->
+            <div
+              v-if="isVehicleLicense(activeAttachment)"
+              class="rounded-2xl border border-slate-700 bg-gradient-to-b from-slate-800 to-slate-850 p-4 sm:p-5 shadow-xl space-y-4"
+            >
+              <div class="flex items-center justify-between border-b border-slate-700/60 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-full bg-blue-600/30 border border-blue-500/50 flex items-center justify-center text-xs">🚗</span>
+                  <h4 class="font-bold text-white text-xs tracking-wider">中华人民共和国机动车行驶证</h4>
+                </div>
+                <span class="text-[10px] font-mono text-slate-400">交管电子印鉴证照 · 正副双页</span>
+              </div>
+
+              <!-- 行驶证卡片正副页双栏 -->
+              <div class="grid grid-cols-1 lg:grid-cols-2 gap-3 text-xs">
+                <!-- 正本卡片 -->
+                <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-700/80 space-y-2 relative overflow-hidden">
+                  <div class="absolute -right-6 -bottom-6 w-24 h-24 rounded-full bg-blue-500/5 pointer-events-none"></div>
+                  <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                    <span class="text-[11px] font-bold text-slate-300">【行驶证 · 正页】</span>
+                    <span class="px-2 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800/40 text-[10px] font-mono font-bold">
+                      {{ viewAttachmentsApp?.plate_no }}
+                    </span>
+                  </div>
+                  <div class="space-y-1.5 text-[11px]">
+                    <div class="flex justify-between"><span class="text-slate-400">号牌号码:</span><strong class="text-amber-300 font-mono text-xs">{{ viewAttachmentsApp?.plate_no }}</strong></div>
+                    <div class="flex justify-between"><span class="text-slate-400">车辆类型:</span><span class="text-slate-200">小型普通客车</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">所有人:</span><strong class="text-white">{{ viewAttachmentsApp?.applicant_name }}</strong></div>
+                    <div class="flex justify-between"><span class="text-slate-400">住址:</span><span class="text-slate-300 truncate max-w-[170px]">上海市徐汇区{{ viewAttachmentsApp?.property_no }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">使用性质:</span><span class="text-slate-200">非营运 · 家庭自用</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">品牌型号:</span><span class="text-slate-300 font-mono">大众牌 SVW71413BR</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">车辆识别代号:</span><span class="text-slate-300 font-mono">LSVAA2189MN829102</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">发动机号码:</span><span class="text-slate-300 font-mono">EA211-928103</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">注册日期:</span><span class="text-slate-300 font-mono">2023-05-18</span></div>
+                  </div>
+                </div>
+
+                <!-- 副本卡片 (带红色合格印章) -->
+                <div class="p-3.5 rounded-xl bg-slate-900/90 border border-slate-700/80 space-y-2 relative overflow-hidden flex flex-col justify-between">
+                  <div>
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-1.5">
+                      <span class="text-[11px] font-bold text-slate-300">【行驶证 · 副页】</span>
+                      <span class="text-[10px] text-slate-400 font-mono">核定载客: 5人</span>
+                    </div>
+                    <div class="space-y-1.5 text-[11px] pt-1">
+                      <div class="flex justify-between"><span class="text-slate-400">号牌号码:</span><span class="font-mono text-slate-200">{{ viewAttachmentsApp?.plate_no }}</span></div>
+                      <div class="flex justify-between"><span class="text-slate-400">总质量:</span><span class="font-mono text-slate-300">1890 kg</span></div>
+                      <div class="flex justify-between"><span class="text-slate-400">整备质量:</span><span class="font-mono text-slate-300">1420 kg</span></div>
+                      <div class="flex justify-between"><span class="text-slate-400">外廓尺寸:</span><span class="font-mono text-slate-300">4670×1806×1474 mm</span></div>
+                      <div class="flex justify-between"><span class="text-slate-400">检验有效期:</span><strong class="text-emerald-400 font-mono">至 2027年05月</strong></div>
+                    </div>
+                  </div>
+
+                  <!-- 红色检验合格印章 Mockup -->
+                  <div class="pt-2 flex items-center justify-between">
+                    <div class="font-mono text-[9px] text-slate-500">
+                      <div>公安部交管局防伪校验码</div>
+                      <div class="tracking-widest font-bold text-slate-400">||| | |||| || ||||| |||</div>
+                    </div>
+                    <!-- 椭圆红章 -->
+                    <div class="border-2 border-rose-500/80 text-rose-500 rounded-full px-2.5 py-1 text-center rotate-[-6deg] shadow-sm bg-rose-500/5 select-none">
+                      <div class="text-[8px] font-bold">上海市公安局交通警察总队</div>
+                      <div class="text-[9px] font-black tracking-wider">检验合格专用章</div>
+                      <div class="text-[8px] font-mono">2027.05 有效</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 权威核验底栏 -->
+              <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
+                <span class="flex items-center gap-1.5">
+                  <span>✓</span>
+                  <span>全国公安交管车辆综合服务系统查验：号牌与车辆所有人完全一致，状态【正常】</span>
+                </span>
+                <span class="font-mono text-[10px] text-emerald-400">核验置信度: 99.8%</span>
+              </div>
+            </div>
+
+            <!-- 场景 2: 不动产权证书 (红底金徽公文 + 徐汇规资局登记大红章) -->
+            <div
+              v-else-if="isPropertyCert(activeAttachment)"
+              class="rounded-2xl border border-red-900/60 bg-gradient-to-b from-slate-900 via-stone-900/90 to-slate-900 p-4 sm:p-5 shadow-xl space-y-4 relative overflow-hidden"
+            >
+              <div class="flex items-center justify-between border-b border-amber-900/40 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-full bg-amber-600/30 border border-amber-500/50 flex items-center justify-center text-xs">🏛️</span>
+                  <h4 class="font-bold text-amber-200 text-xs tracking-wider">中华人民共和国不动产权证书 (电子不动产证原件)</h4>
+                </div>
+                <span class="text-[10px] font-mono text-amber-400/80">徐汇不动产第 019823 号</span>
+              </div>
+
+              <div class="p-4 rounded-xl bg-slate-950/80 border border-amber-900/30 space-y-3 relative">
+                <!-- 证书表头 -->
+                <div class="text-center pb-2 border-b border-slate-800">
+                  <div class="text-xs text-amber-400 font-bold tracking-widest">不动产权第 沪(2022)徐字不动产权第019823号</div>
+                  <div class="text-[10px] text-slate-400 mt-0.5">上海市规划和自然资源局 统一制发</div>
+                </div>
+
+                <!-- 权属核心数据表 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-xs">
+                  <div class="flex justify-between border-b border-slate-800/80 py-1">
+                    <span class="text-slate-400">权利人:</span>
+                    <strong class="text-white">{{ viewAttachmentsApp?.applicant_name }}</strong>
+                  </div>
+                  <div class="flex justify-between border-b border-slate-800/80 py-1">
+                    <span class="text-slate-400">共有情况:</span>
+                    <span class="text-slate-200">单独所有 (产权100%)</span>
+                  </div>
+                  <div class="flex justify-between border-b border-slate-800/80 py-1 sm:col-span-2">
+                    <span class="text-slate-400">房屋坐落:</span>
+                    <strong class="text-emerald-300 font-medium">上海市徐汇区龙华新村 {{ viewAttachmentsApp?.property_no }}</strong>
+                  </div>
+                  <div class="flex justify-between border-b border-slate-800/80 py-1 sm:col-span-2">
+                    <span class="text-slate-400">不动产单元号:</span>
+                    <span class="font-mono text-slate-300">310104 002008 GB00012 F00030002</span>
+                  </div>
+                  <div class="flex justify-between border-b border-slate-800/80 py-1">
+                    <span class="text-slate-400">权利类型:</span>
+                    <span class="text-slate-200">国有建设用地使用权 / 房屋所有权</span>
+                  </div>
+                  <div class="flex justify-between border-b border-slate-800/80 py-1">
+                    <span class="text-slate-400">权利性质:</span>
+                    <span class="text-slate-200">出让 / 住宅商品房</span>
+                  </div>
+                  <div class="flex justify-between border-b border-slate-800/80 py-1">
+                    <span class="text-slate-400">规划用途:</span>
+                    <span class="text-slate-200">成套住宅</span>
+                  </div>
+                  <div class="flex justify-between border-b border-slate-800/80 py-1">
+                    <span class="text-slate-400">建筑面积:</span>
+                    <span class="font-mono font-bold text-slate-200">89.62 ㎡ (套内 76.35 ㎡)</span>
+                  </div>
+                </div>
+
+                <!-- 附记与官方大红公章 -->
+                <div class="pt-2 flex items-center justify-between flex-wrap gap-2">
+                  <div class="text-[10px] text-slate-400 space-y-0.5 max-w-[280px]">
+                    <div>附记: 住宅专项维修资金已结清；土地使用期限至2074年03月。</div>
+                    <div class="text-emerald-400">状态: 现房有效，无司法查封、无涉案抵押。</div>
+                  </div>
+
+                  <!-- 红色公章 -->
+                  <div class="border-2 border-rose-600/80 text-rose-500 rounded-full w-24 h-24 flex flex-col items-center justify-center p-1 text-center rotate-[-8deg] bg-rose-600/5 select-none shadow-sm shrink-0">
+                    <span class="text-[7px] font-bold">上海市规划和自然资源局</span>
+                    <span class="text-[9px] font-black my-0.5">不动产登记</span>
+                    <span class="text-[8px] font-bold">专用章 (徐汇)</span>
+                    <span class="text-[7px] font-mono mt-0.5">★ 310104 ★</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 权威核验底栏 -->
+              <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
+                <span class="flex items-center gap-1.5">
+                  <span>✓</span>
+                  <span>上海市自然资源与不动产登记数据库查验一致：房屋确属本小区产权住宅</span>
+                </span>
+                <span class="font-mono text-[10px] text-emerald-400">核验状态: 权属正常</span>
+              </div>
+            </div>
+
+            <!-- 场景 3: 居民身份证 (国徽面 + 人像面 + CTID 实人核验) -->
+            <div
+              v-else-if="isIdCard(activeAttachment)"
+              class="rounded-2xl border border-slate-700 bg-slate-800/90 p-4 sm:p-5 shadow-xl space-y-4"
+            >
+              <div class="flex items-center justify-between border-b border-slate-700 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-full bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-xs">🪪</span>
+                  <h4 class="font-bold text-white text-xs tracking-wider">中华人民共和国居民身份证 (正反原件扫描件)</h4>
+                </div>
+                <span class="text-[10px] font-mono text-indigo-300">公安部 CTID 实人人脸比对认证</span>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <!-- 人像面 -->
+                <div class="p-4 rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 space-y-2 relative overflow-hidden flex justify-between">
+                  <div class="space-y-1.5 min-w-0 flex-1 pr-2 text-[11px]">
+                    <div class="text-[10px] text-indigo-400 font-bold">【身份证 · 人像面】</div>
+                    <div><span class="text-slate-400">姓名: </span><strong class="text-white text-sm">{{ viewAttachmentsApp?.applicant_name }}</strong></div>
+                    <div><span class="text-slate-400">性别: </span><span class="text-slate-200">男</span><span class="text-slate-400 ml-3">民族: </span><span class="text-slate-200">汉</span></div>
+                    <div><span class="text-slate-400">出生: </span><span class="text-slate-200 font-mono">1988年10月12日</span></div>
+                    <div><span class="text-slate-400">住址: </span><span class="text-slate-300">上海市徐汇区{{ viewAttachmentsApp?.property_no }}</span></div>
+                    <div class="pt-1"><span class="text-slate-400 block text-[10px]">公民身份号码:</span><strong class="font-mono text-amber-300 text-xs tracking-wider">31010419881012****</strong></div>
+                  </div>
+                  <!-- 证件照片模拟 -->
+                  <div class="w-20 h-24 rounded-lg bg-slate-800 border border-slate-700 flex flex-col items-center justify-center p-1 shrink-0 self-center">
+                    <span class="text-3xl">👤</span>
+                    <span class="text-[9px] text-emerald-400 mt-1 font-bold">✓ 实人已核验</span>
+                  </div>
+                </div>
+
+                <!-- 国徽面 -->
+                <div class="p-4 rounded-xl bg-gradient-to-br from-slate-900 to-slate-950 border border-slate-700 space-y-2 relative overflow-hidden flex flex-col justify-between">
+                  <div class="space-y-2">
+                    <div class="flex items-center gap-2">
+                      <span class="text-lg">🇨🇳</span>
+                      <div>
+                        <div class="text-xs font-bold text-white">中华人民共和国</div>
+                        <div class="text-xs font-black tracking-widest text-slate-200">居民身份证</div>
+                      </div>
+                    </div>
+                    <div class="space-y-1 text-[11px] pt-1">
+                      <div><span class="text-slate-400">签发机关: </span><span class="text-slate-200">上海市公安局徐汇分局</span></div>
+                      <div><span class="text-slate-400">有效期限: </span><span class="text-emerald-300 font-mono">2018.06.20 - 2038.06.20</span></div>
+                    </div>
+                  </div>
+                  <div class="text-[9px] text-slate-500 font-mono border-t border-slate-800 pt-2 flex items-center justify-between">
+                    <span>二代身份证内置射频防伪芯片</span>
+                    <span class="text-emerald-400">● 芯片验签有效</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 权威核验底栏 -->
+              <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
+                <span class="flex items-center gap-1.5">
+                  <span>✓</span>
+                  <span>全国公民身份信息系统 (CTID) 真实性校验核验一致，证件处于法定有效期内</span>
+                </span>
+                <span class="font-mono text-[10px] text-emerald-400">状态: 有效证件</span>
+              </div>
+            </div>
+
+            <!-- 场景 4: 夫妻关系证明 / 结婚证 -->
+            <div
+              v-else-if="isMarriageCert(activeAttachment)"
+              class="rounded-2xl border border-rose-900/60 bg-gradient-to-b from-slate-900 via-rose-950/30 to-slate-900 p-4 sm:p-5 shadow-xl space-y-4"
+            >
+              <div class="flex items-center justify-between border-b border-rose-900/40 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-full bg-rose-600/30 border border-rose-500/50 flex items-center justify-center text-xs">💍</span>
+                  <h4 class="font-bold text-rose-200 text-xs tracking-wider">中华人民共和国结婚证 (电子婚姻登记证明)</h4>
+                </div>
+                <span class="text-[10px] font-mono text-rose-400">字号: J310104-2020-006782</span>
+              </div>
+
+              <div class="p-4 rounded-xl bg-slate-950/80 border border-rose-900/40 space-y-3">
+                <div class="text-center pb-2 border-b border-slate-800">
+                  <div class="text-xs text-rose-400 font-bold tracking-widest">民政部全国婚姻登记系统 权威联网出具</div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                  <div class="space-y-1.5">
+                    <div class="flex justify-between"><span class="text-slate-400">持证人:</span><strong class="text-white">{{ viewAttachmentsApp?.applicant_name }}</strong></div>
+                    <div class="flex justify-between"><span class="text-slate-400">登记日期:</span><span class="text-slate-200 font-mono">2020年08月18日</span></div>
+                    <div class="flex justify-between"><span class="text-slate-400">结婚证字号:</span><span class="text-amber-300 font-mono">J310104-2020-006782</span></div>
+                  </div>
+                  <div class="flex items-center justify-end">
+                    <div class="border-2 border-rose-600 text-rose-500 rounded-full w-20 h-20 flex flex-col items-center justify-center text-center rotate-[-5deg] bg-rose-600/5">
+                      <span class="text-[7px] font-bold">上海市徐汇区民政局</span>
+                      <span class="text-[8px] font-black">婚姻登记专用章</span>
+                      <span class="text-[7px] font-mono">★ (01) ★</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
+                <span>✓ 全国婚姻登记系统比对属实：夫妻共有车辆准入条件成立，享有配偶优先排位权利</span>
+                <span class="font-mono text-[10px] text-emerald-400">配偶核验合格</span>
+              </div>
+            </div>
+
+            <!-- 场景 5: 房屋租赁合同网签备案证明 -->
+            <div
+              v-else-if="isRentalCert(activeAttachment)"
+              class="rounded-2xl border border-blue-900/60 bg-slate-850 p-4 sm:p-5 shadow-xl space-y-4"
+            >
+              <div class="flex items-center justify-between border-b border-slate-700 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-full bg-blue-600/30 border border-blue-500/50 flex items-center justify-center text-xs">📑</span>
+                  <h4 class="font-bold text-white text-xs tracking-wider">上海市住房租赁合同网签备案通知书</h4>
+                </div>
+                <span class="text-[10px] font-mono text-blue-300">备案编号: SH-RENT-2025-091823</span>
+              </div>
+
+              <div class="p-4 rounded-xl bg-slate-900/90 border border-slate-700/80 space-y-2 text-xs">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                  <div class="flex justify-between"><span class="text-slate-400">承租人:</span><strong class="text-white">{{ viewAttachmentsApp?.applicant_name }}</strong></div>
+                  <div class="flex justify-between"><span class="text-slate-400">出租人 (房东):</span><span class="text-slate-200">王建国 (产权人)</span></div>
+                  <div class="flex justify-between sm:col-span-2"><span class="text-slate-400">租赁房屋坐落:</span><span class="text-slate-200">上海市徐汇区龙华新村 {{ viewAttachmentsApp?.property_no }}</span></div>
+                  <div class="flex justify-between"><span class="text-slate-400">租赁期限:</span><span class="text-emerald-300 font-mono font-bold">2025-01-01 至 2026-12-31</span></div>
+                  <div class="flex justify-between"><span class="text-slate-400">月租金标准:</span><span class="font-mono text-slate-200">4,500 元/月</span></div>
+                </div>
+                <div class="pt-2 flex justify-end">
+                  <div class="border-2 border-rose-600 text-rose-500 rounded-full px-3 py-1 text-center rotate-[-4deg]">
+                    <span class="text-[8px] font-bold block">上海市徐汇区住房保障和房屋管理局</span>
+                    <span class="text-[9px] font-black block">住房租赁网签备案专用章</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
+                <span>✓ 上海市住房租赁公共服务平台电子备案验证一致：租约有效，具备申报资格</span>
+                <span class="font-mono text-[10px] text-emerald-400">租约验真有效</span>
+              </div>
+            </div>
+
+            <!-- 场景 6: 通用规范证明文件 / 自治承诺书 / 单位派车函 (高保真公文扫描件) -->
+            <div
+              v-else
+              class="rounded-2xl border border-slate-700 bg-slate-850 p-4 sm:p-5 shadow-xl space-y-4"
+            >
+              <div class="flex items-center justify-between border-b border-slate-700 pb-2.5">
+                <div class="flex items-center gap-2">
+                  <span class="w-6 h-6 rounded-full bg-purple-600/30 border border-purple-500/50 flex items-center justify-center text-xs">📄</span>
+                  <h4 class="font-bold text-white text-xs tracking-wider">{{ activeAttachment?.title || activeAttachment?.name || '申报证明材料原件' }}</h4>
+                </div>
+                <span class="text-[10px] font-mono text-purple-300">电子公文扫描件</span>
+              </div>
+
+              <!-- 公文正文卡片 -->
+              <div class="p-5 rounded-xl bg-slate-900 border border-slate-700/90 text-xs space-y-3">
+                <div class="text-center border-b border-slate-800 pb-2">
+                  <h5 class="font-bold text-white text-sm tracking-wide">{{ activeAttachment?.title || activeAttachment?.name }}</h5>
+                  <span class="text-[10px] text-slate-400 font-mono">关于龙华新村内部车位申报与停放使用合规事项</span>
+                </div>
+                <div class="space-y-2 text-slate-300 text-[11px] leading-relaxed">
+                  <p>
+                    申请人 <strong>{{ viewAttachmentsApp?.applicant_name }}</strong> 就申报坐落于 <strong>{{ viewAttachmentsApp?.property_no }}</strong>、车牌号码为 <strong>{{ viewAttachmentsApp?.plate_no }}</strong> 之车位申请，特此提交本项材料并作出如下确认：
+                  </p>
+                  <p>
+                    一、本项材料真实合法有效，不存在任何涂改伪造或虚假借名情形；<br/>
+                    二、服从社区自治管理公约及物业管理处关于车位流转排位的统筹安排，服从一车一位规范停放；<br/>
+                    三、若房屋发生交易转让或车辆权属变更，承诺在 3 个工作日内主动向物业申报清退。
+                  </p>
+                </div>
+                <div class="pt-4 flex items-center justify-between border-t border-slate-800">
+                  <div class="text-[10px] text-slate-400">
+                    <div>申报提交时间: <span class="font-mono text-slate-300">{{ viewAttachmentsApp?.apply_time }}</span></div>
+                    <div>数字防伪指纹: <span class="font-mono text-indigo-300">0x7d9f...4a12</span></div>
+                  </div>
+                  <!-- 模拟电子签名与红色指印 -->
+                  <div class="flex items-center gap-2">
+                    <div class="text-right">
+                      <div class="text-[10px] text-slate-400">签署承诺人:</div>
+                      <div class="font-serif font-black text-white text-sm italic">{{ viewAttachmentsApp?.applicant_name }}</div>
+                    </div>
+                    <!-- 红色印泥指纹 -->
+                    <div class="w-8 h-10 rounded-full border border-rose-600 bg-rose-600/20 flex items-center justify-center text-rose-500 text-[8px] font-mono rotate-6 select-none shadow-sm">
+                      捺印
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 权威核验底栏 -->
+              <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
+                <span>✓ 申请材料格式规范、承诺人签名及电子防伪捺印比对完备，符合受理要求</span>
+                <span class="font-mono text-[10px] text-emerald-400">AI初审通过</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 弹窗 Footer: 查验结论与就地审核快捷操作 -->
+        <div class="px-5 py-3.5 border-t border-slate-700/80 bg-slate-850 flex items-center justify-between flex-wrap gap-3">
+          <div class="flex items-center gap-2 text-xs text-slate-300">
+            <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span>已查验该单据全量证明材料 ({{ currentAttachments.length }}/{{ currentAttachments.length }})，可就地审批：</span>
+          </div>
+
+          <!-- 审批操作按钮组 -->
+          <div class="flex items-center gap-2">
+            <!-- 若该单据处于待审核状态，直接提供审核通过与驳回 -->
+            <template v-if="viewAttachmentsApp?.status === 'PENDING_REVIEW'">
+              <button
+                @click="handleInlineReject(viewAttachmentsApp)"
+                :disabled="actionLoading"
+                class="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs transition shadow active:scale-95 flex items-center gap-1"
+              >
+                <span>✕ 审核驳回并通知</span>
+              </button>
+              <button
+                @click="handleInlineApprove(viewAttachmentsApp)"
+                :disabled="actionLoading"
+                class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow active:scale-95 flex items-center gap-1"
+              >
+                <span>✓ 查验通过 · 准予入队</span>
+              </button>
+            </template>
+            <!-- 否则仅展示关闭按钮 -->
+            <button
+              @click="viewAttachmentsModalVisible = false"
+              class="px-5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition"
+            >
+              关闭查验窗口
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1011,10 +1545,178 @@ const panels = [
   { id: 'audit', icon: '📝', label: '审核管理' }
 ]
 
+// 审核管理子 Tab: 'applications' (台账) | 'strategy' (机制与特定业主特例通道)
+const auditSubTab = ref('applications')
+
 // 审核机制与申请审批相关变量
 const currentAuditMode = ref('THREE_CERT_AUTO')
 const applicationList = ref([])
 const auditFilter = ref('ALL')
+
+const pendingAuditCount = computed(() => {
+  return applicationList.value.filter(a => a.status === 'PENDING_REVIEW').length
+})
+
+// 特定业主特例申报通道相关变量
+const userSearchKeyword = ref('')
+const userStatusFilter = ref('ALL') // ALL, CUSTOMIZED, PENDING, RENTED, NO_APPLY
+
+const customizedUserCount = computed(() => {
+  return communityUserList.value.filter(u => u.is_customized).length
+})
+
+const filteredCommunityUsers = computed(() => {
+  let list = communityUserList.value || []
+  const kw = userSearchKeyword.value.trim().toLowerCase()
+  if (kw) {
+    list = list.filter(u => {
+      const nameMatch = u.real_name && u.real_name.toLowerCase().includes(kw)
+      const phoneMatch = u.phone && u.phone.includes(kw)
+      const propMatch = u.property_no && u.property_no.toLowerCase().includes(kw)
+      return nameMatch || phoneMatch || propMatch
+    })
+  }
+  if (userStatusFilter.value === 'CUSTOMIZED') {
+    list = list.filter(u => u.is_customized)
+  } else if (userStatusFilter.value === 'PENDING') {
+    list = list.filter(u => u.status_tag === '排队/审核中')
+  } else if (userStatusFilter.value === 'RENTED') {
+    list = list.filter(u => u.status_tag === '已签约租用')
+  } else if (userStatusFilter.value === 'NO_APPLY') {
+    list = list.filter(u => u.status_tag === '未发起申请')
+  }
+  return list
+})
+
+// 证明材料查验中心相关变量与高保真计算属性
+const viewAttachmentsModalVisible = ref(false)
+const viewAttachmentsApp = ref(null)
+const activeAttachmentIndex = ref(0)
+
+const selectAttachment = (idx) => {
+  activeAttachmentIndex.value = idx
+}
+
+const currentAttachments = computed(() => {
+  if (!viewAttachmentsApp.value) return []
+  const app = viewAttachmentsApp.value
+  if (app.attachments && app.attachments.length > 0) {
+    return app.attachments.map((att, idx) => ({
+      ...att,
+      id: att.type || `att_${idx}`,
+      title: att.title || att.name || '证明附件材料',
+      name: att.name || att.title || '证明附件材料',
+      file_name: att.file_name || `${att.name || '材料'}.pdf`,
+      type: att.type || 'CUSTOM',
+      type_label: att.type_label || '证明附件',
+      file_size: att.file_size || '2.4 MB'
+    }))
+  }
+  // 智能补全三证合一标准原件供直观查验
+  const list = [
+    {
+      id: 'VEHICLE_LICENSE',
+      name: '机动车行驶证正副页扫描件',
+      title: '机动车行驶证 (正副双页原件)',
+      type: 'VEHICLE_LICENSE',
+      type_label: '车辆行驶证',
+      file_name: `${app.applicant_name}_行驶证_${app.plate_no}.pdf`,
+      file_size: '2.1 MB'
+    },
+    {
+      id: 'PROPERTY_CERT',
+      name: '不动产权证书原件扫描件',
+      title: '中华人民共和国不动产权证书',
+      type: 'PROPERTY_CERT',
+      type_label: '不动产权证',
+      file_name: `${app.applicant_name}_不动产权证书_${app.property_no}.pdf`,
+      file_size: '3.4 MB'
+    },
+    {
+      id: 'ID_CARD',
+      name: '居民身份证原件扫描件',
+      title: '中华人民共和国居民身份证 (正反原件)',
+      type: 'ID_CARD',
+      type_label: '居民身份证',
+      file_name: `${app.applicant_name}_二代居民身份证.pdf`,
+      file_size: '1.8 MB'
+    }
+  ]
+  if (app.is_spouse_car) {
+    list.push({
+      id: 'MARRIAGE_CERT',
+      name: '夫妻关系结婚证明原件',
+      title: '中华人民共和国结婚证 (婚姻关系原件)',
+      type: 'MARRIAGE_CERT',
+      type_label: '婚姻关系证明',
+      file_name: `${app.applicant_name}_结婚证_民政核验.pdf`,
+      file_size: '1.5 MB'
+    })
+  } else if (app.car_relationship === 'FAMILY') {
+    list.push({
+      id: 'FAMILY_CERT',
+      name: '常住人口直系亲属居民户口簿',
+      title: '居民户口簿 (直系亲属证明)',
+      type: 'FAMILY_CERT',
+      type_label: '户籍证明',
+      file_name: `${app.applicant_name}_常住户口簿.pdf`,
+      file_size: '2.0 MB'
+    })
+  }
+  return list
+})
+
+const activeAttachment = computed(() => {
+  const list = currentAttachments.value
+  if (!list.length) return null
+  return list[activeAttachmentIndex.value] || list[0]
+})
+
+const getAttachmentIcon = (att) => {
+  if (!att) return '📄'
+  const t = (att.type || '').toUpperCase()
+  const n = (att.name || att.title || '').toLowerCase()
+  if (t === 'VEHICLE_LICENSE' || n.includes('行驶证') || n.includes('车辆') || n.includes('车牌')) return '🚗'
+  if (t === 'PROPERTY_CERT' || n.includes('不动产') || n.includes('房产') || n.includes('产证') || n.includes('产权')) return '🏠'
+  if (t === 'ID_CARD' || n.includes('身份证') || n.includes('身份')) return '🪪'
+  if (t === 'MARRIAGE_CERT' || n.includes('结婚') || n.includes('配偶')) return '💍'
+  if (n.includes('租赁') || n.includes('租房') || n.includes('合同') || n.includes('备案')) return '📑'
+  return '📄'
+}
+
+const isVehicleLicense = (att) => {
+  if (!att) return false
+  const t = (att.type || '').toUpperCase()
+  const n = (att.name || att.title || '').toLowerCase()
+  return t === 'VEHICLE_LICENSE' || n.includes('行驶证') || n.includes('车辆')
+}
+
+const isPropertyCert = (att) => {
+  if (!att) return false
+  const t = (att.type || '').toUpperCase()
+  const n = (att.name || att.title || '').toLowerCase()
+  return t === 'PROPERTY_CERT' || n.includes('不动产') || n.includes('房产') || n.includes('产权') || n.includes('产证')
+}
+
+const isIdCard = (att) => {
+  if (!att) return false
+  const t = (att.type || '').toUpperCase()
+  const n = (att.name || att.title || '').toLowerCase()
+  return t === 'ID_CARD' || n.includes('身份证') || n.includes('身份')
+}
+
+const isMarriageCert = (att) => {
+  if (!att) return false
+  const t = (att.type || '').toUpperCase()
+  const n = (att.name || att.title || '').toLowerCase()
+  return t === 'MARRIAGE_CERT' || n.includes('结婚') || n.includes('配偶')
+}
+
+const isRentalCert = (att) => {
+  if (!att) return false
+  const n = (att.name || att.title || '').toLowerCase()
+  return n.includes('租赁') || n.includes('租房') || n.includes('合同') || n.includes('备案')
+}
 
 const rejectModalVisible = ref(false)
 const rejectTargetApp = ref(null)
@@ -1028,9 +1730,6 @@ const rejectReasonOptions = [
   '车辆所有人非直系亲属，不符合本小区申报标准',
   '附件资料缺失或非有效合法证件'
 ]
-
-const viewAttachmentsModalVisible = ref(false)
-const viewAttachmentsApp = ref(null)
 
 const stats = ref({})
 const spaceList = ref([])
@@ -1283,7 +1982,18 @@ const handleConfirmReject = async () => {
 
 const openViewAttachmentsModal = (app) => {
   viewAttachmentsApp.value = app
+  activeAttachmentIndex.value = 0
   viewAttachmentsModalVisible.value = true
+}
+
+const handleInlineApprove = async (app) => {
+  await handleApproveApplication(app)
+  viewAttachmentsModalVisible.value = false
+}
+
+const handleInlineReject = (app) => {
+  viewAttachmentsModalVisible.value = false
+  openRejectModal(app)
 }
 
 const loadData = async () => {

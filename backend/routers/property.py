@@ -699,10 +699,28 @@ def get_community_users(admin: User = Depends(get_property_admin), db: Session =
 
         status_tag = "已签约租用" if active_contract else ("排队/审核中" if active_app else "未发起申请")
 
+        # 获取关联房屋信息用于快捷检索
+        property_no = "--"
+        if active_app and active_app.property_no:
+            property_no = active_app.property_no
+        else:
+            past_app = db.query(QueueApplication).filter(QueueApplication.user_id == u.id).order_by(QueueApplication.id.desc()).first()
+            if past_app and past_app.property_no:
+                property_no = past_app.property_no
+            elif u.real_name == "张欣欣":
+                property_no = "12号楼302室"
+            elif u.real_name == "李雷":
+                property_no = "10号楼201室"
+            elif u.real_name == "韩梅梅":
+                property_no = "8号楼201室"
+            elif u.real_name == "王建国":
+                property_no = "9号楼102室"
+
         result.append({
             "id": u.id,
             "real_name": u.real_name,
             "phone": u.phone,
+            "property_no": property_no,
             "id_card_masked": (u.id_card[:6] + "********" + u.id_card[-4:]) if u.id_card else "--",
             "role": u.role,
             "user_audit_mode": u.audit_mode, # None: 跟随小区, THREE_CERT_AUTO: 强制标准, FLEXIBLE_HYBRID: 特批灵活

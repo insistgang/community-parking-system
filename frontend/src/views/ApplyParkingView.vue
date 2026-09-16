@@ -36,83 +36,26 @@
         </p>
       </div>
 
-      <!-- 申报审核方式选择卡片（三证合一 vs 灵活配置） -->
-      <div class="bg-white rounded-2xl p-4 shadow-sm border border-slate-200 space-y-2.5 animate-fade-in">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-1.5 font-black text-xs text-slate-800">
-            <span>📋</span>
-            <span>申报审核通道选择</span>
-          </div>
-          <span class="text-[10px] px-2 py-0.5 rounded-full font-medium"
-            :class="communityAuditMode === 'FLEXIBLE_HYBRID' ? 'bg-purple-100 text-purple-700' : 'bg-slate-100 text-slate-500'"
-          >
-            小区管理配置: {{ communityAuditMode === 'FLEXIBLE_HYBRID' ? '灵活配置(已启用)' : '三证合一直审' }}
-          </span>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2 text-left">
-          <!-- 选项 1: 三证合一 -->
-          <button
-            type="button"
-            @click="currentAuditMode = 'THREE_CERT_AUTO'"
-            class="p-2.5 rounded-xl border-2 transition relative flex flex-col justify-between"
-            :class="currentAuditMode === 'THREE_CERT_AUTO'
-              ? 'border-emerald-500 bg-emerald-50/70 shadow-sm ring-1 ring-emerald-400/30'
-              : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'"
-          >
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="font-bold text-xs" :class="currentAuditMode === 'THREE_CERT_AUTO' ? 'text-emerald-900' : 'text-slate-700'">
-                  ⚡ 三证合一
-                </span>
-                <span v-if="currentAuditMode === 'THREE_CERT_AUTO'" class="w-4 h-4 rounded-full bg-emerald-500 text-white text-[10px] flex items-center justify-center font-bold">✓</span>
-              </div>
-              <p class="text-[10px] leading-tight" :class="currentAuditMode === 'THREE_CERT_AUTO' ? 'text-emerald-700 font-medium' : 'text-slate-400'">
-                AI 自动化极速审核
-              </p>
-            </div>
-            <span class="text-[9px] mt-1.5 block font-medium" :class="currentAuditMode === 'THREE_CERT_AUTO' ? 'text-emerald-600' : 'text-slate-400'">
-              三证同名 · 秒级直入排队
-            </span>
-          </button>
-
-          <!-- 选项 2: 灵活配置 -->
-          <button
-            type="button"
-            @click="currentAuditMode = 'FLEXIBLE_HYBRID'"
-            class="p-2.5 rounded-xl border-2 transition relative flex flex-col justify-between"
-            :class="currentAuditMode === 'FLEXIBLE_HYBRID'
-              ? 'border-purple-500 bg-purple-50/70 shadow-sm ring-1 ring-purple-400/30'
-              : 'border-slate-200 hover:border-slate-300 bg-slate-50/50'"
-          >
-            <div>
-              <div class="flex items-center justify-between mb-1">
-                <span class="font-bold text-xs" :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'text-purple-900' : 'text-slate-700'">
-                  ⚙️ 灵活配置
-                </span>
-                <span v-if="currentAuditMode === 'FLEXIBLE_HYBRID'" class="w-4 h-4 rounded-full bg-purple-600 text-white text-[10px] flex items-center justify-center font-bold">✓</span>
-              </div>
-              <p class="text-[10px] leading-tight" :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'text-purple-700 font-medium' : 'text-slate-400'">
-                AI 初验 + 人工复核
-              </p>
-            </div>
-            <span class="text-[9px] mt-1.5 block font-medium" :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'text-purple-600' : 'text-slate-400'">
-              多附件/承诺书 · 专人审验
-            </span>
-          </button>
-        </div>
+      <!-- 审核模式切换按钮（三证合一 vs 灵活配置） -->
+      <div class="flex p-1 bg-slate-200/80 rounded-xl text-xs font-bold shadow-inner">
+        <button
+          type="button"
+          @click="currentAuditMode = 'THREE_CERT_AUTO'"
+          class="flex-1 py-2 rounded-lg transition text-center flex items-center justify-center gap-1.5"
+          :class="currentAuditMode === 'THREE_CERT_AUTO' ? 'bg-white text-emerald-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+        >
+          <span>⚡ 三证合一 (AI极速审核)</span>
+        </button>
+        <button
+          type="button"
+          @click="currentAuditMode = 'FLEXIBLE_HYBRID'"
+          class="flex-1 py-2 rounded-lg transition text-center flex items-center justify-center gap-1.5"
+          :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'"
+        >
+          <span>📝 灵活配置 (AI+人工审核)</span>
+        </button>
       </div>
 
-      <!-- 灵活配置模式提示卡片 -->
-      <div v-if="currentAuditMode === 'FLEXIBLE_HYBRID'" class="bg-gradient-to-r from-purple-900 via-indigo-950 to-slate-900 text-white p-3.5 rounded-2xl shadow-md border border-purple-500/30 flex items-start gap-2.5 animate-fade-in">
-        <span class="text-xl">⚙️</span>
-        <div class="space-y-0.5 text-xs">
-          <div class="font-bold text-purple-200">当前申报通道：灵活配置（AI 自动化 + 人工审核）</div>
-          <p class="text-[11px] text-slate-300 leading-relaxed">
-            除完成身份证、房产证、行驶证基础比对外，需上传多张必要证明附件与承诺书。先经 AI 基础校验，校验通过后自动流转物业人工复核。
-          </p>
-        </div>
-      </div>
 
 
       <!-- 三证合一概念科普卡片 -->

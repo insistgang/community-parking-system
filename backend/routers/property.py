@@ -1,3 +1,5 @@
+import json
+from typing import Optional, List, Any, Dict
 from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Header
 from fastapi.responses import StreamingResponse
@@ -7,7 +9,10 @@ import uuid
 from io import BytesIO
 from database import get_db
 from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community, ChainEvidence
-from schemas import MaintenanceRequest, ConfirmDeliveryRequest, ForceTerminateRequest, ResponseModel
+from schemas import (
+    MaintenanceRequest, ConfirmDeliveryRequest, ForceTerminateRequest, 
+    ResponseModel, AuditModeConfigRequest, AuditApplicationRequest
+)
 from scheduler import trigger_recalculate_queue, init_community_spaces, notify_space_change_to_applicants
 from evidence import create_evidence_record
 from utils import fmt_bj
@@ -26,14 +31,16 @@ def get_property_stats(admin: User = Depends(get_property_admin), db: Session = 
     物业 PC 宽屏数据看板指标
     """
     comm_id = admin.community_id
+    comm = db.query(Community).filter(Community.id == comm_id).first()
     total_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == comm_id).count()
     rented_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == comm_id, ParkingSpace.status == "RENTED").count()
     vacant_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == comm_id, ParkingSpace.status == "VACANT").count()
     maint_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == comm_id, ParkingSpace.status == "MAINTENANCE").count()
     allocated_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == comm_id, ParkingSpace.status.in_(["ALLOCATED", "OFFLINE_PENDING"])).count()
     waiting_users = db.query(QueueApplication).filter(QueueApplication.community_id == comm_id, QueueApplication.status == "WAITING").count()
+    pending_audit_count = db.query(QueueApplication).filter(QueueApplication.community_id == comm_id, QueueApplication.status == "PENDING_REVIEW").count()
 
-    # 待办预警数 (即将到期 + 待确认中签)，严格限定本小区范围
+    # 待办预警数 (即将到期 + 待确认中签 + 待审核申请)，严格限定本小区范围
     expiring_count = db.query(RentalContract).join(
         ParkingSpace, RentalContract.space_id == ParkingSpace.id
     ).filter(ParkingSpace.community_id == comm_id, RentalContract.status == "EXPIRING").count()
@@ -66,6 +73,8 @@ def get_property_stats(admin: User = Depends(get_property_admin), db: Session = 
         ChainEvidence.event_type == "TERMINATE"
     ).count()
 
+    curr_audit_mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+
     return ResponseModel(
         code=200,
         data={
@@ -75,12 +84,15 @@ def get_property_stats(admin: User = Depends(get_property_admin), db: Session = 
             "maintenance_spaces": maint_sp,
             "allocated_spaces": allocated_sp,
             "waiting_count": waiting_users,
+            "pending_audit_count": pending_audit_count,
             "occupancy_rate": f"{(rented_sp / max(1, total_sp) * 100):.1f}%",
-            "pending_warnings": expiring_count + pending_delivery,
+            "pending_warnings": expiring_count + pending_delivery + pending_audit_count,
             "avg_turnover_days": avg_turnover,
             "avg_queue_wait_days": avg_wait_days,
             "completed_allocations": completed_count,
-            "released_total": released_count
+            "released_total": released_count,
+            "audit_mode": curr_audit_mode,
+            "audit_mode_label": "三证合一（AI 自动化审核）" if curr_audit_mode == "THREE_CERT_AUTO" else "灵活配置（AI 自动化 + 人工审核）"
         }
     )
 
@@ -605,3 +617,225 @@ def init_demo_spaces(admin: User = Depends(get_property_admin), db: Session = De
     first_no = spaces[0].space_no if spaces else "--"
     last_no = spaces[-1].space_no if spaces else "--"
     return ResponseModel(code=200, message=f"已成功注入 50 个车位资产 ({first_no} ~ {last_no})，台账已上链锁定！")
+
+@router.get("/audit-config", response_model=ResponseModel)
+def get_audit_config(admin: User = Depends(get_property_admin), db: Session = Depends(get_db)):
+    """
+    获取当前小区维度的审核方式配置
+    """
+    comm = db.query(Community).filter(Community.id == admin.community_id).first()
+    mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+    return ResponseModel(
+        code=200,
+        data={
+            "community_id": comm.id if comm else admin.community_id,
+            "community_name": comm.name if comm else "龙华新村",
+            "audit_mode": mode,
+            "mode_label": "三证合一（AI 自动化审核）" if mode == "THREE_CERT_AUTO" else "灵活配置（AI 自动化 + 人工审核）"
+        }
+    )
+
+@router.post("/audit-config", response_model=ResponseModel)
+def update_audit_config(req: AuditModeConfigRequest, admin: User = Depends(get_property_admin), db: Session = Depends(get_db)):
+    """
+    更新当前小区审核方式配置 (配置变更仅对新申请生效，存量单据保持原模式不变)
+    """
+    if req.audit_mode not in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID"):
+        raise HTTPException(status_code=400, detail="无效的审核方式，仅支持 THREE_CERT_AUTO 或 FLEXIBLE_HYBRID")
+
+    comm = db.query(Community).filter(Community.id == admin.community_id).first()
+    if not comm:
+        raise HTTPException(status_code=404, detail="未找到所属小区")
+
+    old_mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+    comm.audit_mode = req.audit_mode
+    db.commit()
+
+    mode_label = "三证合一（AI 自动化审核）" if req.audit_mode == "THREE_CERT_AUTO" else "灵活配置（AI 自动化 + 人工审核）"
+    create_evidence_record(
+        db=db,
+        community_id=admin.community_id,
+        user_id=admin.id,
+        event_type="AUDIT_CONFIG",
+        summary=f"物业管理员【{admin.real_name}】变更小区审核方式为【{mode_label}】(仅对新申请生效，存量申请保持原样)",
+        payload={
+            "old_mode": old_mode,
+            "new_mode": req.audit_mode,
+            "mode_label": mode_label,
+            "operator": admin.real_name
+        }
+    )
+
+    return ResponseModel(
+        code=200,
+        message=f"小区审核方式已更新为【{mode_label}】（仅对新申请生效，存量申请保持原有模式不变）",
+        data={"audit_mode": comm.audit_mode, "mode_label": mode_label}
+    )
+
+@router.get("/applications", response_model=ResponseModel)
+def get_property_applications(
+    status: Optional[str] = None,
+    admin: User = Depends(get_property_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    物业查看小区全部申请单 (待审核、排队中、中签中、已完成、已驳回)
+    """
+    query = db.query(QueueApplication).filter(QueueApplication.community_id == admin.community_id)
+    if status and status != "ALL":
+        query = query.filter(QueueApplication.status == status)
+
+    apps = query.order_by(QueueApplication.id.desc()).all()
+
+    status_map = {
+        "PENDING_REVIEW": "待物业人工审核",
+        "REJECTED": "审核驳回",
+        "WAITING": "排队轮候中",
+        "ALLOCATED": "已中签待确认",
+        "OFFLINE_PENDING": "线下签约中",
+        "COMPLETED": "租约已生效",
+        "CANCELLED": "已撤销/已归档",
+        "TIMEOUT_CANCELLED": "超时放弃"
+    }
+
+    result = []
+    for app in apps:
+        u = db.query(User).filter(User.id == app.user_id).first()
+        auditor = db.query(User).filter(User.id == app.auditor_id).first() if app.auditor_id else None
+        attachments = []
+        if app.attachments_json:
+            try:
+                attachments = json.loads(app.attachments_json)
+            except Exception:
+                attachments = []
+
+        result.append({
+            "id": app.id,
+            "user_id": app.user_id,
+            "applicant_name": u.real_name if u else "未知",
+            "applicant_phone": u.phone if u else "--",
+            "property_no": app.property_no,
+            "plate_no": app.plate_no,
+            "car_relationship": app.car_relationship or "SELF",
+            "is_spouse_car": app.is_spouse_car,
+            "priority_level": app.priority_level,
+            "priority_label": "家庭一车" if app.priority_level == 1 else "家庭二车",
+            "current_rank": app.current_rank,
+            "status": app.status,
+            "status_label": status_map.get(app.status, app.status),
+            "audit_mode": app.audit_mode or "THREE_CERT_AUTO",
+            "audit_mode_label": "灵活审核" if app.audit_mode == "FLEXIBLE_HYBRID" else "AI直审",
+            "reject_reason": app.reject_reason,
+            "attachments": attachments,
+            "apply_time": fmt_bj(app.apply_time),
+            "audit_time": fmt_bj(app.audit_time) if app.audit_time else "--",
+            "auditor_name": auditor.real_name if auditor else "--"
+        })
+
+    return ResponseModel(code=200, data=result)
+
+@router.post("/audit-application", response_model=ResponseModel)
+def audit_application(
+    req: AuditApplicationRequest,
+    admin: User = Depends(get_property_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    物业人工审核单据:
+    - 审核通过: 进入车位排队序列 WAITING，触发原子重排，发放站内信
+    - 审核驳回: 填写驳回理由，流转为 REJECTED，发放站内信，业主可修改重提
+    """
+    app = db.query(QueueApplication).filter(
+        QueueApplication.id == req.app_id,
+        QueueApplication.community_id == admin.community_id
+    ).first()
+    if not app:
+        raise HTTPException(status_code=404, detail="未找到指定车位申请单")
+
+    if app.status != "PENDING_REVIEW":
+        raise HTTPException(status_code=400, detail=f"该申请单当前状态为【{app.status}】，仅待人工审核单据允许操作！")
+
+    applicant = db.query(User).filter(User.id == app.user_id).first()
+    applicant_name = applicant.real_name if applicant else "申请业主"
+
+    if req.action == "APPROVE":
+        app.status = "WAITING"
+        app.audit_time = datetime.utcnow()
+        app.auditor_id = admin.id
+        app.reject_reason = None
+        db.commit()
+
+        # 上链存证
+        create_evidence_record(
+            db=db,
+            community_id=admin.community_id,
+            user_id=applicant.id if applicant else admin.id,
+            event_type="AUDIT_PASS",
+            summary=f"物业管理员【{admin.real_name}】审核通过业主【{applicant_name}】车位申请，单据正式进入排位序列",
+            payload={
+                "app_id": app.id,
+                "property_no": app.property_no,
+                "plate_no": app.plate_no,
+                "auditor": admin.real_name,
+                "action": "APPROVE"
+            }
+        )
+
+        # 发送通过通知
+        db.add(Notification(
+            user_id=app.user_id,
+            title="车位申请审核通过通知",
+            content=f"恭喜！您提交的车位申请（房屋: {app.property_no}，车辆: {app.plate_no}）已通过物业人工审核，现已正式进入小区公平排位序列！",
+            type="SYSTEM",
+            action_type="GO_QUEUE"
+        ))
+        db.commit()
+
+        # 触发原子重排计算排位
+        trigger_recalculate_queue(db, admin.community_id)
+
+        return ResponseModel(code=200, message=f"审核通过！业主【{applicant_name}】的申请已正式进入车位排位序列。")
+
+    elif req.action == "REJECT":
+        reason = req.reject_reason.strip() if req.reject_reason else ""
+        if not reason:
+            raise HTTPException(status_code=400, detail="审核驳回时必须详细填写驳回理由！")
+
+        app.status = "REJECTED"
+        app.reject_reason = reason
+        app.audit_time = datetime.utcnow()
+        app.auditor_id = admin.id
+        db.commit()
+
+        # 上链存证
+        create_evidence_record(
+            db=db,
+            community_id=admin.community_id,
+            user_id=applicant.id if applicant else admin.id,
+            event_type="AUDIT_REJECT",
+            summary=f"物业管理员【{admin.real_name}】审核驳回业主【{applicant_name}】车位申请 (理由: {reason})",
+            payload={
+                "app_id": app.id,
+                "property_no": app.property_no,
+                "plate_no": app.plate_no,
+                "auditor": admin.real_name,
+                "action": "REJECT",
+                "reason": reason
+            }
+        )
+
+        # 发送驳回通知
+        db.add(Notification(
+            user_id=app.user_id,
+            title="车位申请审核驳回通知",
+            content=f"很抱歉，您提交的车位申请（房屋: {app.property_no}，车辆: {app.plate_no}）未能通过物业人工审核。驳回理由：【{reason}】。您可以重新调整申请材料后再次提交。",
+            type="SYSTEM",
+            action_type="GO_QUEUE"
+        ))
+        db.commit()
+
+        return ResponseModel(code=200, message=f"已成功驳回该申请，驳回原因已通过站内消息即时送达业主。")
+
+    else:
+        raise HTTPException(status_code=400, detail="无效的审核操作动作 (仅支持 APPROVE 或 REJECT)")
+

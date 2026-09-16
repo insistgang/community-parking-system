@@ -8,15 +8,45 @@
             <path d="m15 18-6-6 6-6"/>
           </svg>
         </button>
-        <h1 class="text-sm font-bold text-slate-900">老旧小区车位三证合一申报认证</h1>
+        <h1 class="text-sm font-bold text-slate-900">
+          {{ currentAuditMode === 'FLEXIBLE_HYBRID' ? '老旧小区车位申请申报 (AI+人工审核)' : '老旧小区车位三证合一申报认证' }}
+        </h1>
       </div>
-      <span class="text-[11px] text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 font-bold flex items-center gap-1">
-        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-        <span>三证合一刚性准入</span>
+      <span
+        class="text-[11px] px-2 py-0.5 rounded-full border font-bold flex items-center gap-1"
+        :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'text-purple-700 bg-purple-50 border-purple-200' : 'text-emerald-700 bg-emerald-50 border-emerald-200'"
+      >
+        <span class="w-1.5 h-1.5 rounded-full animate-pulse" :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'bg-purple-500' : 'bg-emerald-500'"></span>
+        <span>{{ currentAuditMode === 'FLEXIBLE_HYBRID' ? 'AI初验 + 人工复核' : '三证合一刚性准入' }}</span>
       </span>
     </header>
 
     <main class="max-w-md w-full mx-auto p-4 space-y-4 flex-1">
+      <!-- 驳回整改提示横幅 (若之前有被驳回单据) -->
+      <div v-if="lastRejectReason" class="p-3.5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-xs text-rose-800 space-y-1 animate-fade-in shadow-sm">
+        <div class="font-bold flex items-center gap-1.5">
+          <span class="text-base">⚠️</span>
+          <span>前次申请驳回意见，请根据提示调整材料后重新提交：</span>
+        </div>
+        <p class="text-xs bg-white/90 p-2.5 rounded-xl border border-rose-200 text-rose-700 font-medium">
+          {{ lastRejectReason }}
+        </p>
+        <p class="text-[10px] text-slate-500 pt-0.5">
+          修改相关信息并补正附件后点击下方按钮重新发起，物业审核通过后将正式进入轮候序列。
+        </p>
+      </div>
+
+      <!-- 灵活配置模式提示卡片 -->
+      <div v-if="currentAuditMode === 'FLEXIBLE_HYBRID'" class="bg-gradient-to-r from-purple-900 via-indigo-950 to-slate-900 text-white p-3.5 rounded-2xl shadow-md border border-purple-500/30 flex items-start gap-2.5">
+        <span class="text-xl">⚙️</span>
+        <div class="space-y-0.5 text-xs">
+          <div class="font-bold text-purple-200">本小区当前已开启：灵活配置（AI 自动化 + 人工审核）</div>
+          <p class="text-[11px] text-slate-300 leading-relaxed">
+            除完成身份证、房产证、行驶证基础比对外，需上传多张必要证明附件。先经 AI 基础校验，校验通过后自动流转物业人工复核。
+          </p>
+        </div>
+      </div>
+
       <!-- 三证合一概念科普卡片 -->
       <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-4 rounded-2xl shadow-md space-y-2">
         <div class="flex items-center gap-2">
@@ -200,6 +230,33 @@
               class="w-5 h-5 rounded-full border-2 flex items-center justify-center mt-1 border-emerald-600 bg-emerald-600 text-white text-[11px] font-bold"
             >
               ✓
+            </span>
+          </div>
+
+          <!-- 外区房产拦截演示卡片 (满足演示指南与 AGENTS.md 红线3) -->
+          <div
+            @click="handleSelectExternalProperty"
+            class="p-4 rounded-2xl border-2 border-dashed border-rose-200 bg-rose-50/40 opacity-75 hover:opacity-100 transition cursor-pointer flex items-start justify-between shadow-sm"
+          >
+            <div class="space-y-1.5 flex-1 pr-2">
+              <div class="flex items-center gap-1.5 font-bold text-xs text-slate-800">
+                <span class="text-rose-500 text-sm">🏢</span>
+                <span class="text-sm font-bold text-slate-600 line-through">浦东新区世纪大道 888弄 201室</span>
+                <span class="text-[10px] text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full font-semibold border border-rose-300">
+                  非本小区房产 (不可选)
+                </span>
+              </div>
+              <div class="text-[11px] text-slate-500 space-y-0.5 pt-0.5">
+                <div>产证所有人: {{ userStore.realName || '张欣欣' }}</div>
+                <div class="font-mono text-[10px]">产证编号: 沪(2021)浦字不动产权第088219号</div>
+              </div>
+              <div class="pt-1 text-[11px] font-bold text-rose-600 flex items-center gap-1.5">
+                <span class="w-4 h-4 rounded-full bg-rose-500 text-white flex items-center justify-center text-[10px]">✕</span>
+                <span>跨区校验拦截：非本小区房屋，不可申报车位</span>
+              </div>
+            </div>
+            <span class="text-[10px] text-rose-500 bg-rose-100/80 px-2 py-1 rounded-lg font-bold shrink-0 mt-1">
+              点击测试拦截
             </span>
           </div>
         </div>
@@ -433,6 +490,69 @@
           </div>
         </div>
 
+        <!-- 灵活配置模式: 多张必填证明附件材料清单与上传 -->
+        <div v-if="currentAuditMode === 'FLEXIBLE_HYBRID'" class="bg-white rounded-2xl p-5 shadow-sm border border-slate-200 space-y-3 animate-fade-in">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-black text-slate-900 flex items-center gap-1.5">
+                <span>📎 必要审核证明附件 (多张必填)</span>
+                <span class="text-[10px] bg-purple-100 text-purple-800 font-bold px-2 py-0.5 rounded-full border border-purple-200">
+                  人工审核材料
+                </span>
+              </h3>
+              <p class="text-[11px] text-slate-400 mt-0.5">附件将流转物业专人逐项审验，请确保材料真实有效</p>
+            </div>
+            <button
+              type="button"
+              @click="quickLoadDefaultAttachments"
+              class="text-[10px] px-2 py-1 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 font-bold border border-purple-200 transition"
+            >
+              ⚡ 一键齐备示例附件
+            </button>
+          </div>
+
+          <div class="space-y-2 pt-1">
+            <div
+              v-for="(item, idx) in allActiveAttachmentItems"
+              :key="idx"
+              class="p-3 rounded-xl border transition flex items-center justify-between gap-3 text-xs"
+              :class="item.file_name ? 'bg-purple-50/50 border-purple-200' : 'bg-slate-50 border-slate-200'"
+            >
+              <div class="flex items-center gap-2.5 min-w-0">
+                <span class="text-lg shrink-0">{{ item.icon || '📄' }}</span>
+                <div class="min-w-0">
+                  <div class="font-bold text-slate-800 truncate flex items-center gap-1.5">
+                    <span>{{ item.title }}</span>
+                    <span v-if="item.required" class="text-[10px] text-rose-500 font-normal">*必填</span>
+                  </div>
+                  <div class="text-[10px] truncate" :class="item.file_name ? 'text-purple-700 font-mono' : 'text-slate-400'">
+                    {{ item.file_name ? `已就绪: ${item.file_name}` : '未上传文件' }}
+                  </div>
+                </div>
+              </div>
+
+              <div class="shrink-0 flex items-center gap-2">
+                <label class="cursor-pointer px-2.5 py-1 rounded-lg text-[11px] font-bold transition border"
+                  :class="item.file_name ? 'bg-white text-purple-700 border-purple-300 hover:bg-purple-50' : 'bg-purple-600 text-white border-purple-600 hover:bg-purple-700'"
+                >
+                  <input type="file" accept="image/*,.pdf" class="hidden" @change="(e) => onUploadAttachment(e, idx)" />
+                  <span>{{ item.file_name ? '重新上传' : '上传附件' }}</span>
+                </label>
+                <span
+                  v-if="item.file_name"
+                  class="w-5 h-5 rounded-full bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs"
+                >
+                  ✓
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="p-2.5 bg-slate-50 rounded-xl border border-slate-200 text-[10px] text-slate-500 leading-relaxed">
+            🛡️ <strong>合规说明</strong>：根据政务最小化原则，附件结构与哈希凭据经 AI 预验后即时上链存证，服务端不落地保存个人高清原图。
+          </div>
+        </div>
+
         <!-- 🌟 核心高光看板：三证合一智能比对与核验报告 🌟 -->
         <div class="bg-gradient-to-br from-emerald-900 via-teal-900 to-slate-900 text-white rounded-2xl p-5 shadow-xl border-2 border-emerald-400/40 space-y-3 relative overflow-hidden">
           <div class="flex items-center justify-between">
@@ -488,7 +608,7 @@
               class="font-black px-2.5 py-1 rounded-lg text-xs"
               :class="isThreeCertValid ? 'bg-emerald-500 text-white shadow-md' : 'bg-rose-900/60 text-rose-200 border border-rose-400/40'"
             >
-              {{ isThreeCertValid ? '🌟 三证合一核验全部通过 (准予入队)' : '等待材料补齐' }}
+              {{ isThreeCertValid ? (currentAuditMode === 'FLEXIBLE_HYBRID' ? '🌟 AI初审预验通过 (待流转人工审核)' : '🌟 三证合一核验全部通过 (准予入队)') : '等待材料补齐' }}
             </span>
           </div>
         </div>
@@ -506,8 +626,10 @@
             :disabled="submitting || !isThreeCertValid"
             class="flex-1 py-3.5 rounded-2xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-lg shadow-blue-500/25 active:scale-[0.98] transition disabled:opacity-40 disabled:pointer-events-none flex items-center justify-center gap-2"
           >
-            <span v-if="submitting">正在上链存证并计算排位顺位...</span>
-            <span v-else>确认提交三证申请 (进入阳光排位)</span>
+            <span v-if="submitting">正在上链存证并提交申请...</span>
+            <span v-else>
+              {{ currentAuditMode === 'FLEXIBLE_HYBRID' ? '确认提交 (AI初验后流转物业人工复核)' : '确认提交三证申请 (进入阳光排位)' }}
+            </span>
           </button>
         </div>
       </div>
@@ -587,10 +709,29 @@ import { showToast, showAlert } from '../utils/dialog'
 const router = useRouter()
 const userStore = useUserStore()
 
-onMounted(() => {
+const currentAuditMode = ref('THREE_CERT_AUTO')
+const lastRejectReason = ref('')
+
+const loadAuditMode = async () => {
+  try {
+    const res = await api.get('/parking/audit-mode')
+    if (res.code === 200 && res.data) {
+      currentAuditMode.value = res.data.audit_mode || 'THREE_CERT_AUTO'
+    }
+  } catch (err) {
+    console.error('加载小区审核模式失败:', err)
+  }
+}
+
+onMounted(async () => {
   if (userStore.isPropertyAdmin) {
     showToast('当前为物业企业管理账号，无权发起车位申请！请切换为业主账号（如张欣欣）。', 'warning')
     router.replace('/property/dashboard')
+    return
+  }
+  await loadAuditMode()
+  if (userStore.homeData?.view_state === 'REJECTED' && userStore.homeData?.my_queue?.reject_reason) {
+    lastRejectReason.value = userStore.homeData.my_queue.reject_reason
   }
 })
 
@@ -617,6 +758,85 @@ const familyRelationType = ref('PARENT')
 const showFamilyConfirmModal = ref(false)
 const familyCertUploaded = ref(false)
 
+// 灵活配置模式: 多张必填证明附件材料
+const requiredAttachmentItems = ref([
+  {
+    type: 'LICENSE',
+    type_label: '机动车行驶证正副页',
+    title: '机动车行驶证正副页彩色扫描件',
+    file_name: '机动车行驶证正副本扫描件_沪A12345.jpg',
+    required: true,
+    icon: '🚗'
+  },
+  {
+    type: 'PROPERTY',
+    type_label: '不动产权证书',
+    title: '不动产权证书坐落与权利人页',
+    file_name: '不动产权证书_沪(2022)徐字不动产权第019823号.jpg',
+    required: true,
+    icon: '🏢'
+  },
+  {
+    type: 'COMMITMENT',
+    type_label: '车位合规使用承诺书',
+    title: '老旧小区车位规范停放承诺书 (签字确认)',
+    file_name: '车位合规停放与安全管理承诺书.pdf',
+    required: true,
+    icon: '📝'
+  }
+])
+
+const dynamicSpouseAttachment = computed(() => {
+  if (carRelationship.value === 'spouse') {
+    return {
+      type: 'MARRIAGE',
+      type_label: '夫妻共有证明',
+      title: '中华人民共和国结婚证 (双方信息页)',
+      file_name: marriageCertUploaded.value ? '结婚证_J310104-2022-0089.jpg' : '',
+      required: true,
+      icon: '💍'
+    }
+  }
+  if (carRelationship.value === 'family') {
+    return {
+      type: 'FAMILY',
+      type_label: '直系亲属共有证明',
+      title: '居民户口簿 (户口本首页与常住人口登记页)',
+      file_name: familyCertUploaded.value ? '居民户口簿_310104-HK-982103.jpg' : '',
+      required: true,
+      icon: '👨‍👩‍👧'
+    }
+  }
+  return null
+})
+
+const allActiveAttachmentItems = computed(() => {
+  const list = [...requiredAttachmentItems.value]
+  if (dynamicSpouseAttachment.value) {
+    list.push(dynamicSpouseAttachment.value)
+  }
+  return list
+})
+
+const areAllRequiredAttachmentsReady = computed(() => {
+  return allActiveAttachmentItems.value.every(item => !item.required || !!item.file_name)
+})
+
+const onUploadAttachment = (e, idx) => {
+  const f = e.target.files && e.target.files[0]
+  if (f) {
+    requiredAttachmentItems.value[idx].file_name = f.name
+    showToast(`已成功载入附件：${f.name}`, 'success')
+  }
+}
+
+const quickLoadDefaultAttachments = () => {
+  requiredAttachmentItems.value[0].file_name = '机动车行驶证正副本扫描件_沪A12345.jpg'
+  requiredAttachmentItems.value[1].file_name = '不动产权证书_沪(2022)徐字不动产权第019823号.jpg'
+  requiredAttachmentItems.value[2].file_name = '车位合规停放与安全管理承诺书.pdf'
+  showToast('已一键齐备标准申报附件材料！', 'success')
+}
+
 const submitting = ref(false)
 
 // 第二证完成判定: 完成产证上传/识别并锁定本小区产权
@@ -629,6 +849,7 @@ const isThreeCertValid = computed(() => {
   if (!inputPlate.value || !inputPlate.value.trim()) return false
   if (carRelationship.value === 'spouse' && !marriageCertUploaded.value) return false
   if (carRelationship.value === 'family' && !familyCertUploaded.value) return false
+  if (currentAuditMode.value === 'FLEXIBLE_HYBRID' && !areAllRequiredAttachmentsReady.value) return false
   return true
 })
 
@@ -639,6 +860,10 @@ const handleIdCardScanned = () => {
 const handlePropertyScanned = () => {
   propertyCertScanned.value = true
   selectedProperty.value = '龙华新村 12号302室'
+}
+
+const handleSelectExternalProperty = () => {
+  showToast('🚫 拦截警告：仅限本小区产权房屋可申请车位，外区房产无法申报！', 'error')
 }
 
 const handleLicenseScanned = () => {
@@ -682,7 +907,7 @@ const confirmFamilyMode = () => {
 
 const handleSubmitApplication = async () => {
   if (!isThreeCertValid.value) {
-    showToast('三证核验未完全通过，请核对材料！', 'warning')
+    showToast('申报材料未完全齐备，请核对！', 'warning')
     return
   }
 
@@ -695,9 +920,13 @@ const handleSubmitApplication = async () => {
       car_relationship: carRelationship.value.toUpperCase(),
       property_cert_no: '沪(2022)徐字不动产权第019823号',
       marriage_cert_no: carRelationship.value === 'spouse' ? 'J310104-2022-0089' : null,
-      family_cert_no: carRelationship.value === 'family' ? '310104-HK-982103' : null
+      family_cert_no: carRelationship.value === 'family' ? '310104-HK-982103' : null,
+      attachments: currentAuditMode.value === 'FLEXIBLE_HYBRID' ? allActiveAttachmentItems.value : []
     })
-    showToast(res.message || '三证合一核验完全通过！已成功进入排队队列', 'success')
+    showToast(
+      res.message || (currentAuditMode.value === 'FLEXIBLE_HYBRID' ? '申报材料已提交！AI初审通过，已流转物业人工审核' : '三证合一核验完全通过！已成功进入排队队列'),
+      'success'
+    )
     await userStore.fetchHomeData()
     router.push('/')
   } catch (err) {

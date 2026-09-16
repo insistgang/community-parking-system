@@ -12,6 +12,7 @@ class Community(Base):
     district = Column(String(50), nullable=False) # 徐汇区
     subdistrict = Column(String(50), nullable=False) # 龙华街道
     total_spaces = Column(Integer, default=50) # 总车位数 50
+    audit_mode = Column(String(30), default="THREE_CERT_AUTO") # THREE_CERT_AUTO(三证合一·AI自动化), FLEXIBLE_HYBRID(灵活配置·AI自动化+人工审核)
 
     users = relationship("User", back_populates="community")
     spaces = relationship("ParkingSpace", back_populates="community")
@@ -30,7 +31,7 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     community = relationship("Community", back_populates="users")
-    applications = relationship("QueueApplication", back_populates="user")
+    applications = relationship("QueueApplication", back_populates="user", foreign_keys="[QueueApplication.user_id]")
     contracts = relationship("RentalContract", back_populates="user")
     notifications = relationship("Notification", back_populates="user")
 
@@ -67,12 +68,18 @@ class QueueApplication(Base):
     priority_level = Column(Integer, default=1) # 1: 家庭一车, 2: 家庭二车
     current_rank = Column(Integer, default=0) # 实时排位 (1, 2, 3...)
     status = Column(String(30), default="WAITING") 
-    # WAITING(排队中), ALLOCATED(中签待确认48h), OFFLINE_PENDING(线下办理中), COMPLETED(租约生效), CANCELLED(主动撤销), TIMEOUT_CANCELLED(超时放弃)
+    # PENDING_REVIEW(待物业人工审核), REJECTED(物业审核驳回), WAITING(排队中), ALLOCATED(中签待确认48h), OFFLINE_PENDING(线下办理中), COMPLETED(租约生效), CANCELLED(主动撤销), TIMEOUT_CANCELLED(超时放弃)
+    audit_mode = Column(String(30), default="THREE_CERT_AUTO") # 提交时的审核模式
+    reject_reason = Column(Text, nullable=True) # 审核驳回理由
+    attachments_json = Column(Text, nullable=True) # 必填材料附件清单 JSON
+    audit_time = Column(DateTime, nullable=True) # 物业人工审核时间戳
+    auditor_id = Column(Integer, ForeignKey("users.id"), nullable=True) # 审核管理员ID
     allocated_space_id = Column(Integer, ForeignKey("parking_spaces.id"), nullable=True)
     allocated_time = Column(DateTime, nullable=True) # 48h 倒计时起始点
     apply_time = Column(DateTime, default=datetime.utcnow, index=True) # FIFO 排序键
 
-    user = relationship("User", back_populates="applications")
+    user = relationship("User", back_populates="applications", foreign_keys=[user_id])
+    auditor = relationship("User", foreign_keys=[auditor_id])
     allocated_space = relationship("ParkingSpace")
 
 class RentalContract(Base):

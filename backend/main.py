@@ -3,14 +3,15 @@ import asyncio
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from database import engine, Base, SessionLocal
+from database import engine, Base, SessionLocal, run_migrations
 from models import Community
 from seed import init_db_and_seed
 from scheduler import check_expired_allocations
 from routers import auth, parking, property, evidence, dev
 
-# 确保启动时表存在并安全检查种子数据
+# 确保启动时表存在并执行轻量迁移
 Base.metadata.create_all(bind=engine)
+run_migrations()
 try:
     init_db_and_seed(force=False)
 except Exception as e:

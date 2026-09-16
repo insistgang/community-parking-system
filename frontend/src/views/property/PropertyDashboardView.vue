@@ -70,19 +70,25 @@
     </header>
 
     <div class="flex-1 max-w-[1600px] w-full mx-auto p-4 sm:p-6 space-y-4">
-      <!-- 三栏切换: 一次只展开一栏，避免手机端三栏叠成长页 -->
-      <div class="bg-slate-800 p-1 rounded-2xl border border-slate-700 grid grid-cols-3 gap-1">
+      <!-- 栏目切换: 四大中台管理视口 -->
+      <div class="bg-slate-800 p-1 rounded-2xl border border-slate-700 grid grid-cols-2 sm:grid-cols-4 gap-1">
         <button
           v-for="tab in panels"
           :key="tab.id"
           @click="activePanel = tab.id"
-          class="px-2 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition active:scale-[0.98]"
+          class="relative px-2 py-2.5 rounded-xl text-[11px] sm:text-xs font-bold transition active:scale-[0.98]"
           :class="activePanel === tab.id
             ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
             : 'text-slate-400 hover:text-white hover:bg-slate-700'"
         >
           <span class="block text-base leading-none mb-0.5">{{ tab.icon }}</span>
           <span>{{ tab.label }}</span>
+          <span
+            v-if="tab.id === 'audit' && stats.pending_audit_count > 0"
+            class="absolute top-1.5 right-2 px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[9px] font-mono animate-pulse"
+          >
+            {{ stats.pending_audit_count }}
+          </span>
         </button>
       </div>
 
@@ -224,6 +230,228 @@
               <span class="truncate">{{ getStatusLabel(sp.status) }}</span>
               <span class="hidden sm:inline">{{ sp.end_date ? sp.end_date.slice(5) : '--' }}</span>
             </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 第 4 栏: 审核机制配置与申请审批台账 -->
+      <div v-show="activePanel === 'audit'" class="space-y-4">
+        <!-- 审核方式配置卡片 -->
+        <div class="bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-700 space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-2 border-b border-slate-700 pb-3">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>⚙️ 小区车位申请审核方式配置</span>
+                <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold border"
+                  :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'bg-purple-900/60 text-purple-300 border-purple-500/40' : 'bg-emerald-900/60 text-emerald-300 border-emerald-500/40'"
+                >
+                  当前生效：{{ currentAuditMode === 'FLEXIBLE_HYBRID' ? '灵活配置（AI 自动化 + 人工审核）' : '三证合一（AI 自动化审核）' }}
+                </span>
+              </h3>
+              <p class="text-xs text-slate-400 mt-1">
+                支持小区维度自主配置。📌 <strong>重要规则：配置变更仅对新申请生效，存量申请保持原有审核模式不变。</strong>
+              </p>
+            </div>
+            <span class="text-[11px] text-slate-400 font-mono">所属小区: {{ userStore.communityName || '龙华新村' }}</span>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+            <!-- 模式一: 三证合一 (AI 自动化审核) -->
+            <div
+              @click="handleChangeAuditMode('THREE_CERT_AUTO')"
+              class="p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between space-y-3"
+              :class="currentAuditMode === 'THREE_CERT_AUTO'
+                ? 'border-emerald-500 bg-emerald-950/30 shadow-lg shadow-emerald-950/40 ring-1 ring-emerald-500/30'
+                : 'border-slate-700 bg-slate-900/60 hover:border-slate-600'"
+            >
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">⚡</span>
+                    <h4 class="font-bold text-white text-sm">三证合一（AI 自动化审核）</h4>
+                  </div>
+                  <span
+                    class="w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
+                    :class="currentAuditMode === 'THREE_CERT_AUTO' ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-slate-600 text-transparent'"
+                  >✓</span>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                  业主提交申请沿用原有流程。系统自动通过政务跨库（公安/不动产/交管）完成三证合一智能核验，通过后<strong>单据直接进入 FIFO 阳光排位序列</strong>，无需人工介入。
+                </p>
+              </div>
+              <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
+                <span class="text-emerald-400 font-medium">适合：产权清晰规范、追求高自动化小区</span>
+                <span v-if="currentAuditMode === 'THREE_CERT_AUTO'" class="text-emerald-300 font-bold">● 当前生效使用中</span>
+                <span v-else class="text-slate-400 hover:text-white">点击切换启用 ➔</span>
+              </div>
+            </div>
+
+            <!-- 模式二: 灵活配置 (AI 自动化 + 人工审核) -->
+            <div
+              @click="handleChangeAuditMode('FLEXIBLE_HYBRID')"
+              class="p-4 rounded-2xl border-2 transition cursor-pointer flex flex-col justify-between space-y-3"
+              :class="currentAuditMode === 'FLEXIBLE_HYBRID'
+                ? 'border-purple-500 bg-purple-950/30 shadow-lg shadow-purple-950/40 ring-1 ring-purple-500/30'
+                : 'border-slate-700 bg-slate-900/60 hover:border-slate-600'"
+            >
+              <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2">
+                    <span class="text-xl">🛡️</span>
+                    <h4 class="font-bold text-white text-sm">灵活配置（AI 自动化 + 人工审核）</h4>
+                  </div>
+                  <span
+                    class="w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
+                    :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'border-purple-400 bg-purple-500 text-white' : 'border-slate-600 text-transparent'"
+                  >✓</span>
+                </div>
+                <p class="text-xs text-slate-300 leading-relaxed">
+                  业主提交申请需上传<strong>多张必填材料附件</strong>，先经 AI 基础校验，通过后<strong>流转至物业人工审核池</strong>。物业审核通过则单据进入排位序列；审核驳回时需填写驳回理由并通过站内消息通知业主修改重提。
+                </p>
+              </div>
+              <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
+                <span class="text-purple-400 font-medium">适合：老旧小区历史遗留多、需物业人工复核</span>
+                <span v-if="currentAuditMode === 'FLEXIBLE_HYBRID'" class="text-purple-300 font-bold">● 当前生效使用中</span>
+                <span v-else class="text-slate-400 hover:text-white">点击切换启用 ➔</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 申请审核台账列表 -->
+        <div class="bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-700 space-y-4">
+          <div class="flex items-center justify-between flex-wrap gap-2">
+            <div>
+              <h3 class="text-sm font-bold text-white flex items-center gap-2">
+                <span>📋 车位排队申请审核台账</span>
+                <span v-if="auditFilter === 'PENDING_REVIEW'" class="text-xs text-amber-400 font-normal">
+                  (待人工审核: {{ pendingAuditCount }} 单)
+                </span>
+              </h3>
+            </div>
+
+            <!-- 筛选标签 -->
+            <div class="flex items-center gap-1 text-xs flex-wrap">
+              <button
+                @click="auditFilter = 'ALL'"
+                class="px-2.5 py-1 rounded-lg border transition font-medium"
+                :class="auditFilter === 'ALL' ? 'bg-purple-600 text-white border-purple-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
+              >
+                全部单据 ({{ applicationList.length }})
+              </button>
+              <button
+                @click="auditFilter = 'PENDING_REVIEW'"
+                class="px-2.5 py-1 rounded-lg border transition flex items-center gap-1 font-medium"
+                :class="auditFilter === 'PENDING_REVIEW' ? 'bg-amber-600 text-white border-amber-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
+              >
+                <span>待人工审核</span>
+                <span v-if="pendingAuditCount > 0" class="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
+                  {{ pendingAuditCount }}
+                </span>
+              </button>
+              <button
+                @click="auditFilter = 'WAITING'"
+                class="px-2.5 py-1 rounded-lg border transition font-medium"
+                :class="auditFilter === 'WAITING' ? 'bg-blue-600 text-white border-blue-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
+              >
+                已入队排位中
+              </button>
+              <button
+                @click="auditFilter = 'REJECTED'"
+                class="px-2.5 py-1 rounded-lg border transition font-medium"
+                :class="auditFilter === 'REJECTED' ? 'bg-rose-600 text-white border-rose-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
+              >
+                已驳回
+              </button>
+            </div>
+          </div>
+
+          <!-- 表格展示 -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr class="border-b border-slate-700 text-slate-400 font-semibold bg-slate-900/40">
+                  <th class="p-3">申请人 / 手机</th>
+                  <th class="p-3">申报房屋坐落</th>
+                  <th class="p-3">车牌号 / 归属</th>
+                  <th class="p-3">审核机制</th>
+                  <th class="p-3">证明材料附件</th>
+                  <th class="p-3">单据状态</th>
+                  <th class="p-3">申报时间</th>
+                  <th class="p-3 text-right">审核操作</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-700/60">
+                <tr v-if="filteredApplications.length === 0">
+                  <td colspan="8" class="p-8 text-center text-slate-500">暂无对应申请单据</td>
+                </tr>
+                <tr
+                  v-for="app in filteredApplications"
+                  :key="app.id"
+                  class="hover:bg-slate-750/50 transition"
+                  :class="app.status === 'PENDING_REVIEW' ? 'bg-amber-950/20' : ''"
+                >
+                  <td class="p-3">
+                    <div class="font-bold text-white">{{ app.applicant_name }}</div>
+                    <div class="text-[11px] text-slate-400 font-mono">{{ app.applicant_phone }}</div>
+                  </td>
+                  <td class="p-3 text-slate-200">{{ app.property_no }}</td>
+                  <td class="p-3">
+                    <div class="font-mono font-bold text-white">{{ app.plate_no }}</div>
+                    <div class="text-[10px] text-slate-400">
+                      {{ app.is_spouse_car ? '配偶车(结婚证)' : (app.car_relationship === 'FAMILY' ? '直系亲属(户口簿)' : '本人名下') }}
+                    </div>
+                  </td>
+                  <td class="p-3">
+                    <span
+                      class="px-2 py-0.5 rounded text-[10px] font-semibold border"
+                      :class="app.audit_mode === 'FLEXIBLE_HYBRID' ? 'bg-purple-900/60 text-purple-300 border-purple-500/40' : 'bg-blue-900/60 text-blue-300 border-blue-500/40'"
+                    >
+                      {{ app.audit_mode_label }}
+                    </span>
+                  </td>
+                  <td class="p-3">
+                    <button
+                      @click="openViewAttachmentsModal(app)"
+                      class="text-blue-400 hover:text-blue-300 underline text-xs flex items-center gap-1"
+                    >
+                      <span>📎 查看附件 ({{ app.attachments?.length || 0 }}份)</span>
+                    </button>
+                  </td>
+                  <td class="p-3">
+                    <span
+                      class="px-2 py-0.5 rounded text-[11px] font-semibold border"
+                      :class="getAppStatusBadgeClass(app.status)"
+                    >
+                      {{ app.status_label }}
+                    </span>
+                    <div v-if="app.status === 'REJECTED' && app.reject_reason" class="text-[10px] text-rose-400 mt-0.5 truncate max-w-[150px]" :title="app.reject_reason">
+                      理由: {{ app.reject_reason }}
+                    </div>
+                  </td>
+                  <td class="p-3 text-slate-400 font-mono text-[11px]">{{ app.apply_time }}</td>
+                  <td class="p-3 text-right">
+                    <div v-if="app.status === 'PENDING_REVIEW'" class="flex items-center justify-end gap-1.5">
+                      <button
+                        @click="handleApproveApplication(app)"
+                        :disabled="actionLoading"
+                        class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow active:scale-95"
+                      >
+                        ✓ 通过
+                      </button>
+                      <button
+                        @click="openRejectModal(app)"
+                        :disabled="actionLoading"
+                        class="px-2.5 py-1 rounded-lg bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs transition shadow active:scale-95"
+                      >
+                        ✕ 驳回
+                      </button>
+                    </div>
+                    <span v-else class="text-slate-500 text-[11px]">无需操作</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
@@ -534,6 +762,137 @@
         </div>
       </div>
     </div>
+
+    <!-- 驳回理由确认弹窗 Modal -->
+    <div v-if="rejectModalVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+      <div class="bg-slate-800 rounded-3xl max-w-md w-full p-6 text-slate-100 shadow-2xl border border-slate-700 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center font-bold text-sm">✕</span>
+            <div>
+              <h3 class="text-sm font-bold text-white">审核驳回确认</h3>
+              <p class="text-xs text-slate-400">驳回理由将以系统消息实时通知业主</p>
+            </div>
+          </div>
+          <button @click="rejectModalVisible = false" class="text-slate-400 hover:text-white p-1">✕</button>
+        </div>
+
+        <div v-if="rejectTargetApp" class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 text-xs space-y-1.5">
+          <div class="flex justify-between">
+            <span class="text-slate-400">申请业主:</span>
+            <span class="font-bold text-white">{{ rejectTargetApp.applicant_name }} ({{ rejectTargetApp.applicant_phone }})</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">申报房屋:</span>
+            <span class="text-slate-200">{{ rejectTargetApp.property_no }}</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-400">申请车牌:</span>
+            <span class="font-mono text-white font-bold">{{ rejectTargetApp.plate_no }}</span>
+          </div>
+        </div>
+
+        <div class="space-y-2 text-xs">
+          <label class="block text-slate-300 font-bold">快捷选择驳回理由：</label>
+          <CustomSelect
+            v-model="rejectReasonPreset"
+            :options="rejectReasonOptions"
+            :dark="true"
+            btn-class="py-2 text-xs"
+            @update:modelValue="(val) => { rejectReason = val }"
+          />
+
+          <label class="block text-slate-300 font-bold pt-1">驳回详细说明 (必填)：</label>
+          <textarea
+            v-model="rejectReason"
+            rows="3"
+            placeholder="请详细说明材料不符合的具体原因，方便业主重新调整后提交..."
+            class="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs placeholder-slate-500 focus:outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 resize-none"
+          ></textarea>
+          <p class="text-[10px] text-slate-400">提示：驳回后业主可在移动端查看该理由，并修改材料后一键重新发起申报。</p>
+        </div>
+
+        <div class="flex items-center gap-3 pt-2">
+          <button
+            @click="rejectModalVisible = false"
+            class="flex-1 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition"
+          >
+            取消
+          </button>
+          <button
+            @click="handleConfirmReject"
+            :disabled="!rejectReason.trim() || actionLoading"
+            class="flex-1 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition disabled:opacity-40"
+          >
+            <span v-if="actionLoading">提交中...</span>
+            <span v-else>确认驳回并通知</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 查看证明材料附件 Modal -->
+    <div v-if="viewAttachmentsModalVisible" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
+      <div class="bg-slate-800 rounded-3xl max-w-lg w-full max-h-[85vh] overflow-y-auto p-6 text-slate-100 shadow-2xl border border-slate-700 space-y-4">
+        <div class="flex items-center justify-between border-b border-slate-700 pb-3">
+          <div class="flex items-center gap-2">
+            <span class="w-8 h-8 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold text-sm">📎</span>
+            <div>
+              <h3 class="text-sm font-bold text-white">申请证明材料附件清单</h3>
+              <p class="text-xs text-slate-400">
+                申请人: {{ viewAttachmentsApp?.applicant_name }} ({{ viewAttachmentsApp?.plate_no }})
+              </p>
+            </div>
+          </div>
+          <button @click="viewAttachmentsModalVisible = false" class="text-slate-400 hover:text-white p-1">✕</button>
+        </div>
+
+        <div v-if="!viewAttachmentsApp?.attachments || viewAttachmentsApp.attachments.length === 0" class="p-8 text-center text-slate-400 text-xs">
+          该单据无额外上传附件（三证合一模式由 AI 实时验真身份证、产证、行驶证）
+        </div>
+
+        <div v-else class="space-y-3">
+          <div
+            v-for="(att, idx) in viewAttachmentsApp.attachments"
+            :key="idx"
+            class="p-3 bg-slate-900/80 rounded-xl border border-slate-700 flex items-center justify-between gap-3 text-xs"
+          >
+            <div class="flex items-center gap-2.5 min-w-0">
+              <span class="w-8 h-8 rounded-lg bg-purple-950 border border-purple-800/50 flex items-center justify-center text-base shrink-0">
+                📄
+              </span>
+              <div class="min-w-0">
+                <div class="font-bold text-white truncate">{{ att.title || att.name || '证明附件' }}</div>
+                <div class="text-[10px] text-slate-400 truncate">
+                  文件名: {{ att.file_name || att.name || '未命名材料' }} · {{ att.type_label || att.type || '必要证明' }}
+                </div>
+              </div>
+            </div>
+            <span class="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-950/80 text-emerald-300 border border-emerald-800/40 shrink-0">
+              ✓ AI初审通过
+            </span>
+          </div>
+
+          <div class="p-3 bg-blue-950/40 border border-blue-800/40 rounded-xl text-[11px] text-blue-300 space-y-1">
+            <div class="font-bold flex items-center gap-1">
+              <span>🛡️ 隐私与存证安全说明</span>
+            </div>
+            <p class="text-slate-400 text-[10px] leading-relaxed">
+              严格恪守政务最小化与隐私合规铁律，服务器仅留存附件哈希指纹与结构化校验凭证，避免磁盘留存个人高清隐私扫描件。
+            </p>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-2">
+          <button
+            @click="viewAttachmentsModalVisible = false"
+            class="px-5 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold transition"
+          >
+            关闭预览
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -552,8 +911,30 @@ const activePanel = ref('spaces')
 const panels = [
   { id: 'kpi', icon: '📈', label: '看板指标' },
   { id: 'report', icon: '📊', label: '周转报表' },
-  { id: 'spaces', icon: '🅿️', label: '车位矩阵' }
+  { id: 'spaces', icon: '🅿️', label: '车位矩阵' },
+  { id: 'audit', icon: '📝', label: '审核管理' }
 ]
+
+// 审核机制与申请审批相关变量
+const currentAuditMode = ref('THREE_CERT_AUTO')
+const applicationList = ref([])
+const auditFilter = ref('ALL')
+
+const rejectModalVisible = ref(false)
+const rejectTargetApp = ref(null)
+const rejectReasonPreset = ref('行驶证照片模糊不清，无法辨识车辆所有人与车牌号')
+const rejectReason = ref('行驶证照片模糊不清，无法辨识车辆所有人与车牌号')
+
+const rejectReasonOptions = [
+  '行驶证照片模糊不清，无法辨识车辆所有人与车牌号',
+  '提交的房屋坐落与不动产登记信息不一致',
+  '缺少配偶车辆关系证明（结婚证或同户户籍证明）',
+  '车辆所有人非直系亲属，不符合本小区申报标准',
+  '附件资料缺失或非有效合法证件'
+]
+
+const viewAttachmentsModalVisible = ref(false)
+const viewAttachmentsApp = ref(null)
 
 const stats = ref({})
 const spaceList = ref([])
@@ -644,6 +1025,142 @@ const filteredSpaces = computed(() => {
   return spaceList.value.filter(s => s.status === statusFilter.value)
 })
 
+const filteredApplications = computed(() => {
+  if (auditFilter.value === 'ALL') return applicationList.value
+  return applicationList.value.filter(a => a.status === auditFilter.value)
+})
+
+const getAppStatusBadgeClass = (status) => {
+  switch (status) {
+    case 'PENDING_REVIEW':
+      return 'bg-amber-900/60 text-amber-300 border-amber-500/40'
+    case 'WAITING':
+      return 'bg-blue-900/60 text-blue-300 border-blue-500/40'
+    case 'ALLOCATED':
+      return 'bg-emerald-900/60 text-emerald-300 border-emerald-500/40'
+    case 'REJECTED':
+      return 'bg-rose-900/60 text-rose-300 border-rose-500/40'
+    case 'COMPLETED':
+      return 'bg-purple-900/60 text-purple-300 border-purple-500/40'
+    default:
+      return 'bg-slate-700 text-slate-300 border-slate-600'
+  }
+}
+
+const loadAuditConfig = async () => {
+  try {
+    const res = await api.get('/property/audit-config')
+    if (res.code === 200 && res.data) {
+      currentAuditMode.value = res.data.audit_mode || 'THREE_CERT_AUTO'
+    }
+  } catch (err) {
+    console.error('加载审核配置失败:', err)
+  }
+}
+
+const handleChangeAuditMode = async (newMode) => {
+  if (newMode === currentAuditMode.value) return
+  const modeName = newMode === 'FLEXIBLE_HYBRID' ? '灵活配置（AI 自动化 + 人工审核）' : '三证合一（AI 自动化审核）'
+  const confirmed = await showConfirm({
+    title: '变更小区审核方式',
+    content: `确认将小区车位申请审核方式变更为【${modeName}】吗？\n\n📌 重要规则：本次变更仅对新发起的申请生效，存量排队及在审单据保持原有审核模式不变。`,
+    type: 'warning',
+    confirmText: '确认变更',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
+
+  actionLoading.value = true
+  try {
+    const res = await api.post('/property/audit-config', { audit_mode: newMode })
+    if (res.code === 200) {
+      currentAuditMode.value = newMode
+      showToast(res.message || '审核方式配置已更新并上链存证！', 'success')
+      await loadData()
+    }
+  } catch (err) {
+    showToast('更新配置失败: ' + err.message, 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const loadApplications = async () => {
+  try {
+    const res = await api.get('/property/applications')
+    if (res.code === 200) {
+      applicationList.value = res.data || []
+    }
+  } catch (err) {
+    console.error('加载申请单据列表失败:', err)
+  }
+}
+
+const handleApproveApplication = async (app) => {
+  const confirmed = await showConfirm({
+    title: '人工审核通过确认',
+    content: `确认通过业主【${app.applicant_name}】针对房屋【${app.property_no}】、车牌【${app.plate_no}】的车位排队申请吗？\n\n通过后该单据将正式进入车位 FIFO 轮候队列，若当前有空闲车位将自动触发顺位匹配。`,
+    type: 'info',
+    confirmText: '确认通过',
+    cancelText: '取消'
+  })
+  if (!confirmed) return
+
+  actionLoading.value = true
+  try {
+    const res = await api.post('/property/audit-application', {
+      app_id: app.id,
+      action: 'APPROVE'
+    })
+    if (res.code === 200) {
+      showToast(res.message || '审核通过，申请已进入排队序列！', 'success')
+      await loadData()
+    }
+  } catch (err) {
+    showToast('审核通过失败: ' + err.message, 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const openRejectModal = (app) => {
+  rejectTargetApp.value = app
+  rejectReasonPreset.value = rejectReasonOptions[0]
+  rejectReason.value = rejectReasonOptions[0]
+  rejectModalVisible.value = true
+}
+
+const handleConfirmReject = async () => {
+  if (!rejectTargetApp.value) return
+  if (!rejectReason.value.trim()) {
+    showToast('请填写驳回理由', 'warning')
+    return
+  }
+
+  actionLoading.value = true
+  try {
+    const res = await api.post('/property/audit-application', {
+      app_id: rejectTargetApp.value.id,
+      action: 'REJECT',
+      reject_reason: rejectReason.value.trim()
+    })
+    if (res.code === 200) {
+      showToast(res.message || '已成功驳回，并向业主发送站内通知！', 'success')
+      rejectModalVisible.value = false
+      await loadData()
+    }
+  } catch (err) {
+    showToast('驳回失败: ' + err.message, 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const openViewAttachmentsModal = (app) => {
+  viewAttachmentsApp.value = app
+  viewAttachmentsModalVisible.value = true
+}
+
 const loadData = async () => {
   try {
     const sRes = await api.get('/property/stats')
@@ -651,6 +1168,9 @@ const loadData = async () => {
 
     const spRes = await api.get('/property/spaces')
     if (spRes.code === 200) spaceList.value = spRes.data
+
+    await loadAuditConfig()
+    await loadApplications()
   } catch (err) {
     console.error('加载物业数据失败:', err)
   }

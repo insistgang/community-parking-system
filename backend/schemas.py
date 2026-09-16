@@ -33,6 +33,7 @@ class ApplyParkingRequest(BaseModel):
     property_cert_no: Optional[str] = None # 不动产权证号 (OCR 提取)
     marriage_cert_no: Optional[str] = None
     family_cert_no: Optional[str] = None # 居民户口簿/关系证明编号
+    attachments: Optional[List[dict]] = None # 灵活配置模式下的上传附件列表 [{"name": "...", "url": "...", "type": "..."}]
 
 class CancelApplyRequest(BaseModel):
     reason: Optional[str] = "个人原因自愿撤销"
@@ -50,7 +51,6 @@ class ConfirmDeliveryRequest(BaseModel):
     months: Optional[int] = 6 # 签约周期，默认半年(6个月)，可选1/3/6/12等
     attachment_url: Optional[str] = None # 合同签署证明扫描件文件名 (不落盘原图)
 
-
 class ForceTerminateRequest(BaseModel):
     space_id: int
     reason: str
@@ -58,4 +58,13 @@ class ForceTerminateRequest(BaseModel):
 
 class RenewRequest(BaseModel):
     months: Optional[int] = 6 # 默认半年(6个月)，支持1、3、6、12等周期
+
+class AuditModeConfigRequest(BaseModel):
+    audit_mode: str # THREE_CERT_AUTO(三证合一·AI自动化), FLEXIBLE_HYBRID(灵活配置·AI自动化+人工审核)
+
+class AuditApplicationRequest(BaseModel):
+    app_id: int
+    action: str # APPROVE 或 REJECT
+    reject_reason: Optional[str] = None
+
 

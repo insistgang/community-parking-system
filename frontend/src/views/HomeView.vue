@@ -148,6 +148,106 @@
         </div>
       </div>
 
+      <!-- 视图 E: 待人工审核视图 (灵活配置模式下 AI 初审通过，待物业人工审核) -->
+      <div v-else-if="viewState === 'PENDING_REVIEW'" class="space-y-3 animate-fade-in">
+        <div class="bg-gradient-to-br from-amber-500/10 via-amber-600/5 to-slate-900/5 bg-white rounded-2xl p-5 shadow-sm border-2 border-amber-300 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold text-amber-700 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+              <span>车位申请审核中 (待物业人工复核)</span>
+            </span>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+              AI 初审已过
+            </span>
+          </div>
+
+          <div class="space-y-3 my-2">
+            <div>
+              <span class="text-xs text-slate-400 block">申报车辆号牌</span>
+              <span class="text-2xl font-black font-mono text-slate-800 tracking-wider">
+                {{ myQueue?.plate_no || '审核中' }}
+              </span>
+            </div>
+
+            <!-- 审核流程进度条 -->
+            <div class="bg-amber-50/80 rounded-xl p-3 border border-amber-200/80 space-y-2 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-amber-900">当前审核机制：</span>
+                <span class="text-[11px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
+                  灵活配置（AI 自动化 + 人工审核）
+                </span>
+              </div>
+              <div class="space-y-1.5 pt-1 text-[11px]">
+                <div class="flex items-center gap-2 text-emerald-700 font-semibold">
+                  <span>✓ 步骤 1: AI 算法基础核验身份证/房产/行驶证/附件（已通过）</span>
+                </div>
+                <div class="flex items-center gap-2 text-amber-800 font-bold">
+                  <span class="animate-spin">⏳</span>
+                  <span>步骤 2: 物业管理员人工核验证明材料中（预计 1~2 个工作日）</span>
+                </div>
+                <div class="flex items-center gap-2 text-slate-400">
+                  <span>⚪ 步骤 3: 人工审核通过后系统自动并入车位 FIFO 轮候序列</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-[11px] flex items-center justify-between">
+              <span>申报坐落：{{ myQueue?.property_no || '本小区房屋' }}</span>
+              <span class="font-mono text-[10px]">{{ myQueue?.apply_time }}</span>
+            </div>
+          </div>
+
+          <!-- 撤销申请按钮 -->
+          <div class="pt-2 border-t border-slate-100">
+            <button
+              @click="handleCancelApply"
+              class="w-full py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 font-semibold text-xs border border-rose-200 shadow-sm transition active:scale-[0.99] flex items-center justify-center gap-1.5"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
+              </svg>
+              <span>撤销本次申请</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 视图 F: 申请被驳回视图 (提示驳回理由，支持一键重新调整申报) -->
+      <div v-else-if="viewState === 'REJECTED'" class="space-y-3 animate-fade-in">
+        <div class="bg-white rounded-2xl p-5 shadow-sm border-2 border-rose-300 relative overflow-hidden">
+          <div class="flex items-center justify-between mb-3">
+            <span class="text-xs font-bold text-rose-600 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+              <span>车位申请未通过审核</span>
+            </span>
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 border border-rose-200">
+              已驳回
+            </span>
+          </div>
+
+          <div class="bg-rose-50 rounded-xl p-4 border border-rose-200 space-y-2 my-2">
+            <div class="flex items-center gap-2 text-rose-800 font-bold text-xs">
+              <span>⚠️ 物业人工审核驳回意见：</span>
+            </div>
+            <p class="text-xs text-rose-700 font-medium leading-relaxed bg-white/80 p-3 rounded-lg border border-rose-200">
+              {{ myQueue?.reject_reason || '材料不齐或车辆权属凭证不符合规定要求，请核对后重新提交。' }}
+            </p>
+            <p class="text-[11px] text-slate-500 pt-1">
+              您可根据物业驳回意见，重新补充或调整相关车辆与房产证明附件后再次提交。
+            </p>
+          </div>
+
+          <div class="pt-2 flex items-center gap-2">
+            <router-link
+              to="/apply"
+              class="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-center shadow-md shadow-blue-500/20 transition active:scale-[0.98]"
+            >
+              ✏️ 修改材料，重新发起申报 ➔
+            </router-link>
+          </div>
+        </div>
+      </div>
+
       <!-- 视图 B: 新客无车位视图 / 物业管理员巡检视图 -->
       <div v-else class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 text-center space-y-4">
         <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-inner" :class="userStore.isPropertyAdmin ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'">

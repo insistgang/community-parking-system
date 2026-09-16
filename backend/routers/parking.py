@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Header
@@ -21,7 +22,7 @@ def get_current_user(x_user_id: int = Header(..., alias="X-User-Id"), db: Sessio
 def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     移动端主页核心视图接口:
-    动态返回 4 重视图状态 (RENTED | NO_APPLY | WAITING | ALLOCATED | OFFLINE_PENDING)
+    动态返回视图状态 (RENTED | NO_APPLY | WAITING | ALLOCATED | OFFLINE_PENDING | PENDING_REVIEW | REJECTED)
     """
     community = db.query(Community).filter(Community.id == user.community_id).first()
 
@@ -47,11 +48,11 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
             "status": contract.status
         }
 
-    # 2. 检查排队申请单
+    # 2. 检查排队/审核申请单 (取最新一条生效或审核中的单据)
     app = db.query(QueueApplication).filter(
         QueueApplication.user_id == user.id,
-        QueueApplication.status.in_(["WAITING", "ALLOCATED", "OFFLINE_PENDING"])
-    ).first()
+        QueueApplication.status.in_(["WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW", "REJECTED"])
+    ).order_by(QueueApplication.id.desc()).first()
 
     my_queue = None
     view_state = "NO_APPLY"
@@ -60,39 +61,75 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
         view_state = "RENTED"
     elif app:
         view_state = app.status
-        allocated_space_no = None
-        countdown_seconds = 0
+        attachments = []
+        if app.attachments_json:
+            try:
+                attachments = json.loads(app.attachments_json)
+            except Exception:
+                attachments = []
 
-        if app.status in ("ALLOCATED", "OFFLINE_PENDING") and app.allocated_space_id:
-            sp = db.query(ParkingSpace).filter(ParkingSpace.id == app.allocated_space_id).first()
-            allocated_space_no = sp.space_no if sp else "待定"
-            if app.allocated_time:
-                # 48小时倒计时
-                elapsed = (datetime.utcnow() - app.allocated_time).total_seconds()
-                countdown_seconds = max(0, int(48 * 3600 - elapsed))
+        if app.status == "PENDING_REVIEW":
+            my_queue = {
+                "id": app.id,
+                "property_no": app.property_no,
+                "plate_no": app.plate_no,
+                "status": "PENDING_REVIEW",
+                "status_label": "待物业人工审核",
+                "audit_mode": app.audit_mode or "FLEXIBLE_HYBRID",
+                "apply_time": fmt_bj(app.apply_time),
+                "attachments": attachments,
+                "notice": "AI 自动化初审已通过，正在等待物业人工审核材料资质..."
+            }
+        elif app.status == "REJECTED":
+            my_queue = {
+                "id": app.id,
+                "property_no": app.property_no,
+                "plate_no": app.plate_no,
+                "status": "REJECTED",
+                "status_label": "审核已驳回",
+                "reject_reason": app.reject_reason or "申请材料不符合要求，请核对后重新提交",
+                "audit_time": fmt_bj(app.audit_time) if app.audit_time else "--",
+                "audit_mode": app.audit_mode or "FLEXIBLE_HYBRID",
+                "apply_time": fmt_bj(app.apply_time),
+                "attachments": attachments,
+                "can_reapply": True
+            }
+        else:
+            allocated_space_no = None
+            countdown_seconds = 0
 
-        total_waiting = db.query(QueueApplication).filter(
-            QueueApplication.community_id == user.community_id,
-            QueueApplication.status == "WAITING"
-        ).count()
+            if app.status in ("ALLOCATED", "OFFLINE_PENDING") and app.allocated_space_id:
+                sp = db.query(ParkingSpace).filter(ParkingSpace.id == app.allocated_space_id).first()
+                allocated_space_no = sp.space_no if sp else "待定"
+                if app.allocated_time:
+                    # 48小时倒计时
+                    elapsed = (datetime.utcnow() - app.allocated_time).total_seconds()
+                    countdown_seconds = max(0, int(48 * 3600 - elapsed))
 
-        est_text, est_basis = estimate_waiting_duration(app.current_rank, community.total_spaces if community else 50)
+            total_waiting = db.query(QueueApplication).filter(
+                QueueApplication.community_id == user.community_id,
+                QueueApplication.status == "WAITING"
+            ).count()
 
-        my_queue = {
-            "id": app.id,
-            "property_no": app.property_no,
-            "plate_no": app.plate_no,
-            "priority_level": app.priority_level,
-            "priority_label": "常规优先轮候" if app.priority_level == 1 else "同户二车(顺延后置)",
-            "current_rank": app.current_rank,
-            "total_queue": total_waiting,
-            "is_first_candidate": (app.current_rank == 1),
-            "apply_time": fmt_bj(app.apply_time),
-            "ai_waiting_time": est_text,
-            "ai_estimation_basis": est_basis,
-            "allocated_space_no": allocated_space_no,
-            "countdown_seconds": countdown_seconds
-        }
+            est_text, est_basis = estimate_waiting_duration(app.current_rank, community.total_spaces if community else 50)
+
+            my_queue = {
+                "id": app.id,
+                "property_no": app.property_no,
+                "plate_no": app.plate_no,
+                "priority_level": app.priority_level,
+                "priority_label": "常规优先轮候" if app.priority_level == 1 else "同户二车(顺延后置)",
+                "current_rank": app.current_rank,
+                "total_queue": total_waiting,
+                "is_first_candidate": (app.current_rank == 1),
+                "apply_time": fmt_bj(app.apply_time),
+                "ai_waiting_time": est_text,
+                "ai_estimation_basis": est_basis,
+                "allocated_space_no": allocated_space_no,
+                "countdown_seconds": countdown_seconds,
+                "attachments": attachments,
+                "audit_mode": app.audit_mode or "THREE_CERT_AUTO"
+            }
     else:
         view_state = "NO_APPLY"
 
@@ -108,6 +145,9 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
     vacant_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == user.community_id, ParkingSpace.status == "VACANT").count()
     maint_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == user.community_id, ParkingSpace.status == "MAINTENANCE").count()
     alloc_sp = db.query(ParkingSpace).filter(ParkingSpace.community_id == user.community_id, ParkingSpace.status.in_(["ALLOCATED", "OFFLINE_PENDING"])).count()
+    pending_audit_sp = db.query(QueueApplication).filter(QueueApplication.community_id == user.community_id, QueueApplication.status == "PENDING_REVIEW").count()
+
+    comm_audit_mode = getattr(community, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
 
     # 5. 公开展出的车位列表 (脱敏)
     public_spaces = []
@@ -152,7 +192,8 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
                 "id": user.id,
                 "real_name": user.real_name,
                 "role": user.role,
-                "community_name": community.name if community else "龙华新村"
+                "community_name": community.name if community else "龙华新村",
+                "community_audit_mode": comm_audit_mode
             },
             "unread_notifications": unread_count,
             "my_space": my_space,
@@ -162,16 +203,38 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
                 "rented_spaces": rented_sp,
                 "vacant_spaces": vacant_sp,
                 "maintenance_spaces": maint_sp,
-                "allocated_spaces": alloc_sp
+                "allocated_spaces": alloc_sp,
+                "pending_audit_count": pending_audit_sp,
+                "audit_mode": comm_audit_mode
             },
             "public_spaces": public_spaces
+        }
+    )
+
+@router.get("/parking/audit-mode", response_model=ResponseModel)
+def get_community_audit_mode(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    """
+    获取当前小区审核方式配置 (THREE_CERT_AUTO | FLEXIBLE_HYBRID)
+    """
+    comm = db.query(Community).filter(Community.id == user.community_id).first()
+    mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+    return ResponseModel(
+        code=200,
+        data={
+            "community_id": comm.id if comm else user.community_id,
+            "community_name": comm.name if comm else "龙华新村",
+            "audit_mode": mode,
+            "mode_label": "三证合一（AI 自动化审核）" if mode == "THREE_CERT_AUTO" else "灵活配置（AI 自动化 + 人工审核）"
         }
     )
 
 @router.post("/parking/apply", response_model=ResponseModel)
 def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
-    车位排队三证合一申请
+    车位排队申请:
+    - 若小区配置为【三证合一 (AI自动化)】: AI 核验通过直接进入 WAITING 排队序列
+    - 若小区配置为【灵活配置 (AI自动化+人工审核)】: AI 基础初审通过后生成 PENDING_REVIEW 待物业人工审核单，待审核通过后方进入排位
+    - 若历史申请曾被驳回 (REJECTED)，允许调整材料后重新提交
     """
     # 铁律：物业管理员坚决禁止作为业主申请车位
     if user.role == "PROPERTY_ADMIN":
@@ -181,19 +244,28 @@ def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_use
     if "浦东" in req.property_no or "世纪大道" in req.property_no or "外区" in req.property_no:
         raise HTTPException(status_code=400, detail="仅限本小区产权房屋可申请车位，外区房产无法通过核验！")
 
-    # 检查是否已在排队中
+    # 检查是否已在活跃审核或排队中
     active_app = db.query(QueueApplication).filter(
         QueueApplication.user_id == user.id,
-        QueueApplication.status.in_(["WAITING", "ALLOCATED", "OFFLINE_PENDING"])
+        QueueApplication.status.in_(["WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW"])
     ).first()
     if active_app:
-        raise HTTPException(status_code=400, detail="您已有正在生效或轮候中的申请，不可重复发起！")
+        tip = "待物业人工审核中" if active_app.status == "PENDING_REVIEW" else "正在生效或轮候中"
+        raise HTTPException(status_code=400, detail=f"您已有{tip}的申请，不可重复发起！")
+
+    # 归档历史已被驳回的申请单，支持调整材料后重新提交
+    old_rejected_apps = db.query(QueueApplication).filter(
+        QueueApplication.user_id == user.id,
+        QueueApplication.status == "REJECTED"
+    ).all()
+    for old_app in old_rejected_apps:
+        old_app.status = "CANCELLED"
 
     # 一房多车判定: 本房屋已有排队/历史申请，或本人名下已有生效租约 → 二车自动降权
     exist_house = db.query(QueueApplication).filter(
         QueueApplication.community_id == user.community_id,
         QueueApplication.property_no == req.property_no,
-        QueueApplication.status.in_(["WAITING", "ALLOCATED", "OFFLINE_PENDING", "COMPLETED"])
+        QueueApplication.status.in_(["WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW", "COMPLETED"])
     ).first()
 
     exist_contract = db.query(RentalContract).filter(
@@ -208,7 +280,27 @@ def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_use
     is_spouse = (car_rel == "SPOUSE") or req.is_spouse_car
     rel_label = "配偶车(结婚证核验)" if car_rel == "SPOUSE" else ("家人车(户口本核验)" if car_rel == "FAMILY" else "本人名下")
 
-    # 创建申请
+    # 获取当前小区维度的审核方式配置 (仅对新提交生效)
+    comm = db.query(Community).filter(Community.id == user.community_id).first()
+    curr_audit_mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+
+    # 处理附件材料列表
+    attachments = req.attachments or []
+    if not attachments:
+        # 拟真多张必填材料附件清单
+        attachments = [
+            {"name": "居民身份证原件扫描件", "type": "ID_CARD", "desc": f"权利人: {user.real_name} (实人人脸比对核验通过)"},
+            {"name": "不动产权证书原件扫描件", "type": "PROPERTY_CERT", "desc": f"房屋坐落: {req.property_no} (市不动产中心联网比对通过)"},
+            {"name": "机动车行驶证正副页扫描件", "type": "VEHICLE_LICENSE", "desc": f"号牌号码: {req.plate_no} (公安交管比对通过)"}
+        ]
+        if is_spouse:
+            attachments.append({"name": "夫妻关系结婚证明原件", "type": "MARRIAGE_CERT", "desc": f"民政婚姻登记比对通过 ({req.marriage_cert_no or 'J310104-2022-0089'})"})
+        elif car_rel == "FAMILY":
+            attachments.append({"name": "常住人口直系亲属居民户口簿", "type": "FAMILY_CERT", "desc": f"常住人口户籍比对通过 ({req.family_cert_no or '310104-HK-982103'})"})
+
+    init_status = "PENDING_REVIEW" if curr_audit_mode == "FLEXIBLE_HYBRID" else "WAITING"
+
+    # 创建申请单 (存量申请保持原模式不变，新申请打上当前审核模式标签)
     app = QueueApplication(
         user_id=user.id,
         community_id=user.community_id,
@@ -219,36 +311,65 @@ def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_use
         car_relationship=car_rel,
         family_cert_no=req.family_cert_no if car_rel == "FAMILY" else None,
         priority_level=priority,
-        status="WAITING",
+        status=init_status,
+        audit_mode=curr_audit_mode,
+        attachments_json=json.dumps(attachments, ensure_ascii=False),
         apply_time=datetime.utcnow()
     )
     db.add(app)
     db.commit()
     db.refresh(app)
 
-    # 存证
-    create_evidence_record(
-        db=db,
-        community_id=user.community_id,
-        user_id=user.id,
-        event_type="APPLY",
-        summary=f"业主【{user.real_name}】提交车位申请(三证核验通过·{rel_label}·{'家庭一车' if priority==1 else '家庭二车'})",
-        payload={
-            "property_no": req.property_no,
-            "plate_no": req.plate_no,
-            "car_relationship": car_rel,
-            "is_spouse": is_spouse,
-            "property_cert_no": req.property_cert_no,
-            "marriage_cert_no": req.marriage_cert_no if is_spouse else None,
-            "family_cert_no": req.family_cert_no if car_rel == "FAMILY" else None,
-            "priority": priority
-        }
-    )
-
-    # 触发原子重排与匹配
-    trigger_recalculate_queue(db, user.community_id)
-
-    return ResponseModel(code=200, message="三证核验通过，排队申请已成功提交！")
+    if curr_audit_mode == "FLEXIBLE_HYBRID":
+        create_evidence_record(
+            db=db,
+            community_id=user.community_id,
+            user_id=user.id,
+            event_type="APPLY_SUBMIT",
+            summary=f"业主【{user.real_name}】提交车位申请(AI初审校验通过·流转物业人工审核·{rel_label}·{'家庭一车' if priority==1 else '家庭二车'})",
+            payload={
+                "property_no": req.property_no,
+                "plate_no": req.plate_no,
+                "audit_mode": "FLEXIBLE_HYBRID",
+                "attachments_count": len(attachments),
+                "priority": priority
+            }
+        )
+        db.add(Notification(
+            user_id=user.id,
+            title="车位申请提交成功(待物业审核)",
+            content="您的车位申请AI基础初审已通过，已成功流转至物业人工审核阶段，请耐心等待审核结果通知。",
+            type="SYSTEM",
+            action_type="GO_QUEUE"
+        ))
+        db.commit()
+        return ResponseModel(
+            code=200,
+            message="AI基础校验通过！申请材料已成功流转至物业人工审核，请耐心等待审核。",
+            data={"id": app.id, "status": app.status, "audit_mode": app.audit_mode}
+        )
+    else:
+        create_evidence_record(
+            db=db,
+            community_id=user.community_id,
+            user_id=user.id,
+            event_type="APPLY",
+            summary=f"业主【{user.real_name}】提交车位申请(三证合一AI直审通过·{rel_label}·{'家庭一车' if priority==1 else '家庭二车'})",
+            payload={
+                "property_no": req.property_no,
+                "plate_no": req.plate_no,
+                "audit_mode": "THREE_CERT_AUTO",
+                "attachments_count": len(attachments),
+                "priority": priority
+            }
+        )
+        # 触发原子重排与匹配
+        trigger_recalculate_queue(db, user.community_id)
+        return ResponseModel(
+            code=200,
+            message="三证合一核验通过，排队申请已成功提交并进入队列！",
+            data={"id": app.id, "status": app.status, "audit_mode": app.audit_mode}
+        )
 
 @router.post("/parking/cancel-apply", response_model=ResponseModel)
 def cancel_apply(req: CancelApplyRequest, user: User = Depends(get_current_user), db: Session = Depends(get_db)):

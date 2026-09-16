@@ -19,16 +19,7 @@
       </div>
     </div>
 
-    <div class="flex items-center gap-1.5 sm:gap-2">
-      <!-- 物业中台快捷入口 -->
-      <router-link
-        to="/property/dashboard"
-        class="px-2 py-1 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] shadow-sm transition flex items-center gap-1 active:scale-95 shrink-0"
-        title="前往物业管理中台 (配置审核方式/管理车位)"
-      >
-        <span>🏢 物业后台</span>
-      </router-link>
-
+    <div class="flex items-center gap-2">
       <!-- 明暗主题切换 -->
       <button
         @click="userStore.toggleTheme()"

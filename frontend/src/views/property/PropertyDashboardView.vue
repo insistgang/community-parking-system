@@ -38,14 +38,6 @@
         </button>
 
         <button
-          @click="handleQuickSwitchToOwner"
-          class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-semibold transition active:scale-95 flex items-center gap-1.5 shadow-sm"
-          title="切换至业主移动端(张欣欣)体验申报"
-        >
-          <span>📱 切换业主端</span>
-        </button>
-
-        <button
           @click="openQuickMaintenanceModal"
           class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold transition active:scale-95 flex items-center gap-1.5 shadow-sm"
           title="快速选择车位设为维修停用或录入报修"
@@ -906,26 +898,16 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
 import api from '../../api'
 import { showConfirm, showToast } from '../../utils/dialog'
 import CustomSelect from '../../components/CustomSelect.vue'
 
-const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const activePanel = ref(route.query.tab ? String(route.query.tab) : 'spaces')
-
-const handleQuickSwitchToOwner = async () => {
-  try {
-    await userStore.quickLogin('13800000001', '123456')
-    router.push('/')
-  } catch (e) {
-    router.push('/')
-  }
-}
+const activePanel = ref('spaces')
 const panels = [
   { id: 'kpi', icon: '📈', label: '看板指标' },
   { id: 'report', icon: '📊', label: '周转报表' },
@@ -1195,9 +1177,6 @@ const loadData = async () => {
 }
 
 onMounted(() => {
-  if (route.query.tab) {
-    activePanel.value = String(route.query.tab)
-  }
   loadData()
 })
 

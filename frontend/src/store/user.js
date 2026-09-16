@@ -42,18 +42,6 @@ export const useUserStore = defineStore('user', {
       localStorage.removeItem('parking_user')
       localStorage.removeItem('parking_token')
     },
-    async quickLogin(identifier, password) {
-      const res = await api.post('/auth/login', {
-        identifier,
-        password,
-        login_type: 'PASSWORD'
-      })
-      if (res.code === 200 && res.data) {
-        this.setAuth(res.data.user, res.data.token)
-        return res.data.user
-      }
-      throw new Error(res.message || '快捷登录失败')
-    },
     async fetchHomeData() {
       if (!this.user?.id) return null
       try {

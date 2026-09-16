@@ -62,28 +62,17 @@ const router = createRouter({
   routes
 })
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   if (!to.meta.public && !userStore.isLoggedIn) {
     return next('/login')
   }
   if (to.meta.requiresAdmin && !userStore.isPropertyAdmin) {
-    try {
-      // 演示便捷优化：检测到访问物业中台直接无缝切换为管理员王建国身份
-      await userStore.quickLogin('13900000001', '123456')
-      return next()
-    } catch (e) {
-      return next('/property/login')
-    }
+    return next('/')
   }
-  // 物业管理员进入业主申报提交页面时，便捷切换为业主张欣欣账号
+  // 物业管理员禁止进入业主申报提交页面，避免误操作；但允许浏览前台主页、公示大盘与存证
   if (userStore.isPropertyAdmin && to.path === '/apply') {
-    try {
-      await userStore.quickLogin('13800000001', '123456')
-      return next()
-    } catch (e) {
-      return next('/property/dashboard')
-    }
+    return next('/property/dashboard')
   }
   next()
 })

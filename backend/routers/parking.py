@@ -280,9 +280,11 @@ def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_use
     is_spouse = (car_rel == "SPOUSE") or req.is_spouse_car
     rel_label = "配偶车(结婚证核验)" if car_rel == "SPOUSE" else ("家人车(户口本核验)" if car_rel == "FAMILY" else "本人名下")
 
-    # 获取当前小区维度的审核方式配置 (仅对新提交生效)
+    # 获取审核方式配置 (优先遵循业主提交时选定的通道，未传则遵循小区后台配置)
     comm = db.query(Community).filter(Community.id == user.community_id).first()
-    curr_audit_mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+    default_mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+    curr_audit_mode = req.audit_mode if req.audit_mode in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID") else default_mode
+
 
     # 处理附件材料列表
     attachments = req.attachments or []

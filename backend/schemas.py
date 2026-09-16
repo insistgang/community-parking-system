@@ -37,6 +37,8 @@ class ApplyParkingRequest(BaseModel):
     marriage_cert_no: Optional[str] = None
     family_cert_no: Optional[str] = None # 居民户口簿/关系证明编号
     attachments: Optional[List[dict]] = None # 灵活配置模式下的上传附件列表 [{"name": "...", "url": "...", "type": "..."}]
+    audit_mode: Optional[str] = None # 申报指定的审核方式: THREE_CERT_AUTO 或 FLEXIBLE_HYBRID
+
 
 class CancelApplyRequest(BaseModel):
     reason: Optional[str] = "个人原因自愿撤销"

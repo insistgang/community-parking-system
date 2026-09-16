@@ -21,6 +21,25 @@
         </router-link>
       </div>
 
+      <!-- 快捷横幅: 物业管理后台 & 审核方式配置入口 -->
+      <div v-else class="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-3.5 shadow-md border border-purple-500/30 flex items-center justify-between gap-2.5 animate-fade-in">
+        <div class="min-w-0">
+          <div class="flex items-center gap-1.5 font-bold text-xs text-purple-200">
+            <span>🏢 物业管理后台 · 审核方式配置入口</span>
+          </div>
+          <p class="text-[10px] text-slate-300 mt-0.5 truncate">
+            当前机制：<strong class="text-emerald-300">{{ communityAuditModeLabel }}</strong> · 包含【三证合一】与【灵活配置】
+          </p>
+        </div>
+        <button
+          type="button"
+          @click="handleQuickSwitchToProperty"
+          class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shrink-0 shadow transition active:scale-95 flex items-center gap-1"
+        >
+          <span>去后台配置 ➔</span>
+        </button>
+      </div>
+
       <!-- 视图 D: 队首中签 48h 确认倒计时卡片 -->
       <div v-if="viewState === 'ALLOCATED' || viewState === 'OFFLINE_PENDING'">
         <CountdownCard
@@ -262,33 +281,49 @@
             当前登录身份：【{{ userStore.realName }}】(物业管理员)。您可在此查验车位公示大盘、顺位全量脱敏队列与存证链，随时可切回调度中台。
           </p>
         </div>
-        <div v-else>
+        <div v-else class="space-y-2">
           <h3 class="text-base font-black text-slate-800">尚未在本小区申请车位</h3>
-          <p class="text-xs text-slate-500 mt-1 leading-relaxed max-w-xs mx-auto">
-            老旧小区车位资源紧张，系统实行“三证合一严审、按序阳光轮候、全流程存证”的公平管理机制。
+          <p class="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">
+            老旧小区车位资源紧张，系统实行公平公正、阳光轮候、全流程存证的管理机制。
           </p>
+          <div class="inline-flex items-center gap-1.5 text-[11px] px-3 py-1 rounded-full border"
+            :class="communityAuditMode === 'FLEXIBLE_HYBRID' ? 'bg-purple-50 text-purple-700 border-purple-200' : 'bg-blue-50 text-blue-700 border-blue-200'"
+          >
+            <span>当前小区审核机制：</span>
+            <strong class="font-bold">{{ communityAuditModeLabel }}</strong>
+          </div>
         </div>
 
-        <router-link
-          v-if="userStore.isPropertyAdmin"
-          to="/property/dashboard"
-          class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-md shadow-purple-500/20 active:scale-[0.98] transition"
-        >
-          <span>🏢 进入物业资产调度中台</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
-        </router-link>
-        <router-link
-          v-else
-          to="/apply"
-          class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20 active:scale-[0.98] transition"
-        >
-          <span>立即申请排位 (三证合一认证)</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
-        </router-link>
+        <div v-if="userStore.isPropertyAdmin">
+          <router-link
+            to="/property/dashboard"
+            class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-md shadow-purple-500/20 active:scale-[0.98] transition"
+          >
+            <span>🏢 进入物业资产调度中台</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="m9 18 6-6-6-6"/>
+            </svg>
+          </router-link>
+        </div>
+        <div v-else class="space-y-2">
+          <router-link
+            to="/apply"
+            class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20 active:scale-[0.98] transition"
+          >
+            <span>{{ communityAuditMode === 'FLEXIBLE_HYBRID' ? '立即申请排位 (灵活配置：AI初验+人工审核)' : '立即申请排位 (三证合一认证)' }}</span>
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="m9 18 6-6-6-6"/>
+            </svg>
+          </router-link>
+
+          <button
+            type="button"
+            @click="handleQuickSwitchToProperty"
+            class="text-xs text-purple-600 hover:text-purple-700 font-bold underline flex items-center justify-center gap-1 w-full pt-1 transition"
+          >
+            <span>🏢 切换为物业管理员，去后台调整审核方式配置 ➔</span>
+          </button>
+        </div>
       </div>
 
       <!-- 小区车辆概况指标 (仅展示统计数据，绝不暴露邻居姓名或门牌隐私) -->
@@ -419,6 +454,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import api from '../api'
 import NavBar from '../components/NavBar.vue'
@@ -427,7 +463,22 @@ import AiWaitingCard from '../components/AiWaitingCard.vue'
 import BottomNav from '../components/BottomNav.vue'
 import { showConfirm, showToast } from '../utils/dialog'
 
+const router = useRouter()
 const userStore = useUserStore()
+
+const communityAuditMode = computed(() => userStore.homeData?.community_audit_mode || 'THREE_CERT_AUTO')
+const communityAuditModeLabel = computed(() => {
+  return communityAuditMode.value === 'FLEXIBLE_HYBRID' ? '灵活配置（AI 自动化 + 人工审核）' : '三证合一（AI 自动化审核）'
+})
+
+const handleQuickSwitchToProperty = async () => {
+  try {
+    await userStore.quickLogin('13900000001', '123456')
+    router.push('/property/dashboard?tab=audit')
+  } catch (e) {
+    router.push('/property/dashboard')
+  }
+}
 
 let pollTimer = null
 

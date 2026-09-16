@@ -72,4 +72,9 @@ class AuditApplicationRequest(BaseModel):
     action: str # APPROVE 或 REJECT
     reject_reason: Optional[str] = None
 
+class SetUserAuditModeRequest(BaseModel):
+    user_id: int
+    audit_mode: Optional[str] = None # None(继承小区策略), THREE_CERT_AUTO(强制标准流程), FLEXIBLE_HYBRID(特批灵活流程)
+
+
 

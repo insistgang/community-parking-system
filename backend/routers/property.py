@@ -11,7 +11,7 @@ from database import get_db
 from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community, ChainEvidence
 from schemas import (
     MaintenanceRequest, ConfirmDeliveryRequest, ForceTerminateRequest, 
-    ResponseModel, AuditModeConfigRequest, AuditApplicationRequest
+    ResponseModel, AuditModeConfigRequest, AuditApplicationRequest, SetUserAuditModeRequest
 )
 from scheduler import trigger_recalculate_queue, init_community_spaces, notify_space_change_to_applicants
 from evidence import create_evidence_record
@@ -670,6 +670,124 @@ def update_audit_config(req: AuditModeConfigRequest, admin: User = Depends(get_p
         code=200,
         message=f"小区审核方式已更新为【{mode_label}】（仅对新申请生效，存量申请保持原有模式不变）",
         data={"audit_mode": comm.audit_mode, "mode_label": mode_label}
+    )
+
+@router.get("/community-users", response_model=ResponseModel)
+def get_community_users(admin: User = Depends(get_property_admin), db: Session = Depends(get_db)):
+    """
+    物业查看小区全部业主及其实际生效的申报模式配置
+    """
+    comm = db.query(Community).filter(Community.id == admin.community_id).first()
+    comm_mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+
+    users = db.query(User).filter(
+        User.community_id == admin.community_id,
+        User.role.in_(["OWNER", "FAMILY"])
+    ).order_by(User.id.asc()).all()
+
+    result = []
+    for u in users:
+        effective_mode = u.audit_mode if u.audit_mode in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID") else comm_mode
+        active_app = db.query(QueueApplication).filter(
+            QueueApplication.user_id == u.id,
+            QueueApplication.status.in_(["WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW"])
+        ).first()
+        active_contract = db.query(RentalContract).filter(
+            RentalContract.user_id == u.id,
+            RentalContract.status.in_(["ACTIVE", "EXPIRING", "OVERDUE"])
+        ).first()
+
+        status_tag = "已签约租用" if active_contract else ("排队/审核中" if active_app else "未发起申请")
+
+        result.append({
+            "id": u.id,
+            "real_name": u.real_name,
+            "phone": u.phone,
+            "id_card_masked": (u.id_card[:6] + "********" + u.id_card[-4:]) if u.id_card else "--",
+            "role": u.role,
+            "user_audit_mode": u.audit_mode, # None: 跟随小区, THREE_CERT_AUTO: 强制标准, FLEXIBLE_HYBRID: 特批灵活
+            "effective_audit_mode": effective_mode,
+            "is_customized": u.audit_mode in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID"),
+            "status_tag": status_tag
+        })
+
+    return ResponseModel(
+        code=200,
+        data={
+            "community_id": admin.community_id,
+            "community_audit_mode": comm_mode,
+            "users": result
+        }
+    )
+
+@router.post("/set-user-audit-mode", response_model=ResponseModel)
+def set_user_audit_mode(
+    req: SetUserAuditModeRequest,
+    admin: User = Depends(get_property_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    物业针对某一位业主设置个性化特例申报模式:
+    - audit_mode = "FLEXIBLE_HYBRID": 为该业主特批开通灵活材料申报通道 (2步，人工审核)
+    - audit_mode = "THREE_CERT_AUTO": 强制该业主走标准申报流程 (3步)
+    - audit_mode = None 或 "COMMUNITY_DEFAULT": 恢复跟随小区统一政策
+    """
+    user = db.query(User).filter(User.id == req.user_id, User.community_id == admin.community_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="未找到该业主账号")
+
+    comm = db.query(Community).filter(Community.id == admin.community_id).first()
+    comm_mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+
+    old_user_mode = user.audit_mode
+    if req.audit_mode in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID"):
+        user.audit_mode = req.audit_mode
+        mode_desc = "特批开通【灵活申报流程（自主材料申报）】" if req.audit_mode == "FLEXIBLE_HYBRID" else "指定为【标准申报流程（极简准入）】"
+    else:
+        user.audit_mode = None
+        mode_desc = f"恢复跟随小区默认策略【{'灵活申报' if comm_mode == 'FLEXIBLE_HYBRID' else '标准申报'}】"
+
+    db.commit()
+
+    create_evidence_record(
+        db=db,
+        community_id=admin.community_id,
+        user_id=user.id,
+        event_type="USER_AUDIT_MODE",
+        summary=f"物业管理员【{admin.real_name}】为业主【{user.real_name}】设置特例申报模式: {mode_desc}",
+        payload={
+            "user_id": user.id,
+            "user_name": user.real_name,
+            "old_mode": old_user_mode,
+            "new_mode": user.audit_mode,
+            "operator": admin.real_name
+        }
+    )
+
+    notice_content = (
+        f"物业服务中心已为您单独开通【车位申报灵活通道】。当您再次进入车位申请页面时，将呈现极简自主材料申报流程，支持提交非标准权属凭证。"
+        if user.audit_mode == "FLEXIBLE_HYBRID"
+        else f"物业服务中心已更新您的车位申请规则: {mode_desc}。"
+    )
+    db.add(Notification(
+        user_id=user.id,
+        title="车位申请通道策略更新通知",
+        content=notice_content,
+        type="SYSTEM"
+    ))
+    db.commit()
+
+    effective_mode = user.audit_mode if user.audit_mode in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID") else comm_mode
+
+    return ResponseModel(
+        code=200,
+        message=f"已成功为业主【{user.real_name}】{mode_desc}！",
+        data={
+            "user_id": user.id,
+            "user_audit_mode": user.audit_mode,
+            "effective_audit_mode": effective_mode,
+            "is_customized": bool(user.audit_mode)
+        }
     )
 
 @router.get("/applications", response_model=ResponseModel)

@@ -57,6 +57,16 @@ def run_migrations():
                 conn.exec_driver_sql("ALTER TABLE queue_applications ADD COLUMN auditor_id INTEGER")
         except Exception as e:
             print(f"[Migration Warning] queue_applications check: {e}")
+
+        # 3. users 表
+        try:
+            res = conn.exec_driver_sql("PRAGMA table_info(users)")
+            cols = [row[1] for row in res.fetchall()]
+            if "audit_mode" not in cols:
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN audit_mode VARCHAR(30) DEFAULT NULL")
+        except Exception as e:
+            print(f"[Migration Warning] users check: {e}")
+
         conn.commit()
 
 def get_db():

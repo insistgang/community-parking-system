@@ -214,17 +214,27 @@ def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(
 @router.get("/parking/audit-mode", response_model=ResponseModel)
 def get_community_audit_mode(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
-    获取当前小区审核方式配置 (THREE_CERT_AUTO | FLEXIBLE_HYBRID)
+    获取当前用户及小区审核方式配置:
+    优先级: 用户独立特例配置 (user.audit_mode) > 小区统一配置 (comm.audit_mode) > 默认标准流程
     """
     comm = db.query(Community).filter(Community.id == user.community_id).first()
-    mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+    comm_mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+    user_mode = getattr(user, "audit_mode", None)
+
+    # 若用户被物业单独设置了特例模式，优先按用户的模式执行
+    effective_mode = user_mode if user_mode in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID") else comm_mode
+    is_customized = user_mode in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID")
+
     return ResponseModel(
         code=200,
         data={
             "community_id": comm.id if comm else user.community_id,
             "community_name": comm.name if comm else "龙华新村",
-            "audit_mode": mode,
-            "mode_label": "三证合一（AI 自动化审核）" if mode == "THREE_CERT_AUTO" else "灵活配置（AI 自动化 + 人工审核）"
+            "audit_mode": effective_mode,
+            "community_audit_mode": comm_mode,
+            "user_audit_mode": user_mode,
+            "is_user_customized": is_customized,
+            "mode_label": "标准申报流程" if effective_mode == "THREE_CERT_AUTO" else "灵活申报流程"
         }
     )
 
@@ -280,10 +290,12 @@ def apply_parking(req: ApplyParkingRequest, user: User = Depends(get_current_use
     is_spouse = (car_rel == "SPOUSE") or req.is_spouse_car
     rel_label = "配偶车(结婚证核验)" if car_rel == "SPOUSE" else ("家人车(户口本核验)" if car_rel == "FAMILY" else "本人名下")
 
-    # 获取审核方式配置 (优先遵循业主提交时选定的通道，未传则遵循小区后台配置)
+    # 获取审核方式配置 (优先遵循用户单独特批模式 > 小区后台默认配置)
     comm = db.query(Community).filter(Community.id == user.community_id).first()
-    default_mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
-    curr_audit_mode = req.audit_mode if req.audit_mode in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID") else default_mode
+    comm_mode = getattr(comm, "audit_mode", "THREE_CERT_AUTO") or "THREE_CERT_AUTO"
+    user_mode = getattr(user, "audit_mode", None)
+    effective_mode = user_mode if user_mode in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID") else comm_mode
+    curr_audit_mode = req.audit_mode if req.audit_mode in ("THREE_CERT_AUTO", "FLEXIBLE_HYBRID") else effective_mode
 
 
     # 处理附件材料列表

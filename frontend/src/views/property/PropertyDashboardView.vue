@@ -316,6 +316,102 @@
               </div>
             </div>
           </div>
+
+          <!-- 特定业主特例申报通道 (个性化模式设置) -->
+          <div class="pt-4 border-t border-slate-700/80 space-y-3">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+              <div class="flex items-center gap-2">
+                <span class="text-base">🎯</span>
+                <div>
+                  <h4 class="text-xs font-bold text-white flex items-center gap-1.5">
+                    <span>特定业主特例申报通道 (个性化白名单)</span>
+                    <span class="text-[10px] bg-indigo-900/60 text-indigo-300 px-2 py-0.5 rounded-full border border-indigo-500/30">
+                      支持单设
+                    </span>
+                  </h4>
+                  <p class="text-[11px] text-slate-400">
+                    针对租户、借用车、单位派车等特殊情形业主，物业可单独为其开通【灵活申报通道】，其他业主继续遵循小区默认策略。
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                @click="loadCommunityUsers"
+                class="text-[11px] text-slate-400 hover:text-white px-2.5 py-1 rounded-lg bg-slate-900/80 border border-slate-700 flex items-center gap-1 transition"
+              >
+                <span>🔄 刷新业主名单</span>
+              </button>
+            </div>
+
+            <!-- 业主特例设置卡片列表 -->
+            <div class="space-y-2 pt-1">
+              <div
+                v-for="u in communityUserList"
+                :key="u.id"
+                class="p-3 bg-slate-900/70 rounded-xl border border-slate-700/80 flex items-center justify-between flex-wrap gap-3 text-xs"
+              >
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-white text-xs shrink-0"
+                    :class="u.is_customized ? 'bg-purple-600' : 'bg-slate-700'"
+                  >
+                    {{ u.real_name ? u.real_name.slice(0, 1) : '业' }}
+                  </div>
+                  <div class="min-w-0">
+                    <div class="flex items-center gap-2">
+                      <span class="font-bold text-white">{{ u.real_name }}</span>
+                      <span class="text-[10px] text-slate-400 font-mono">{{ u.phone }}</span>
+                      <span class="text-[10px] px-1.5 py-0.2 rounded font-medium border"
+                        :class="u.status_tag === '已签约租用' ? 'bg-emerald-950/80 text-emerald-300 border-emerald-800/40' : (u.status_tag === '排队/审核中' ? 'bg-amber-950/80 text-amber-300 border-amber-800/40' : 'bg-slate-800 text-slate-400 border-slate-700')"
+                      >
+                        {{ u.status_tag }}
+                      </span>
+                    </div>
+                    <div class="text-[10px] text-slate-400 flex items-center gap-2 mt-0.5">
+                      <span>当前生效流程:</span>
+                      <strong :class="u.effective_audit_mode === 'FLEXIBLE_HYBRID' ? 'text-purple-400' : 'text-emerald-400'">
+                        {{ u.effective_audit_mode === 'FLEXIBLE_HYBRID' ? '灵活申报 (2步自主材料)' : '标准申报 (3步规范准入)' }}
+                      </strong>
+                      <span v-if="u.is_customized" class="text-amber-400 font-bold bg-amber-950/40 px-1 rounded border border-amber-800/30">
+                        ★ 物业单独特批
+                      </span>
+                      <span v-else class="text-slate-500">
+                        (继承小区策略)
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 切换操作按钮 -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                  <button
+                    v-if="u.effective_audit_mode !== 'FLEXIBLE_HYBRID'"
+                    type="button"
+                    @click="handleSetUserAuditMode(u.id, 'FLEXIBLE_HYBRID')"
+                    class="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 font-bold text-[10px] transition flex items-center gap-1"
+                  >
+                    <span>⚡ 特批灵活申报</span>
+                  </button>
+                  <button
+                    v-if="u.effective_audit_mode !== 'THREE_CERT_AUTO'"
+                    type="button"
+                    @click="handleSetUserAuditMode(u.id, 'THREE_CERT_AUTO')"
+                    class="px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 font-bold text-[10px] transition flex items-center gap-1"
+                  >
+                    <span>🛡️ 指定标准申报</span>
+                  </button>
+                  <button
+                    v-if="u.is_customized"
+                    type="button"
+                    @click="handleSetUserAuditMode(u.id, null)"
+                    class="px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 text-[10px] transition"
+                    title="清除特例设置，恢复随小区策略"
+                  >
+                    <span>恢复跟随小区</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- 申请审核台账列表 -->
@@ -1058,6 +1154,35 @@ const loadAuditConfig = async () => {
   }
 }
 
+const communityUserList = ref([])
+
+const loadCommunityUsers = async () => {
+  try {
+    const res = await api.get('/property/community-users')
+    if (res.code === 200 && res.data) {
+      communityUserList.value = res.data.users || []
+    }
+  } catch (err) {
+    console.error('加载小区业主名单失败:', err)
+  }
+}
+
+const handleSetUserAuditMode = async (userId, mode) => {
+  actionLoading.value = true
+  try {
+    const res = await api.post('/property/set-user-audit-mode', {
+      user_id: userId,
+      audit_mode: mode
+    })
+    showToast(res.message || '业主申报模式设置成功！', 'success')
+    await loadCommunityUsers()
+  } catch (err) {
+    showToast('设置失败: ' + err.message, 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
 const handleChangeAuditMode = async (newMode) => {
   if (newMode === currentAuditMode.value) return
   const modeName = newMode === 'FLEXIBLE_HYBRID' ? '灵活配置（AI 自动化 + 人工审核）' : '三证合一（AI 自动化审核）'
@@ -1171,6 +1296,7 @@ const loadData = async () => {
 
     await loadAuditConfig()
     await loadApplications()
+    await loadCommunityUsers()
   } catch (err) {
     console.error('加载物业数据失败:', err)
   }

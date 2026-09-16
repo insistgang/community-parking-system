@@ -28,6 +28,7 @@ class User(Base):
     real_name = Column(String(50), nullable=False)
     role = Column(String(20), default="OWNER") # OWNER(主申请人), FAMILY(家庭成员副账号), PROPERTY_ADMIN(物业)
     community_id = Column(Integer, ForeignKey("communities.id"), nullable=False)
+    audit_mode = Column(String(30), nullable=True, default=None) # 用户个性化申报模式: None(继承小区), THREE_CERT_AUTO, FLEXIBLE_HYBRID
     created_at = Column(DateTime, default=datetime.utcnow)
 
     community = relationship("Community", back_populates="users")

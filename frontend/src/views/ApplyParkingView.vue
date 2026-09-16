@@ -12,13 +12,13 @@
           老旧小区车位申请申报
         </h1>
       </div>
-      <!-- 右上角：由后台配置决定展示标准流程还是灵活步骤 (默认标准流程) -->
+      <!-- 右上角：由后台配置决定展示标准流程还是灵活步骤 (支持特定业主特批) -->
       <span
         class="text-[11px] px-2.5 py-0.5 rounded-full border font-bold flex items-center gap-1"
         :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'text-purple-700 bg-purple-50 border-purple-200' : 'text-blue-700 bg-blue-50 border-blue-200'"
       >
         <span class="w-1.5 h-1.5 rounded-full" :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'bg-purple-500' : 'bg-blue-500'"></span>
-        <span>{{ currentAuditMode === 'FLEXIBLE_HYBRID' ? '灵活申报流程' : '标准申报流程' }}</span>
+        <span>{{ currentAuditMode === 'FLEXIBLE_HYBRID' ? (isUserCustomized ? '灵活申报流程 (物业特批)' : '灵活申报流程') : '标准申报流程' }}</span>
       </span>
     </header>
 
@@ -884,21 +884,24 @@ const userStore = useUserStore()
 // 模式严格由后台决定，默认是标准流程 (THREE_CERT_AUTO)
 const currentAuditMode = ref('THREE_CERT_AUTO')
 const communityAuditMode = ref('THREE_CERT_AUTO')
+const isUserCustomized = ref(false)
 const lastRejectReason = ref('')
 
 const loadAuditMode = async () => {
   try {
     const res = await api.get('/parking/audit-mode')
     if (res.code === 200 && res.data) {
-      // 后台决定是标准流程还是灵活步骤，默认严格为标准流程
+      // 后台决定是标准流程还是灵活步骤 (支持特定业主特例覆盖)
       const mode = res.data.audit_mode || 'THREE_CERT_AUTO'
-      communityAuditMode.value = mode
+      communityAuditMode.value = res.data.community_audit_mode || mode
       currentAuditMode.value = mode
+      isUserCustomized.value = !!res.data.is_user_customized
     }
   } catch (err) {
     console.error('加载小区审核模式失败:', err)
     communityAuditMode.value = 'THREE_CERT_AUTO'
     currentAuditMode.value = 'THREE_CERT_AUTO'
+    isUserCustomized.value = false
   }
 }
 

@@ -265,7 +265,7 @@
         <div v-else>
           <h3 class="text-base font-black text-slate-800">尚未在本小区申请车位</h3>
           <p class="text-xs text-slate-500 mt-1 leading-relaxed max-w-xs mx-auto">
-            老旧小区车位资源紧张，系统实行“三证合一严审、按序阳光轮候、全流程存证”的公平管理机制。
+            老旧小区车位资源紧张，系统实行“实名规范申报、按序阳光轮候、全流程存证”的公平管理机制。
           </p>
         </div>
 
@@ -284,7 +284,7 @@
           to="/apply"
           class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20 active:scale-[0.98] transition"
         >
-          <span>立即申请排位 (三证合一认证)</span>
+          <span>立即申请车位排位 ➔</span>
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="m9 18 6-6-6-6"/>
           </svg>

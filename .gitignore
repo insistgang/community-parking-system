@@ -32,3 +32,6 @@ Thumbs.db
 .idea/
 *.swp
 *.swo
+
+# 无关资料，不纳入本仓库
+水电煤+vpn/

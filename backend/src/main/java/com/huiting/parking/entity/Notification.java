@@ -21,4 +21,8 @@ public class Notification {
     public String actionType;
     @Column(name = "created_at")
     public LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "sms_upgraded")
+    public Boolean smsUpgraded = false;
+    @Column(name = "sms_upgraded_at")
+    public LocalDateTime smsUpgradedAt;
 }

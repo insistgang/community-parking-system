@@ -24,4 +24,10 @@ public class UserAccount {
     public String auditMode;
     @Column(name = "created_at")
     public LocalDateTime createdAt = LocalDateTime.now();
+    @Column(name = "last_login_at")
+    public LocalDateTime lastLoginAt;
+    @Column(name = "last_login_ip")
+    public String lastLoginIp;
+    @Column(name = "login_count")
+    public Integer loginCount = 0;
 }

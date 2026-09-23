@@ -58,6 +58,18 @@ const routes = [
     meta: { requiresAdmin: true }
   },
   {
+    path: '/admin/login',
+    name: 'AdminLogin',
+    component: () => import('../views/admin/AdminLoginView.vue'),
+    meta: { public: true }
+  },
+  {
+    path: '/admin/dashboard',
+    name: 'AdminDashboard',
+    component: () => import('../views/admin/AdminDashboardView.vue'),
+    meta: { requiresSuperAdmin: true }
+  },
+  {
     path: '/:pathMatch(.*)*',
     redirect: '/'
   }
@@ -71,7 +83,13 @@ const router = createRouter({
 router.beforeEach((to, from, next) => {
   const userStore = useUserStore()
   if (!to.meta.public && !userStore.isLoggedIn) {
+    if (to.path.startsWith('/admin')) {
+      return next('/admin/login')
+    }
     return next('/login')
+  }
+  if (to.meta.requiresSuperAdmin && !userStore.isSuperAdmin) {
+    return next('/admin/login')
   }
   if (to.meta.requiresAdmin && !userStore.isPropertyAdmin) {
     return next('/')

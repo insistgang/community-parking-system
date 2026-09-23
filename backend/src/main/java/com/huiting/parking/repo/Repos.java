@@ -60,5 +60,24 @@ public class Repos {
     public interface NoticeRepo extends JpaRepository<Notification, Integer> {
         long countByUserIdAndReadFlag(Integer userId, Boolean readFlag);
         List<Notification> findByUserIdOrderByCreatedAtDesc(Integer userId);
+        List<Notification> findByReadFlagFalseAndCreatedAtBefore(java.time.LocalDateTime time);
+        List<Notification> findByReadFlagFalseAndSmsUpgradedFalseAndCreatedAtBefore(java.time.LocalDateTime time);
+    }
+    public interface LoginLogRepo extends JpaRepository<LoginLog, Integer> {
+        List<LoginLog> findAllByOrderByLoginAtDesc();
+        List<LoginLog> findTop50ByOrderByLoginAtDesc();
+        List<LoginLog> findByRoleOrderByLoginAtDesc(String role);
+        long countByStatus(String status);
+    }
+    public interface OperationLogRepo extends JpaRepository<OperationLog, Integer> {
+        List<OperationLog> findAllByOrderByCreatedAtDesc();
+        List<OperationLog> findTop50ByOrderByCreatedAtDesc();
+        List<OperationLog> findByModuleOrderByCreatedAtDesc(String module);
+    }
+    public interface ExternalApiLogRepo extends JpaRepository<ExternalApiLog, Integer> {
+        List<ExternalApiLog> findAllByOrderByCreatedAtDesc();
+        List<ExternalApiLog> findTop50ByOrderByCreatedAtDesc();
+        List<ExternalApiLog> findByApiNameOrderByCreatedAtDesc(String apiName);
+        long countByStatus(String status);
     }
 }

@@ -12,6 +12,7 @@ export const useUserStore = defineStore('user', {
   getters: {
     isLoggedIn: (state) => !!state.token && !!state.user,
     isPropertyAdmin: (state) => state.user?.role === 'PROPERTY_ADMIN',
+    isSuperAdmin: (state) => state.user?.role === 'SUPER_ADMIN',
     realName: (state) => state.user?.real_name || '业主',
     communityName: (state) => state.user?.community_name || '龙华新村',
     isDark: (state) => state.theme === 'dark'

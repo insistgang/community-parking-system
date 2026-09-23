@@ -135,11 +135,11 @@
           </router-link>
           <div class="flex items-center gap-3">
             <router-link to="/property/login" class="text-purple-600 hover:underline font-semibold">
-              物业中台
+              物业登录
             </router-link>
             <span class="text-slate-300">|</span>
             <router-link to="/admin/login" class="text-slate-600 hover:text-slate-900 hover:underline font-semibold">
-              平台总控 ➔
+              管理员登录 ➔
             </router-link>
           </div>
         </div>

@@ -24,7 +24,7 @@
 
     <router-link v-if="userStore.isPropertyAdmin" to="/property/dashboard" class="flex flex-col items-center gap-0.5 text-purple-600 hover:text-purple-700 font-bold transition">
       <span class="text-base leading-none">🏢</span>
-      <span class="text-[10px]">物业中台</span>
+      <span class="text-[10px]">物业管理</span>
     </router-link>
   </nav>
 </template>

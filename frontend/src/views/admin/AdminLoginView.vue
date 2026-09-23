@@ -8,14 +8,14 @@
             <path d="m9 12 2 2 4-4"/>
           </svg>
         </div>
-        <h2 class="text-xl font-black text-white tracking-wide">慧停管家 · 平台运维管理中台</h2>
-        <p class="text-xs text-slate-400 mt-1">系统全景监控 · 用户全量档案 · 操作安全审计 · 外部接口追踪</p>
+        <h2 class="text-xl font-black text-white tracking-wide">慧停管家 · 管理员登录</h2>
+        <p class="text-xs text-slate-400 mt-1">系统监控 · 用户管理 · 操作日志 · 接口日志</p>
       </div>
 
       <div class="p-3 bg-indigo-950/60 border border-indigo-500/30 rounded-xl text-xs text-indigo-300 mb-6 flex items-center justify-between">
         <span class="flex items-center gap-1.5">
           <span>🛡️</span>
-          <span>系统最高管理特权通道</span>
+          <span>系统管理员登录</span>
         </span>
         <button
           type="button"
@@ -58,8 +58,8 @@
           :disabled="loading"
           class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold shadow-lg shadow-indigo-600/30 active:scale-[0.98] transition flex items-center justify-center gap-2"
         >
-          <span v-if="loading">正在验证平台权限...</span>
-          <span v-else>立即登录运维中台</span>
+          <span v-if="loading">正在验证登录...</span>
+          <span v-else>立即登录</span>
         </button>
       </form>
 

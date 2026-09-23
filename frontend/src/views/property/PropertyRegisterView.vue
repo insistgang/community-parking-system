@@ -10,7 +10,7 @@
         </svg>
       </div>
       <h2 class="text-xl font-black tracking-tight text-white">物业服务企业 · 管理员注册与入驻</h2>
-      <p class="mt-1 text-xs text-slate-400">零复杂门槛 · 极速开通小区车位资产管理中台</p>
+      <p class="mt-1 text-xs text-slate-400">开通小区车位管理</p>
     </div>
 
     <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-lg px-4">
@@ -135,8 +135,8 @@
             :disabled="loading"
             class="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-lg shadow-purple-500/30 transition active:scale-[0.98] disabled:opacity-50 mt-1"
           >
-            <span v-if="loading">正在建档并初始化资产...</span>
-            <span v-else>立即完成入驻并进入管理中台 ➔</span>
+            <span v-if="loading">正在建档并初始化...</span>
+            <span v-else>立即注册并进入管理 ➔</span>
           </button>
         </form>
 

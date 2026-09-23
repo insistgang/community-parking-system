@@ -17,7 +17,7 @@
           to="/property/dashboard"
           class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shrink-0 shadow transition active:scale-95 flex items-center gap-1"
         >
-          <span>回中台 ➔</span>
+          <span>回物业端 ➔</span>
         </router-link>
       </div>
 
@@ -259,7 +259,7 @@
         <div v-if="userStore.isPropertyAdmin">
           <h3 class="text-base font-black text-slate-800">物业管理员前台巡检模式</h3>
           <p class="text-xs text-slate-500 mt-1 leading-relaxed max-w-xs mx-auto">
-            当前登录身份：【{{ userStore.realName }}】(物业管理员)。您可在此查验车位公示大盘、顺位全量脱敏队列与存证链，随时可切回调度中台。
+            当前登录身份：【{{ userStore.realName }}】(物业管理员)。您可在此查验车位公示大盘、顺位全量脱敏队列与存证链，随时可切回物业管理。
           </p>
         </div>
         <div v-else>
@@ -274,7 +274,7 @@
           to="/property/dashboard"
           class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-md shadow-purple-500/20 active:scale-[0.98] transition"
         >
-          <span>🏢 进入物业资产调度中台</span>
+          <span>🏢 进入物业管理后台</span>
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="m9 18 6-6-6-6"/>
           </svg>

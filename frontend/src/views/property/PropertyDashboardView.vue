@@ -19,7 +19,7 @@
         </div>
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
-            <h1 class="text-base font-black text-white tracking-wide">慧停管家 · 物业调度中台</h1>
+            <h1 class="text-base font-black text-white tracking-wide">慧停管家 · 物业管理后台</h1>
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-purple-900/60 text-purple-300 border border-purple-500/40 font-semibold whitespace-nowrap">
               物业管理 PC 端
             </span>

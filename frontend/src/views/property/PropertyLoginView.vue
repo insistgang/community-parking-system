@@ -6,8 +6,8 @@
           <path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/><path d="M14 9h1"/><path d="M14 13h1"/><path d="M14 17h1"/>
         </svg>
       </div>
-      <h2 class="text-xl font-black tracking-tight text-white">物业服务企业工作台 · 管理员登录</h2>
-      <p class="mt-1 text-xs text-slate-400">老旧小区车位资产调度 · 审核管理 · 租约存证</p>
+      <h2 class="text-xl font-black tracking-tight text-white">慧停管家 · 物业登录</h2>
+      <p class="mt-1 text-xs text-slate-400">车位管理 · 申请审核 · 租约管理</p>
     </div>
 
     <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4">
@@ -62,7 +62,7 @@
             class="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-lg shadow-purple-500/30 transition active:scale-[0.98] disabled:opacity-50"
           >
             <span v-if="loading">正在验证登录...</span>
-            <span v-else>登录物业管理中台 ➔</span>
+            <span v-else>立即登录 ➔</span>
           </button>
         </form>
 

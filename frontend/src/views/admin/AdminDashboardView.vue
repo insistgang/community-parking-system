@@ -8,7 +8,7 @@
         </div>
         <div>
           <div class="flex items-center gap-2">
-            <h1 class="text-base font-black text-white tracking-wide">慧停管家 · 平台运维管理中台</h1>
+            <h1 class="text-base font-black text-white tracking-wide">慧停管家 · 管理员后台</h1>
             <span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-500/40 font-bold">
               SUPER_ADMIN
             </span>

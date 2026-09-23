@@ -1,8 +1,8 @@
 server:
-  port: 8080
+  port: ${SERVER_PORT:8080}
 spring:
   datasource:
-    url: jdbc:sqlite:${user.dir}/data/parking.db
+    url: ${SPRING_DATASOURCE_URL:jdbc:sqlite:${user.dir}/data/parking.db}
     driver-class-name: org.sqlite.JDBC
     hikari:
       maximum-pool-size: 1

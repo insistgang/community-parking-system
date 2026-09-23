@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # Java Spring Boot 核心业务后端
+  # ==========================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: parking-backend
+    restart: always
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_DATASOURCE_URL=jdbc:sqlite:/app/data/parking.db
+    volumes:
+      # 持久化 SQLite 数据库
+      - ./data:/app/data
+    ports:
+      - "${BACKEND_PORT:-39000}:8080"
+    networks:
+      - parking-net
+
+  # ==========================================
+  # 前端 Vue 3 + Nginx 服务
+  # ==========================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: parking-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      # 外部映射端口，通过 .env 中的 PORT 配置（默认 39080）
+      - "${PORT:-39080}:80"
+    networks:
+      - parking-net
+
+networks:
+  parking-net:
+    driver: bridge

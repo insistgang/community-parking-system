@@ -44,6 +44,11 @@ class AuthController {
         this.json = json;
     }
 
+    @GetMapping("/health")
+    public ApiResponse health() {
+        return ApiResponse.ok("系统运行正常", Map.of("status", "UP", "timestamp", System.currentTimeMillis()));
+    }
+
     @GetMapping("/common/districts")
     public ApiResponse districts() throws Exception {
         Map<String, List<String>> raw = json.readValue(new ClassPathResource("shanghai-districts.json").getInputStream(), new TypeReference<>() {});

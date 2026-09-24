@@ -1,5 +1,5 @@
 <template>
-  <div class="fixed top-0 inset-x-0 z-[70]">
+  <div v-if="!isProdEnv()" class="fixed top-0 inset-x-0 z-[70]">
     <div class="demo-hover-root" :class="{ 'is-open': pinned }">
       <!-- 热区始终占位，避免展开瞬间高度塌掉导致闪烁 -->
       <button
@@ -84,6 +84,7 @@
 import { ref, watch, onUnmounted } from 'vue'
 import api from '../api'
 import { showConfirm, showToast } from '../utils/dialog'
+import { isProdEnv } from '../utils/env'
 
 const emit = defineEmits(['fill'])
 const pinned = ref(false)

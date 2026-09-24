@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useUserStore } from '../store/user'
+import { isProdEnv } from '../utils/env'
+import { showToast } from '../utils/dialog'
 
 const routes = [
   {
@@ -97,6 +99,11 @@ router.beforeEach((to, from, next) => {
   // 物业管理员禁止进入业主申报提交页面，避免误操作；但允许浏览前台主页、公示大盘与存证
   if (userStore.isPropertyAdmin && to.path === '/apply') {
     return next('/property/dashboard')
+  }
+  // 正式环境中，车位申请功能尚未上线，拦截直接访问并提示
+  if (to.path === '/apply' && isProdEnv()) {
+    showToast('功能正在研发中，敬请期待', 'info')
+    return next('/')
   }
   next()
 })

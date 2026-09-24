@@ -238,13 +238,12 @@
           </div>
 
           <div class="pt-2 flex items-center gap-2">
-            <button
-              type="button"
-              @click="handleApplyClick"
-              class="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-center shadow-md shadow-blue-500/20 transition active:scale-[0.98] cursor-pointer"
+            <router-link
+              to="/apply"
+              class="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-center shadow-md shadow-blue-500/20 transition active:scale-[0.98]"
             >
               ✏️ 修改材料，重新发起申报 ➔
-            </button>
+            </router-link>
           </div>
         </div>
       </div>
@@ -280,17 +279,16 @@
             <path d="m9 18 6-6-6-6"/>
           </svg>
         </router-link>
-        <button
+        <router-link
           v-else
-          type="button"
-          @click="handleApplyClick"
-          class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20 active:scale-[0.98] transition cursor-pointer"
+          to="/apply"
+          class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20 active:scale-[0.98] transition"
         >
           <span>立即申请车位排位 ➔</span>
           <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <path d="m9 18 6-6-6-6"/>
           </svg>
-        </button>
+        </router-link>
       </div>
 
       <!-- 小区车辆概况指标 (仅展示统计数据，绝不暴露邻居姓名或门牌隐私) -->
@@ -421,31 +419,15 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'
 import api from '../api'
 import NavBar from '../components/NavBar.vue'
 import CountdownCard from '../components/CountdownCard.vue'
 import AiWaitingCard from '../components/AiWaitingCard.vue'
 import BottomNav from '../components/BottomNav.vue'
-import { showConfirm, showToast, showAlert } from '../utils/dialog'
-import { isProdEnv } from '../utils/env'
+import { showConfirm, showToast } from '../utils/dialog'
 
-const router = useRouter()
 const userStore = useUserStore()
-
-const handleApplyClick = () => {
-  if (isProdEnv()) {
-    showToast('功能正在研发中，敬请期待', 'info')
-    showAlert({
-      title: '功能正在研发中',
-      content: '车位线上排队申请功能正在研发中，敬请期待！本期排队名单已由物业根据历史线下登记台账统一初始化录入。如有疑问或信息有误，请前往物业服务中心核验办理。',
-      type: 'info'
-    })
-    return
-  }
-  router.push('/apply')
-}
 
 let pollTimer = null
 

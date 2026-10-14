@@ -51,7 +51,7 @@ curl -fsS http://192.168.0.147:39180/api/health
 
 健康检查中的 IP 应与 `.env.production` 的 `PROD_BIND_IP` 一致。首次启动后确认平台管理员可登录，再从 `.env.production` 删除 `BOOTSTRAP_ADMIN_PASSWORD`，执行 `docker compose --env-file .env.production -f docker-compose.production.yml -f docker-compose.production.internal.yml up -d --force-recreate backend`；已有管理员会保留在数据库中。
 
-验收顺序：平台管理员登录 → 使用邀请码注册物业与小区 → 确认空车位台账 → 物业录入真实车位 → 业主注册与申请 → 物业线下核验证明并审核 → 按顺位分配 → 物业凭合同及缴费凭据编号确认交付 → 检查审计记录核验。生产端不提供演示数据重置、固定短信码、自动人脸/OCR 或外部区块链认证。
+验收顺序：平台管理员登录 → 使用物业入驻邀请码注册物业与小区 → 确认空车位台账 → 物业录入真实车位 → 物业线下核对业主身份并签发一次性业主邀请码 → 业主注册与申请 → 物业线下核验证明并登记编号后审核 → 按顺位分配 → 物业凭合同及缴费凭据编号确认交付 → 检查审计记录核验。生产端不提供演示数据重置、固定短信码、自动人脸/OCR 或外部区块链认证。
 
 ## 切换 HTTPS 公网入口
 

@@ -39,6 +39,7 @@ class AuthController {
     private final SessionService sessions;
     private final PasswordService passwords;
     private final LoginThrottle loginThrottle;
+    private final InviteService invites;
     @Value("${app.demo.enabled:false}")
     private boolean demoEnabled;
     @Value("${app.property-invite-code:}")
@@ -47,7 +48,8 @@ class AuthController {
 
     AuthController(Repos.UserRepo users, Repos.CommunityRepo communities, QueueEngine engine,
                    EvidenceService evidence, AuditLogService auditLog, ObjectMapper json,
-                   SessionService sessions, PasswordService passwords, LoginThrottle loginThrottle) {
+                   SessionService sessions, PasswordService passwords, LoginThrottle loginThrottle,
+                   InviteService invites) {
         this.users = users;
         this.communities = communities;
         this.engine = engine;
@@ -57,6 +59,7 @@ class AuthController {
         this.sessions = sessions;
         this.passwords = passwords;
         this.loginThrottle = loginThrottle;
+        this.invites = invites;
     }
 
     @GetMapping("/health")
@@ -189,6 +192,8 @@ class AuthController {
             evidence.create(community.id, null, "INIT", "【" + community.name + "】小区建档完成，等待物业录入真实车位",
                     Map.of("total_spaces", community.totalSpaces, "community", community.name, "trigger", trigger), null);
         }
+        if ("OWNER".equals(role) && !demoEnabled)
+            invites.consume(String.valueOf(req.getOrDefault("invite_code", "")), phone, idCard, community.id);
         UserAccount user = new UserAccount();
         user.phone = phone;
         user.idCard = idCard;
@@ -338,7 +343,11 @@ class ParkingController {
 @RequestMapping("/api/property")
 class PropertyController {
     private final PropertyService property;
-    PropertyController(PropertyService property) { this.property = property; }
+    private final InviteService invites;
+    PropertyController(PropertyService property, InviteService invites) {
+        this.property = property;
+        this.invites = invites;
+    }
 
     @GetMapping("/stats")
     public ApiResponse stats(@RequestAttribute(name = "authUserId") Integer uid) {
@@ -353,6 +362,12 @@ class PropertyController {
     @PostMapping("/spaces")
     public ApiResponse addSpace(@RequestAttribute(name = "authUserId") Integer uid, @RequestBody Map<String, Object> req) {
         return ApiResponse.ok("车位录入成功", property.addSpace(property.requireAdmin(uid), req));
+    }
+
+    @PostMapping("/owner-invites")
+    public ApiResponse issueOwnerInvite(@RequestAttribute(name = "authUserId") Integer uid,
+                                        @RequestBody Map<String, Object> req) {
+        return ApiResponse.ok("业主邀请码已生成", invites.issue(property.requireAdmin(uid), req));
     }
 
     @PostMapping("/set-maintenance")

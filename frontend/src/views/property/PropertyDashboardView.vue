@@ -29,6 +29,10 @@
       </div>
 
       <div class="flex items-center gap-2 flex-wrap text-xs">
+        <button v-if="isProduction" @click="openOwnerInvite"
+          class="px-3 py-1.5 rounded-xl bg-indigo-700 hover:bg-indigo-600 text-white font-semibold transition shadow-sm">
+          ＋ 签发业主邀请码
+        </button>
         <button v-if="isProduction" @click="showAddSpace = true"
           class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-semibold transition shadow-sm">
           ＋ 录入真实车位
@@ -1541,6 +1545,34 @@
         </div>
       </div>
     </div>
+    <div v-if="showOwnerInvite" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      <form @submit.prevent="handleIssueOwnerInvite" class="w-full max-w-md rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-white">签发业主注册邀请码</h3>
+          <button type="button" @click="closeOwnerInvite" class="text-slate-400 hover:text-white">✕</button>
+        </div>
+        <p class="text-xs text-slate-300 leading-relaxed">请先在线下核对业主身份证明和所属小区，再填写与证件一致的信息。邀请码仅显示一次，有效期 7 天。</p>
+        <template v-if="!issuedOwnerInvite">
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">业主手机号</label>
+            <input v-model.trim="invitePhone" required maxlength="11" placeholder="11位手机号"
+              class="w-full rounded-xl bg-slate-900 border border-slate-600 px-3 py-2.5 text-white" />
+          </div>
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">业主身份证号</label>
+            <input v-model.trim="inviteIdCard" required maxlength="18" placeholder="18位身份证号"
+              class="w-full rounded-xl bg-slate-900 border border-slate-600 px-3 py-2.5 text-white" />
+          </div>
+          <button type="submit" :disabled="actionLoading" class="w-full rounded-xl bg-indigo-600 px-4 py-2.5 font-bold text-white disabled:opacity-50">确认签发</button>
+        </template>
+        <div v-else class="space-y-2">
+          <label class="block text-xs text-emerald-300 font-bold">一次性邀请码，请线下交给对应业主</label>
+          <input :value="issuedOwnerInvite" readonly class="w-full rounded-xl bg-slate-900 border border-emerald-500 px-3 py-2.5 text-emerald-200 font-mono select-all" />
+          <p class="text-xs text-slate-400">绑定手机号 {{ invitePhone }}；关闭后系统不再展示原码。</p>
+        </div>
+      </form>
+    </div>
+
     <div v-if="productionReviewVisible && productionReviewApp" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
       <div class="w-full max-w-lg rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
         <div class="flex items-center justify-between">
@@ -1609,6 +1641,39 @@ import CustomSelect from '../../components/CustomSelect.vue'
 const router = useRouter()
 const userStore = useUserStore()
 const isProduction = import.meta.env.VITE_APP_MODE === 'production'
+const showOwnerInvite = ref(false)
+const invitePhone = ref('')
+const inviteIdCard = ref('')
+const issuedOwnerInvite = ref('')
+
+const openOwnerInvite = () => {
+  invitePhone.value = ''
+  inviteIdCard.value = ''
+  issuedOwnerInvite.value = ''
+  showOwnerInvite.value = true
+}
+
+const closeOwnerInvite = () => {
+  showOwnerInvite.value = false
+  issuedOwnerInvite.value = ''
+  inviteIdCard.value = ''
+}
+
+const handleIssueOwnerInvite = async () => {
+  actionLoading.value = true
+  try {
+    const res = await api.post('/property/owner-invites', {
+      phone: invitePhone.value,
+      id_card: inviteIdCard.value
+    })
+    issuedOwnerInvite.value = res.data?.invite_code || ''
+    if (!issuedOwnerInvite.value) throw new Error('服务器未返回邀请码')
+  } catch (err) {
+    showToast('签发失败: ' + err.message, 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
 const productionReviewVisible = ref(false)
 const productionReviewApp = ref(null)
 const auditReference = ref('')

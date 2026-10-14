@@ -30,6 +30,11 @@ public class Repos {
         void deleteByUserId(Integer userId);
         void deleteByExpiresAtBefore(java.time.LocalDateTime cutoff);
     }
+    public interface InviteRepo extends JpaRepository<RegistrationInvite, Integer> {
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("select i from RegistrationInvite i where i.codeHash = :codeHash")
+        Optional<RegistrationInvite> lockByCodeHash(@Param("codeHash") String codeHash);
+    }
     public interface SpaceRepo extends JpaRepository<ParkingSpace, Integer> {
         boolean existsByCommunityIdAndSpaceNo(Integer communityId, String spaceNo);
         List<ParkingSpace> findByCommunityIdOrderBySpaceNoAsc(Integer communityId);

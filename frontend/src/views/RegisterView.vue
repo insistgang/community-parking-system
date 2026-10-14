@@ -75,7 +75,7 @@
         </div>
 
         <div>
-          <label class="block font-bold text-slate-700 mb-1">手机号码 (支持短信快捷验证码登录)</label>
+          <label class="block font-bold text-slate-700 mb-1">手机号码（需与物业核验登记一致）</label>
           <input
             v-model="form.phone"
             type="tel"
@@ -83,6 +83,14 @@
             placeholder="11位常用手机号码"
             class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 font-medium font-mono"
           />
+        </div>
+
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">物业签发的业主邀请码</label>
+          <input v-model.trim="form.invite_code" type="text" required autocomplete="off"
+            placeholder="请在线下核验身份后向物业领取"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:ring-2 focus:ring-blue-500 font-mono" />
+          <p class="text-[11px] text-slate-500 mt-1">邀请码与手机号、身份证号及小区绑定，有效期 7 天，仅可使用一次。</p>
         </div>
 
         <div class="grid grid-cols-2 gap-2">
@@ -117,7 +125,7 @@
           :disabled="loading"
           class="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold shadow-md transition active:scale-[0.98] mt-2 disabled:opacity-40 disabled:pointer-events-none"
         >
-          <span v-if="loading">正在注册并接入存证...</span>
+          <span v-if="loading">正在注册...</span>
           <span v-else>确认注册进入系统</span>
         </button>
       </form>
@@ -209,10 +217,11 @@ const districtsData = ref(defaultDistricts)
 const form = ref({
   district: '徐汇区',
   subdistrict: '龙华街道',
-  community_name: '龙华新村',
+  community_name: '',
   real_name: '',
   id_card: '',
   phone: '',
+  invite_code: '',
   password: '',
   confirm_pwd: ''
 })
@@ -258,6 +267,7 @@ const handleRegister = async () => {
       real_name: form.value.real_name,
       id_card: form.value.id_card,
       phone: form.value.phone,
+      invite_code: form.value.invite_code,
       password: form.value.password
     })
     showToast(res.message || '注册成功！请前往登录', 'success')

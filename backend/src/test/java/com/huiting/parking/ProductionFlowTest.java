@@ -9,6 +9,8 @@ import com.huiting.parking.entity.UserAccount;
 import com.huiting.parking.repo.Repos;
 import com.huiting.parking.service.PasswordService;
 import com.huiting.parking.service.EvidenceService;
+import com.huiting.parking.service.InviteService;
+import com.huiting.parking.common.ApiException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -18,6 +20,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -37,6 +40,7 @@ class ProductionFlowTest {
     @Autowired Repos.EvidenceRepo evidences;
     @Autowired PasswordService passwords;
     @Autowired EvidenceService evidenceService;
+    @Autowired InviteService inviteService;
 
     @Test
     void protectedApisRequireServerSessionAndDemoResetIsAbsent() throws Exception {
@@ -51,11 +55,25 @@ class ProductionFlowTest {
         mvc.perform(post("/api/auth/register").contentType("application/json")
                 .content("{\"phone\":\"13900000001\",\"id_card\":\"310104198005055555\",\"password\":\"password123\",\"role\":\"PROPERTY_ADMIN\",\"community_name\":\"未授权小区\"}"))
                 .andExpect(status().isForbidden());
-        mvc.perform(post("/api/auth/register").contentType("application/json")
+        String managerRegistration = mvc.perform(post("/api/auth/register").contentType("application/json")
                 .content("{\"phone\":\"13900000001\",\"id_card\":\"310104198005055555\",\"password\":\"password123\",\"role\":\"PROPERTY_ADMIN\",\"invite_code\":\"test-property-invite\",\"community_name\":\"新建真实小区\",\"district\":\"徐汇区\",\"subdistrict\":\"龙华街道\",\"real_name\":\"物业经理\"}"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         Community created = communities.findByName("新建真实小区").orElseThrow();
         assertThat(spaces.countByCommunityId(created.id)).isZero();
+        String managerToken = json.readTree(managerRegistration).path("data").path("token").asText();
+        mvc.perform(post("/api/auth/register").contentType("application/json")
+                .content("{\"phone\":\"13800000001\",\"id_card\":\"310104199201011111\",\"password\":\"password123\",\"role\":\"OWNER\",\"community_name\":\"新建真实小区\",\"real_name\":\"业主\"}"))
+                .andExpect(status().isForbidden());
+        String inviteBody = mvc.perform(post("/api/property/owner-invites").header("Authorization", bearer(managerToken))
+                .contentType("application/json")
+                .content("{\"phone\":\"13800000001\",\"id_card\":\"310104199201011111\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String invite = json.readTree(inviteBody).path("data").path("invite_code").asText();
+        mvc.perform(post("/api/auth/register").contentType("application/json")
+                .content("{\"phone\":\"13800000001\",\"id_card\":\"310104199201011111\",\"password\":\"password123\",\"role\":\"OWNER\",\"community_name\":\"新建真实小区\",\"real_name\":\"业主\",\"invite_code\":\"" + invite + "\"}"))
+                .andExpect(status().isOk());
+        assertThatThrownBy(() -> inviteService.consume(invite, "13800000001", "310104199201011111", created.id))
+                .isInstanceOf(ApiException.class);
         mvc.perform(post("/api/auth/login").contentType("application/json")
                 .content("{\"identifier\":\"13900000000\",\"login_type\":\"OTHER\"}"))
                 .andExpect(status().isBadRequest());

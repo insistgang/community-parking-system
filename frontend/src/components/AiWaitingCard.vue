@@ -3,13 +3,13 @@
     <div class="flex items-center justify-between">
       <div class="flex items-center gap-2">
         <div class="w-7 h-7 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs shadow-sm">
-          AI
+          排
         </div>
         <div>
           <h4 class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-            <span>预计等待时长</span>
+            <span>轮候进度</span>
             <span class="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-700 font-semibold">
-              大模型生成
+              实际释放为准
             </span>
           </h4>
           <span class="text-base font-extrabold text-indigo-900 tracking-tight block mt-0.5">
@@ -32,10 +32,10 @@
     <!-- 展开详情 -->
     <div v-if="expanded" class="mt-3 pt-3 border-t border-indigo-100 text-xs text-slate-600 space-y-1.5 animate-fade-in">
       <p class="leading-relaxed text-[11px] text-slate-700 font-medium bg-white/70 p-2.5 rounded-xl border border-indigo-100">
-        📊 <strong>算法测算模型：</strong>{{ basisText }}
+        📊 <strong>说明：</strong>{{ basisText }}
       </p>
       <p class="text-[10px] text-slate-400 italic">
-        * 注：本预估结果仅供参考，实际分配以小区真实退租周转与系统消息通知为准。
+        * 实际分配以小区车位释放和系统消息通知为准。
       </p>
     </div>
   </div>
@@ -47,11 +47,11 @@ import { ref } from 'vue'
 defineProps({
   durationText: {
     type: String,
-    default: '约 2~3 个月'
+    default: '等待实际车位释放'
   },
   basisText: {
     type: String,
-    default: '基于本小区近一年年化退租周转率 8% 及当前顺位测算'
+    default: '分配时间取决于真实车位释放，暂无法准确预估。'
   }
 })
 

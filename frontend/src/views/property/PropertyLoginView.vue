@@ -13,7 +13,7 @@
     <div class="mt-6 sm:mx-auto sm:w-full sm:max-w-md px-4">
       <div class="bg-slate-800 py-7 px-6 shadow-2xl rounded-3xl sm:px-10 border border-slate-700 space-y-5">
         <!-- 一键快捷填入条 -->
-        <div class="p-3 bg-purple-950/60 border border-purple-800/60 rounded-2xl flex items-center justify-between text-xs">
+        <div v-if="!isProduction" class="p-3 bg-purple-950/60 border border-purple-800/60 rounded-2xl flex items-center justify-between text-xs">
           <div class="flex items-center gap-2 text-purple-200">
             <span>👤 管理员: 王建国</span>
             <span class="text-[10px] text-purple-400 font-mono">13900000001</span>
@@ -36,7 +36,7 @@
               v-model="identifier"
               type="text"
               required
-              placeholder="请输入管理员手机号 (演示: 13900000001)"
+              placeholder="请输入管理员手机号"
               class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium text-xs"
             />
           </div>
@@ -47,7 +47,7 @@
               v-model="password"
               type="password"
               required
-              placeholder="请输入密码 (演示: 123456)"
+              placeholder="请输入登录密码"
               class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium text-xs"
             />
           </div>
@@ -67,7 +67,7 @@
         </form>
 
         <!-- 备查: 企业资质认证信息(默认折叠，不阻断直接登录) -->
-        <div class="pt-2 border-t border-slate-700">
+        <div v-if="!isProduction" class="pt-2 border-t border-slate-700">
           <button
             type="button"
             @click="showLicenseDetails = !showLicenseDetails"
@@ -106,6 +106,7 @@ import api from '../../api'
 
 const router = useRouter()
 const userStore = useUserStore()
+const isProduction = import.meta.env.VITE_APP_MODE === 'production'
 
 const company = {
   name: '上海安居物业管理服务有限公司',
@@ -113,8 +114,8 @@ const company = {
   legalName: '王建国'
 }
 
-const identifier = ref('13900000001')
-const password = ref('123456')
+const identifier = ref(isProduction ? '' : '13900000001')
+const password = ref(isProduction ? '' : '123456')
 const loading = ref(false)
 const errorMsg = ref('')
 const showLicenseDetails = ref(false)

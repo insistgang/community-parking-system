@@ -5,6 +5,7 @@ import com.huiting.parking.entity.Notification;
 import com.huiting.parking.entity.UserAccount;
 import com.huiting.parking.repo.Repos;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,8 @@ public class BootJobs {
     private final Repos.NoticeRepo notices;
     private final Repos.UserRepo users;
     private final AuditLogService auditLog;
+    @Value("${app.demo.enabled:false}")
+    private boolean demoEnabled;
 
     public BootJobs(SeedService seed, Repos.CommunityRepo communities, QueueEngine engine,
                     Repos.NoticeRepo notices, Repos.UserRepo users, AuditLogService auditLog) {
@@ -36,13 +39,13 @@ public class BootJobs {
 
     @EventListener(ApplicationReadyEvent.class)
     public void seed() {
-        seed.init(false);
+        if (demoEnabled) seed.init(false);
     }
 
     @Scheduled(fixedDelay = 60000)
     public void sweep() {
         communities.findAll().forEach(c -> engine.checkExpired(c.id));
-        processUnreadSmsUpgrades(false);
+        if (demoEnabled) processUnreadSmsUpgrades(false);
     }
 
     @Transactional

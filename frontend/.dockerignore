@@ -1,3 +1,9 @@
-node_modules/
-.DS_Store
-*.log
+*
+!Dockerfile
+!Dockerfile.production
+!Dockerfile.production.https
+!nginx.conf
+!nginx.production.conf
+!nginx.production.https.conf
+!dist/
+!dist/**

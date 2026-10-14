@@ -19,24 +19,21 @@ public class QueueEngine {
     private final Repos.SpaceRepo spaces;
     private final Repos.UserRepo users;
     private final Repos.NoticeRepo notices;
+    private final Repos.CommunityRepo communities;
     private final EvidenceService evidence;
 
-    public QueueEngine(Repos.AppRepo apps, Repos.SpaceRepo spaces, Repos.UserRepo users, Repos.NoticeRepo notices, @Lazy EvidenceService evidence) {
+    public QueueEngine(Repos.AppRepo apps, Repos.SpaceRepo spaces, Repos.UserRepo users,
+                       Repos.NoticeRepo notices, Repos.CommunityRepo communities, @Lazy EvidenceService evidence) {
         this.apps = apps;
         this.spaces = spaces;
         this.users = users;
         this.notices = notices;
+        this.communities = communities;
         this.evidence = evidence;
     }
 
     public static String[] estimate(int rank, int totalSpaces) {
-        String basis = "基于本小区近一年年化退租周转率 8% (年均释放约4个车位) 及当前顺位测算";
-        if (rank <= 0) return new String[]{"即将分配", basis};
-        if (rank == 1) return new String[]{"约 1~2 周 (候补首位)", basis};
-        if (rank == 2) return new String[]{"约 1~2 个月", basis};
-        int est = (int) Math.round(rank * (12.0 / Math.max(1, totalSpaces * 0.08)));
-        int min = Math.max(1, est - 1);
-        return new String[]{"约 " + min + "~" + (est + 1) + " 个月", basis};
+        return new String[]{"等待实际车位释放", "当前顺位为第 " + Math.max(0, rank) + " 位；分配时间取决于真实车位释放，暂无法准确预估。"};
     }
 
     @Transactional
@@ -62,6 +59,7 @@ public class QueueEngine {
 
     @Transactional
     public void recalculate(Integer communityId) {
+        communities.lockById(communityId).orElseThrow(() -> new IllegalStateException("小区不存在"));
         List<QueueApplication> bad = apps.findByCommunityIdAndStatusIn(communityId, List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING"))
                 .stream().filter(a -> {
                     UserAccount u = users.findById(a.userId).orElse(null);
@@ -131,6 +129,7 @@ public class QueueEngine {
 
     @Transactional
     public void checkExpired(Integer communityId) {
+        communities.lockById(communityId).orElseThrow(() -> new IllegalStateException("小区不存在"));
         LocalDateTime cutoff = LocalDateTime.now(ZoneOffset.UTC).minusHours(48);
         List<QueueApplication> expired = apps.findByCommunityIdAndStatusIn(communityId, List.of("ALLOCATED")).stream()
                 .filter(a -> a.allocatedTime != null && a.allocatedTime.isBefore(cutoff)).toList();

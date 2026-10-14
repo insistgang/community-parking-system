@@ -32,6 +32,11 @@ frontend/dist-ssr/
 *.err
 data/*
 !data/.gitkeep
+/.env.production
+mysql-data/
+certs/
+artifacts/
+backups/
 frontend/*.log
 frontend/*.err
 

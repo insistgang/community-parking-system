@@ -19,7 +19,7 @@
 
       <div class="flex items-center gap-2 flex-wrap text-xs">
         <!-- 24小时未读短信催办快捷测试按钮 -->
-        <button
+        <button v-if="!isProduction"
           @click="handleTriggerSmsUpgrade"
           :disabled="smsTriggering"
           class="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white font-bold transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
@@ -297,7 +297,7 @@
             <h2 class="text-sm font-bold text-white flex items-center gap-2">
               <span>🌐 外部第三方接口调用追踪日志</span>
             </h2>
-            <span class="text-[11px] text-slate-400">实时记录公安实人认证、市不动产权属比对、公安交管车辆核验、政务短信下发等调用入参与响应</span>
+            <span class="text-[11px] text-slate-400">当前尚未接入外部核验服务；接入后将在这里查看实际调用记录。</span>
           </div>
           <span class="text-slate-400">最近 50 次外部调用记录</span>
         </div>
@@ -349,7 +349,7 @@
       </div>
 
       <!-- ================= Tab 5: 24小时未读升级短信调度控制台 (功能 7) ================= -->
-      <div v-show="activeTab === 'sms_remind'" class="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-6">
+      <div v-if="!isProduction" v-show="activeTab === 'sms_remind'" class="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-6">
         <div>
           <h2 class="text-sm font-bold text-white flex items-center gap-2">
             <span>📱 24 小时未读消息短信催办调度服务</span>
@@ -380,7 +380,7 @@
         </div>
 
         <!-- 手动触发与测试工具区 -->
-        <div class="p-5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between flex-wrap gap-4 text-xs">
+        <div v-if="!isProduction" class="p-5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between flex-wrap gap-4 text-xs">
           <div>
             <h3 class="font-bold text-white text-sm">🧪 验收与演示快捷测试</h3>
             <p class="text-slate-400 mt-0.5">系统已预置 1 条超过 24 小时未读的中签通知（李雷）。点击右侧按钮可立即强制扫描并下发催办短信。</p>
@@ -476,6 +476,7 @@ import api from '../../api'
 
 const router = useRouter()
 const userStore = useUserStore()
+const isProduction = import.meta.env.VITE_APP_MODE === 'production'
 
 const stats = ref({})
 const userList = ref([])
@@ -491,7 +492,7 @@ const tabs = computed(() => [
   { id: 'login_logs', label: '登录流水审计', icon: '🔐', count: loginLogs.value.length },
   { id: 'operation_logs', label: '操作审计日志', icon: '📋', count: operationLogs.value.length },
   { id: 'external_api_logs', label: '外部接口监控', icon: '🌐', count: externalApiLogs.value.length },
-  { id: 'sms_remind', label: '24h 未读短信催办', icon: '📱' }
+  ...(!isProduction ? [{ id: 'sms_remind', label: '24h 未读短信催办', icon: '📱' }] : [])
 ])
 
 const filteredUsers = computed(() => {

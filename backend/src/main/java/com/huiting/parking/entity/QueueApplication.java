@@ -46,4 +46,6 @@ public class QueueApplication {
     public LocalDateTime auditTime;
     @Column(name = "auditor_id")
     public Integer auditorId;
+    @Column(name = "audit_reference")
+    public String auditReference;
 }

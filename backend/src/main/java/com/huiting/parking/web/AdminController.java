@@ -10,8 +10,12 @@ import com.huiting.parking.service.AuditLogService;
 import com.huiting.parking.service.BootJobs;
 import com.huiting.parking.service.ParkingService;
 import com.huiting.parking.service.SeedService;
+import com.huiting.parking.service.PasswordService;
+import com.huiting.parking.service.SessionService;
+import com.huiting.parking.service.LoginThrottle;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.*;
 
@@ -28,11 +32,17 @@ public class AdminController {
     private final Repos.NoticeRepo notices;
     private final AuditLogService auditLog;
     private final BootJobs bootJobs;
+    private final PasswordService passwords;
+    private final SessionService sessions;
+    private final LoginThrottle loginThrottle;
+    @Value("${app.demo.enabled:false}")
+    private boolean demoEnabled;
 
     public AdminController(Repos.UserRepo users, Repos.CommunityRepo communities, Repos.SpaceRepo spaces,
                            Repos.AppRepo apps, Repos.LoginLogRepo loginLogs, Repos.OperationLogRepo operationLogs,
                            Repos.ExternalApiLogRepo externalApiLogs, Repos.NoticeRepo notices,
-                           AuditLogService auditLog, BootJobs bootJobs) {
+                           AuditLogService auditLog, BootJobs bootJobs, PasswordService passwords,
+                           SessionService sessions, LoginThrottle loginThrottle) {
         this.users = users;
         this.communities = communities;
         this.spaces = spaces;
@@ -43,6 +53,9 @@ public class AdminController {
         this.notices = notices;
         this.auditLog = auditLog;
         this.bootJobs = bootJobs;
+        this.passwords = passwords;
+        this.sessions = sessions;
+        this.loginThrottle = loginThrottle;
     }
 
     private UserAccount requireAdmin(Integer uid) {
@@ -57,6 +70,7 @@ public class AdminController {
     @PostMapping("/login")
     public ApiResponse login(@RequestBody Map<String, Object> req, HttpServletRequest request) {
         String username = String.valueOf(req.getOrDefault("username", "")).trim();
+        loginThrottle.check(username, request);
         String password = String.valueOf(req.getOrDefault("password", ""));
         String ip = getIp(request);
         String ua = request.getHeader("User-Agent");
@@ -66,17 +80,19 @@ public class AdminController {
                 .orElse(null);
 
         // 如果用户使用 admin 登录，查找系统超级总管
-        if (admin == null && "admin".equalsIgnoreCase(username)) {
+        if (admin == null && demoEnabled && "admin".equalsIgnoreCase(username)) {
             admin = users.findAll().stream().filter(u -> "SUPER_ADMIN".equals(u.role)).findFirst().orElse(null);
         }
 
-        if (admin == null || !SeedService.hashPwd(password).equals(admin.passwordHash)) {
+        if (admin == null || !passwords.matches(password, admin.passwordHash)) {
+            loginThrottle.failure(username, request);
             auditLog.recordLogin(null, username, "未知管理员", "SUPER_ADMIN", "PASSWORD", ip, ua, false, "账号或密码错误");
             throw new ApiException(400, "管理员账号或密码错误");
         }
 
+        loginThrottle.success(username, request);
         auditLog.recordLogin(admin.id, username, admin.realName, "SUPER_ADMIN", "PASSWORD", ip, ua, true, null);
-        String token = "admin-token-" + admin.id + "-" + UUID.randomUUID().toString().substring(0, 8);
+        String token = sessions.create(admin);
         return ApiResponse.ok("管理员登录成功", ParkingService.map(
                 "token", token,
                 "user", ParkingService.map(
@@ -89,7 +105,7 @@ public class AdminController {
     }
 
     @GetMapping("/stats")
-    public ApiResponse stats(@RequestHeader(value = "X-User-Id", required = false) Integer uid) {
+    public ApiResponse stats(@RequestAttribute(name = "authUserId") Integer uid) {
         requireAdmin(uid);
         long totalUsers = users.count();
         long owners = users.findAll().stream().filter(u -> "OWNER".equals(u.role)).count();
@@ -113,7 +129,7 @@ public class AdminController {
     }
 
     @GetMapping("/users")
-    public ApiResponse userList(@RequestHeader(value = "X-User-Id", required = false) Integer uid,
+    public ApiResponse userList(@RequestAttribute(name = "authUserId") Integer uid,
                                 @RequestParam(required = false) String role) {
         requireAdmin(uid);
         List<UserAccount> list = users.findAll();
@@ -136,7 +152,7 @@ public class AdminController {
                     "role", u.role,
                     "role_label", "SUPER_ADMIN".equals(u.role) ? "系统超级管理员" : ("PROPERTY_ADMIN".equals(u.role) ? "物业管理员" : "社区业主"),
                     "community_id", u.communityId,
-                    "community_name", commNames.getOrDefault(u.communityId, "龙华新村"),
+                    "community_name", commNames.getOrDefault(u.communityId, "未关联"),
                     "last_login_at", u.lastLoginAt != null ? Times.fmtBj(u.lastLoginAt) : "尚未登录",
                     "last_login_ip", u.lastLoginIp != null ? u.lastLoginIp : "--",
                     "login_count", u.loginCount != null ? u.loginCount : 0,
@@ -147,7 +163,7 @@ public class AdminController {
     }
 
     @GetMapping("/login-logs")
-    public ApiResponse loginLogs(@RequestHeader(value = "X-User-Id", required = false) Integer uid) {
+    public ApiResponse loginLogs(@RequestAttribute(name = "authUserId") Integer uid) {
         requireAdmin(uid);
         List<Map<String, Object>> result = new ArrayList<>();
         loginLogs.findTop50ByOrderByLoginAtDesc().forEach(l -> {
@@ -170,7 +186,7 @@ public class AdminController {
     }
 
     @GetMapping("/operation-logs")
-    public ApiResponse operationLogs(@RequestHeader(value = "X-User-Id", required = false) Integer uid) {
+    public ApiResponse operationLogs(@RequestAttribute(name = "authUserId") Integer uid) {
         requireAdmin(uid);
         List<Map<String, Object>> result = new ArrayList<>();
         operationLogs.findTop50ByOrderByCreatedAtDesc().forEach(l -> {
@@ -191,7 +207,7 @@ public class AdminController {
     }
 
     @GetMapping("/external-api-logs")
-    public ApiResponse externalApiLogs(@RequestHeader(value = "X-User-Id", required = false) Integer uid) {
+    public ApiResponse externalApiLogs(@RequestAttribute(name = "authUserId") Integer uid) {
         requireAdmin(uid);
         List<Map<String, Object>> result = new ArrayList<>();
         externalApiLogs.findTop50ByOrderByCreatedAtDesc().forEach(l -> {
@@ -213,8 +229,9 @@ public class AdminController {
     }
 
     @PostMapping("/trigger-sms-upgrade")
-    public ApiResponse triggerSmsUpgrade(@RequestHeader(value = "X-User-Id", required = false) Integer uid) {
+    public ApiResponse triggerSmsUpgrade(@RequestAttribute(name = "authUserId") Integer uid) {
         requireAdmin(uid);
+        if (!demoEnabled) throw new ApiException(503, "短信服务尚未接入");
         int count = bootJobs.processUnreadSmsUpgrades(true);
         return ApiResponse.ok("24小时未读短信升级催办执行完毕！本次共升级催办并下发短信 " + count + " 条",
                 ParkingService.map("upgraded_count", count));

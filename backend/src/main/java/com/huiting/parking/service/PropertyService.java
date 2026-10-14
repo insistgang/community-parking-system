@@ -9,6 +9,7 @@ import com.huiting.parking.repo.Repos;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.ByteArrayOutputStream;
@@ -18,6 +19,8 @@ import java.util.*;
 
 @Service
 public class PropertyService {
+    @Value("${app.demo.enabled:false}")
+    private boolean demoEnabled;
     private static final List<String> LIVE = List.of("ACTIVE", "EXPIRING", "OVERDUE");
     private final Repos.UserRepo users;
     private final Repos.CommunityRepo communities;
@@ -66,7 +69,7 @@ public class PropertyService {
         Set<Integer> spaceIds = new HashSet<>();
         spaces.findByCommunityIdOrderBySpaceNoAsc(cid).forEach(s -> spaceIds.add(s.id));
         List<RentalContract> terminated = contracts.findAll().stream().filter(c -> "TERMINATED".equals(c.status) && spaceIds.contains(c.spaceId)).toList();
-        int avgTurn = terminated.isEmpty() ? 365 : (int) Math.round(terminated.stream().mapToLong(c -> ChronoUnit.DAYS.between(c.startDate, c.endDate)).average().orElse(365));
+        int avgTurn = terminated.isEmpty() ? 0 : (int) Math.round(terminated.stream().mapToLong(c -> ChronoUnit.DAYS.between(c.startDate, c.endDate)).average().orElse(0));
         List<QueueApplication> waitingApps = apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(cid, "WAITING");
         int avgWait = waitingApps.isEmpty() ? 0 : (int) Math.round(waitingApps.stream().mapToLong(a -> ChronoUnit.DAYS.between(a.applyTime.toLocalDate(), Times.utcNow().toLocalDate())).average().orElse(0));
         long expiring = contracts.findAll().stream().filter(c -> "EXPIRING".equals(c.status) && spaceIds.contains(c.spaceId)).count();
@@ -81,7 +84,7 @@ public class PropertyService {
                 "completed_allocations", apps.countByCommunityIdAndStatus(cid, "COMPLETED"),
                 "released_total", evidences.countByCommunityIdAndEventType(cid, "TERMINATE"),
                 "audit_mode", mode,
-                "audit_mode_label", "THREE_CERT_AUTO".equals(mode) ? "三证合一（AI 自动化审核）" : "灵活配置（AI 自动化 + 人工审核）");
+                "audit_mode_label", demoEnabled && "THREE_CERT_AUTO".equals(mode) ? "三证合一（演示自动审核）" : "物业人工审核");
     }
 
     @Transactional(readOnly = true)
@@ -106,9 +109,33 @@ public class PropertyService {
     }
 
     @Transactional
+    public Map<String, Object> addSpace(UserAccount admin, Map<String, Object> req) {
+        communities.lockById(admin.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
+        String spaceNo = str(req.get("space_no")).trim().toUpperCase(Locale.ROOT);
+        String areaType = str(req.get("area_type")).trim().toUpperCase(Locale.ROOT);
+        if (!spaceNo.matches("[A-Z0-9-]{1,32}")) throw new ApiException(400, "车位编号仅支持字母、数字和连字符，最长32位");
+        if (!"GROUND".equals(areaType) && !"UNDERGROUND".equals(areaType)) throw new ApiException(400, "请选择地面或地下车位");
+        if (spaces.existsByCommunityIdAndSpaceNo(admin.communityId, spaceNo)) throw new ApiException(400, "本小区已存在该车位编号");
+        ParkingSpace sp = new ParkingSpace();
+        sp.communityId = admin.communityId;
+        sp.spaceNo = spaceNo;
+        sp.areaType = areaType;
+        sp.status = "VACANT";
+        sp = spaces.save(sp);
+        communities.findById(admin.communityId).ifPresent(c -> c.totalSpaces = (int) spaces.countByCommunityId(admin.communityId));
+        evidence.create(admin.communityId, admin.id, "SPACE_CREATE", "物业录入真实车位【" + spaceNo + "】",
+                Map.of("space_no", spaceNo, "area_type", areaType), null);
+        engine.recalculate(admin.communityId);
+        return ParkingService.map("id", sp.id, "space_no", sp.spaceNo, "area_type", sp.areaType, "status", sp.status);
+    }
+
+    @Transactional
     public Map<String, Object> maintenance(UserAccount admin, Map<String, Object> req) {
+        communities.lockById(admin.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
         int spaceId = num(req.get("space_id"));
-        ParkingSpace sp = spaces.findById(spaceId).orElseThrow(() -> new ApiException(404, "未找到指定车位"));
+        ParkingSpace sp = spaces.findById(spaceId)
+                .filter(s -> Objects.equals(s.communityId, admin.communityId))
+                .orElseThrow(() -> new ApiException(404, "未找到本小区的指定车位"));
         String action = str(req.get("action"));
         String reason = or(str(req.get("reason")), "地砖检修与设施保养");
         String attachment = emptyToNull(str(req.get("attachment_url")));
@@ -130,7 +157,7 @@ public class PropertyService {
                 if (contract != null) {
                     affected = contract.userId;
                     contract.status = "TERMINATED";
-                    saveNotice(contract.userId, "承租车位维修停用通知", "您承租的车位【" + sp.spaceNo + "】已由物业置为维修停用（原因: " + reason + "），原租约已终止并上链存证。", "SYSTEM", null);
+                    saveNotice(contract.userId, "承租车位维修停用通知", "您承租的车位【" + sp.spaceNo + "】已由物业置为维修停用（原因: " + reason + "），原租约已终止并记入系统审计记录。", "SYSTEM", null);
                 }
             }
             sp.status = "MAINTENANCE";
@@ -160,8 +187,14 @@ public class PropertyService {
 
     @Transactional
     public String confirmDelivery(UserAccount admin, Map<String, Object> req) {
-        ParkingSpace sp = spaces.findById(num(req.get("space_id"))).orElse(null);
-        UserAccount u = users.findById(num(req.get("user_id"))).orElse(null);
+        communities.lockById(admin.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
+        String receiptNo = str(req.get("receipt_no")).trim();
+        if (!demoEnabled && (!Boolean.TRUE.equals(req.get("payment_confirmed")) || receiptNo.isBlank()))
+            throw new ApiException(400, "请先核对线下合同与缴费凭据，并填写缴费凭据编号");
+        ParkingSpace sp = spaces.findById(num(req.get("space_id")))
+                .filter(s -> Objects.equals(s.communityId, admin.communityId)).orElse(null);
+        UserAccount u = users.findById(num(req.get("user_id")))
+                .filter(candidate -> Objects.equals(candidate.communityId, admin.communityId)).orElse(null);
         if (sp == null || u == null) throw new ApiException(404, "车位或业主不存在");
         if (!("ALLOCATED".equals(sp.status) || "OFFLINE_PENDING".equals(sp.status)) || !Objects.equals(sp.currentUserId, u.id))
             throw new ApiException(400, "该车位当前并非分配给此业主的中签车位，禁止人工指定交付！车位只能由系统按排队顺位自动分发。");
@@ -180,6 +213,7 @@ public class PropertyService {
         contract.spaceId = sp.id;
         contract.userId = u.id;
         contract.plateNo = app.plateNo;
+        contract.paymentReceiptNo = receiptNo.isBlank() ? null : receiptNo;
         contract.startDate = today;
         contract.endDate = today.plusDays(term.days);
         contract.status = "ACTIVE";
@@ -192,6 +226,7 @@ public class PropertyService {
         payload.put("months", term.months);
         payload.put("start_date", today.toString());
         payload.put("end_date", contract.endDate.toString());
+        payload.put("receipt_no", receiptNo);
         payload.put("attachment", emptyToNull(str(req.get("attachment_url"))));
         evidence.create(admin.communityId, u.id, "SIGN", "物业与业主【" + u.realName + "】完成车位【" + sp.spaceNo + "】线下签约履约交付 (" + term.label + ")", payload, null);
         saveNotice(u.id, "车位签约成功生效通知", "恭喜！您与物业已完成车位【" + sp.spaceNo + "】的线下签约缴费，租期 " + term.label + " 已正式生效（有效期至 " + contract.endDate + "）！", "SYSTEM", "GO_CONFIRM");
@@ -201,9 +236,15 @@ public class PropertyService {
 
     @Transactional
     public String forceTerminate(UserAccount admin, Map<String, Object> req) {
-        ParkingSpace sp = spaces.findById(num(req.get("space_id"))).orElseThrow(() -> new ApiException(404, "未找到指定车位"));
+        communities.lockById(admin.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
+        ParkingSpace sp = spaces.findById(num(req.get("space_id")))
+                .filter(s -> Objects.equals(s.communityId, admin.communityId))
+                .orElseThrow(() -> new ApiException(404, "未找到本小区的指定车位"));
         if ("VACANT".equals(sp.status) || "MAINTENANCE".equals(sp.status)) throw new ApiException(400, "该车位当前未被租用占用，无需清退");
         String reason = str(req.get("reason"));
+        String reference = str(req.get("evidence_reference")).trim();
+        if (reason.isBlank() || (!demoEnabled && reference.isBlank()))
+            throw new ApiException(400, "请填写清退事由及线下办理凭据编号");
         Integer oldUserId = sp.currentUserId;
         String oldName = "老业主";
         if (oldUserId != null) oldName = users.findById(oldUserId).map(u -> u.realName).orElse(oldName);
@@ -216,7 +257,7 @@ public class PropertyService {
         }
         contracts.findBySpaceIdAndStatusNot(sp.id, "TERMINATED").forEach(c -> c.status = "TERMINATED");
         if (oldUserId != null && (pending == null || !oldUserId.equals(pending.userId))) {
-            saveNotice(oldUserId, "车位强制清退通知", "您名下的车位【" + sp.spaceNo + "】已由物业强制清退（事由: " + reason + "），租约终止并已上链存证。", "SYSTEM", null);
+            saveNotice(oldUserId, "车位强制清退通知", "您名下的车位【" + sp.spaceNo + "】已由物业清退（事由: " + reason + "），租约终止并已记入系统审计记录。", "SYSTEM", null);
         }
         sp.status = "VACANT";
         sp.currentUserId = null;
@@ -225,7 +266,7 @@ public class PropertyService {
         if (pending != null) exclude.add(pending.userId);
         engine.notifyApplicants(admin.communityId, "车位清退释放公告", "车位【" + sp.spaceNo + "】已由物业强制清退释放（事由: " + reason + "）。系统将按排队规则自动顺延分配，请关注您的排位与中签通知。", null, exclude, "SYSTEM", "GO_QUEUE");
         evidence.create(admin.communityId, oldUserId, "TERMINATE", "物业代清退车位【" + sp.spaceNo + "】(原业主:" + oldName + ", 事由:" + reason + ")",
-                Map.of("space_no", sp.spaceNo, "old_user", oldName, "reason", reason, "attachment", or(str(req.get("attachment_url")), "proof_document_mock.jpg")), null);
+                Map.of("space_no", sp.spaceNo, "old_user", oldName, "reason", reason, "evidence_reference", reference), null);
         engine.recalculate(admin.communityId);
         return "车位【" + sp.spaceNo + "】已成功清退释放，系统已自动触发后序顺位流转分配！";
     }
@@ -305,6 +346,7 @@ public class PropertyService {
 
     @Transactional
     public String initSpaces(UserAccount admin) {
+        if (!demoEnabled) throw new ApiException(403, "正式版请逐一录入真实车位，禁止注入演示车位");
         if (spaces.countByCommunityId(admin.communityId) > 0) throw new ApiException(400, "当前小区已存在车位台账，无需重复初始化");
         List<ParkingSpace> list = engine.initSpaces(admin.communityId, 50);
         communities.findById(admin.communityId).ifPresent(c -> c.totalSpaces = 50);
@@ -322,6 +364,7 @@ public class PropertyService {
 
     @Transactional
     public Map<String, Object> updateAudit(UserAccount admin, String mode) {
+        if (!demoEnabled) throw new ApiException(403, "正式版统一采用物业人工审核");
         if (!"THREE_CERT_AUTO".equals(mode) && !"FLEXIBLE_HYBRID".equals(mode)) throw new ApiException(400, "无效的审核方式，仅支持 THREE_CERT_AUTO 或 FLEXIBLE_HYBRID");
         Community comm = communities.findById(admin.communityId).orElseThrow(() -> new ApiException(404, "未找到所属小区"));
         String old = comm.auditMode == null ? "THREE_CERT_AUTO" : comm.auditMode;
@@ -349,10 +392,10 @@ public class PropertyService {
             else {
                 List<QueueApplication> past = apps.findByUserIdOrderByIdDesc(u.id);
                 if (!past.isEmpty() && past.get(0).propertyNo != null) propertyNo = past.get(0).propertyNo;
-                else if ("张欣欣".equals(u.realName)) propertyNo = "12号楼302室";
-                else if ("李雷".equals(u.realName)) propertyNo = "10号楼201室";
-                else if ("韩梅梅".equals(u.realName)) propertyNo = "8号楼201室";
-                else if ("王建国".equals(u.realName)) propertyNo = "9号楼102室";
+                else if (demoEnabled && "张欣欣".equals(u.realName)) propertyNo = "12号楼302室";
+                else if (demoEnabled && "李雷".equals(u.realName)) propertyNo = "10号楼201室";
+                else if (demoEnabled && "韩梅梅".equals(u.realName)) propertyNo = "8号楼201室";
+                else if (demoEnabled && "王建国".equals(u.realName)) propertyNo = "9号楼102室";
             }
             String masked = u.idCard != null && u.idCard.length() >= 10 ? u.idCard.substring(0, 6) + "********" + u.idCard.substring(u.idCard.length() - 4) : "--";
             result.add(ParkingService.map("id", u.id, "real_name", u.realName, "phone", u.phone, "property_no", propertyNo, "id_card_masked", masked,
@@ -363,6 +406,7 @@ public class PropertyService {
 
     @Transactional
     public Map<String, Object> setUserMode(UserAccount admin, Map<String, Object> req) {
+        if (!demoEnabled) throw new ApiException(403, "正式版统一采用物业人工审核");
         UserAccount user = users.findById(num(req.get("user_id"))).filter(u -> u.communityId.equals(admin.communityId)).orElseThrow(() -> new ApiException(404, "未找到该业主账号"));
         Community comm = communities.findById(admin.communityId).orElse(null);
         String commMode = comm != null && comm.auditMode != null ? comm.auditMode : "THREE_CERT_AUTO";
@@ -403,28 +447,35 @@ public class PropertyService {
                     "property_no", app.propertyNo, "plate_no", app.plateNo, "car_relationship", or(app.carRelationship, "SELF"), "is_spouse_car", Boolean.TRUE.equals(app.spouseCar),
                     "priority_level", app.priorityLevel, "priority_label", app.priorityLevel != null && app.priorityLevel == 1 ? "家庭一车" : "家庭二车",
                     "current_rank", app.currentRank, "status", app.status, "status_label", labels.getOrDefault(app.status, app.status),
-                    "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"), "audit_mode_label", "FLEXIBLE_HYBRID".equals(app.auditMode) ? "灵活审核" : "AI直审",
+                    "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"), "audit_mode_label", "FLEXIBLE_HYBRID".equals(app.auditMode) ? "物业人工审核" : "演示自动审核",
                     "reject_reason", app.rejectReason, "attachments", parse(app.attachmentsJson), "apply_time", Times.fmtBj(app.applyTime),
-                    "audit_time", app.auditTime == null ? "--" : Times.fmtBj(app.auditTime), "auditor_name", auditor != null ? auditor.realName : "--"));
+                    "audit_time", app.auditTime == null ? "--" : Times.fmtBj(app.auditTime), "auditor_name", auditor != null ? auditor.realName : "--",
+                    "audit_reference", app.auditReference));
         }
         return result;
     }
 
     @Transactional
     public String audit(UserAccount admin, Map<String, Object> req) {
+        communities.lockById(admin.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
         QueueApplication app = apps.findById(num(req.get("app_id"))).filter(a -> a.communityId.equals(admin.communityId)).orElseThrow(() -> new ApiException(404, "未找到指定车位申请单"));
         if (!"PENDING_REVIEW".equals(app.status)) throw new ApiException(400, "该申请单当前状态为【" + app.status + "】，仅待人工审核单据允许操作！");
         UserAccount applicant = users.findById(app.userId).orElse(null);
         String name = applicant != null ? applicant.realName : "申请业主";
         String action = str(req.get("action"));
         if ("APPROVE".equals(action)) {
+            String reference = str(req.get("audit_reference")).trim();
+            if (!demoEnabled && (!Boolean.TRUE.equals(req.get("documents_verified")) || reference.isBlank()))
+                throw new ApiException(400, "请先线下核对证明材料并填写核验登记编号");
             app.status = "WAITING";
             app.auditTime = Times.utcNow();
             app.auditorId = admin.id;
+            app.auditReference = reference.isBlank() ? null : reference;
             app.rejectReason = null;
             evidence.create(admin.communityId, applicant != null ? applicant.id : admin.id, "AUDIT_PASS",
                     "物业管理员【" + admin.realName + "】审核通过业主【" + name + "】车位申请，单据正式进入排位序列",
-                    Map.of("app_id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "auditor", admin.realName, "action", "APPROVE"), null);
+                    Map.of("app_id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "auditor", admin.realName,
+                            "action", "APPROVE", "audit_reference", reference), null);
             saveNotice(app.userId, "车位申请审核通过通知", "恭喜！您提交的车位申请（房屋: " + app.propertyNo + "，车辆: " + app.plateNo + "）已通过物业人工审核，现已正式进入小区公平排位序列！", "SYSTEM", "GO_QUEUE");
             engine.recalculate(admin.communityId);
             return "审核通过！业主【" + name + "】的申请已正式进入车位排位序列。";

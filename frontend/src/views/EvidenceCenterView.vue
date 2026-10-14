@@ -9,8 +9,8 @@
             ⛓️
           </div>
           <div>
-            <h2 class="text-base font-extrabold tracking-wide">个人区块链数字存证中心</h2>
-            <p class="text-xs text-blue-200 mt-0.5">SHA-256 分布式哈希存证 · 基层治理不可篡改证据链</p>
+            <h2 class="text-base font-extrabold tracking-wide">个人审计记录中心</h2>
+            <p class="text-xs text-blue-200 mt-0.5">本地 SHA-256 哈希链 · 可核验记录完整性</p>
           </div>
         </div>
       </div>
@@ -18,8 +18,8 @@
       <!-- 存证流水列表 -->
       <div class="space-y-3">
         <div class="flex items-center justify-between text-xs font-bold text-slate-700 px-1">
-          <span>存证流水明细 (倒序排列)</span>
-          <span class="text-[11px] text-slate-400 font-normal">点击单条查看防伪证书</span>
+          <span>审计流水明细（倒序排列）</span>
+          <span class="text-[11px] text-slate-400 font-normal">点击单条查看核验信息</span>
         </div>
 
         <div class="space-y-2.5">
@@ -44,7 +44,7 @@
 
             <div class="bg-slate-50 p-2 rounded-xl text-[11px] font-mono text-slate-500 break-all mb-2 flex items-center justify-between">
               <span>{{ item.tx_hash.slice(0, 20) }}...{{ item.tx_hash.slice(-16) }}</span>
-              <span class="text-blue-600 font-sans font-semibold text-[10px]">查看证书 ➔</span>
+              <span class="text-blue-600 font-sans font-semibold text-[10px]">查看记录 ➔</span>
             </div>
 
             <div class="flex items-center justify-between text-[10px] text-slate-400">
@@ -54,7 +54,7 @@
           </div>
 
           <div v-if="evidenceList.length === 0" class="bg-white rounded-2xl p-8 text-center text-slate-400 text-xs shadow-sm">
-            暂无上链存证记录
+            暂无审计记录
           </div>
         </div>
       </div>

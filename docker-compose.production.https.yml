@@ -1,0 +1,9 @@
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.production.https
+    ports:
+      - "${PROD_HTTPS_PORT:-39443}:443"
+    volumes:
+      - ./certs:/etc/nginx/certs:ro

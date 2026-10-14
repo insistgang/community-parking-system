@@ -37,6 +37,11 @@ export const useUserStore = defineStore('user', {
       localStorage.setItem('parking_property_theme_v2', this.propertyTheme)
     },
     logout() {
+      if (this.token) {
+        api.post('/auth/logout', null, {
+          headers: { Authorization: `Bearer ${this.token}` }
+        }).catch(() => {})
+      }
       this.user = null
       this.token = ''
       this.homeData = null

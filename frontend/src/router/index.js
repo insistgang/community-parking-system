@@ -22,7 +22,9 @@ const routes = [
   {
     path: '/apply',
     name: 'Apply',
-    component: () => import('../views/ApplyParkingView.vue')
+    component: import.meta.env.VITE_APP_MODE === 'production'
+      ? () => import('../views/ProductionApplyView.vue')
+      : () => import('../views/ApplyParkingView.vue')
   },
   {
     path: '/queue',

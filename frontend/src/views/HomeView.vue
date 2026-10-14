@@ -66,7 +66,10 @@
           </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div v-if="isProduction" class="rounded-xl bg-white/10 p-3 text-xs text-blue-100">
+          续租或退租请联系物业服务中心，完成合同及费用核对后由物业办理。
+        </div>
+        <div v-else class="flex items-center gap-2">
           <button
             v-if="mySpace.days_left <= 30"
             @click="handleRenew"
@@ -157,7 +160,7 @@
               <span>车位申请审核中 (待物业人工复核)</span>
             </span>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
-              AI 初审已过
+              待人工审核
             </span>
           </div>
 
@@ -174,16 +177,16 @@
               <div class="flex items-center justify-between">
                 <span class="font-bold text-amber-900">当前审核机制：</span>
                 <span class="text-[11px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
-                  灵活配置（AI 自动化 + 人工审核）
+                  物业人工审核
                 </span>
               </div>
               <div class="space-y-1.5 pt-1 text-[11px]">
                 <div class="flex items-center gap-2 text-emerald-700 font-semibold">
-                  <span>✓ 步骤 1: AI 算法基础核验身份证/房产/行驶证/附件（已通过）</span>
+                  <span>✓ 步骤 1：申请信息已提交</span>
                 </div>
                 <div class="flex items-center gap-2 text-amber-800 font-bold">
                   <span class="animate-spin">⏳</span>
-                  <span>步骤 2: 物业管理员人工核验证明材料中（预计 1~2 个工作日）</span>
+                  <span>步骤 2：等待物业核对证明材料原件</span>
                 </div>
                 <div class="flex items-center gap-2 text-slate-400">
                   <span>⚪ 步骤 3: 人工审核通过后系统自动并入车位 FIFO 轮候序列</span>
@@ -391,7 +394,7 @@
           </div>
 
           <p class="text-[11px] text-slate-400 leading-relaxed">
-            💡 提示：线上提交申请后，系统将自动顺延租期并生成区块链防伪存证；请根据小区管理规约于 7 日内前往物业服务中心办理线下缴费核验。
+            💡 提示：续租和缴费请先到物业服务中心办理，系统会记录经确认的租约变更。
           </p>
         </div>
 
@@ -428,6 +431,7 @@ import BottomNav from '../components/BottomNav.vue'
 import { showConfirm, showToast } from '../utils/dialog'
 
 const userStore = useUserStore()
+const isProduction = import.meta.env.VITE_APP_MODE === 'production'
 
 let pollTimer = null
 
@@ -515,7 +519,7 @@ const submitRenew = async () => {
 const handleTerminate = async () => {
   const ok = await showConfirm({
     title: '车位主动退租确认',
-    message: '确认申请退租吗？车位将立即释放并由系统自动顺延分配给排队业主，操作实时上链不可撤销。',
+    message: '确认申请退租吗？车位将立即释放并由系统按排队顺位分配，请谨慎操作。',
     confirmText: '确认退租',
     type: 'danger'
   })

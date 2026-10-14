@@ -7,6 +7,7 @@ import com.huiting.parking.common.Times;
 import com.huiting.parking.entity.*;
 import com.huiting.parking.repo.Repos;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -15,6 +16,8 @@ import java.util.*;
 
 @Service
 public class ParkingService {
+    @Value("${app.demo.enabled:false}")
+    private boolean demoEnabled;
     private static final List<String> LIVE = List.of("ACTIVE", "EXPIRING", "OVERDUE");
     private static final List<String> OPEN_APP = List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW", "REJECTED");
 
@@ -55,7 +58,7 @@ public class ParkingService {
         if (contract != null) {
             ParkingSpace space = spaces.findById(contract.spaceId).orElse(null);
             int days = (int) ChronoUnit.DAYS.between(LocalDate.now(), contract.endDate);
-            mySpace = map("space_no", space != null ? space.spaceNo : "A-008", "plate_no", contract.plateNo,
+            mySpace = map("space_no", space != null ? space.spaceNo : "--", "plate_no", contract.plateNo,
                     "start_date", String.valueOf(contract.startDate), "end_date", String.valueOf(contract.endDate),
                     "days_left", Math.max(0, days), "status", contract.status);
         }
@@ -64,14 +67,14 @@ public class ParkingService {
         Map<String, Object> myQueue = null;
         if (contract == null && app != null) myQueue = queueView(app, user, community);
         long unread = notices.countByUserIdAndReadFlag(user.id, false);
-        int total = community != null && community.totalSpaces != null ? community.totalSpaces : 50;
+        int total = community != null && community.totalSpaces != null ? community.totalSpaces : 0;
         String mode = community != null && community.auditMode != null ? community.auditMode : "THREE_CERT_AUTO";
         List<Map<String, Object>> publicSpaces = new ArrayList<>();
         spaces.findByCommunityIdOrderBySpaceNoAsc(user.communityId).stream().limit(20).forEach(sp -> publicSpaces.add(maskSpace(sp)));
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("view_state", view);
         data.put("user_info", map("id", user.id, "real_name", user.realName, "role", user.role,
-                "community_name", community != null ? community.name : "龙华新村", "community_audit_mode", mode));
+                "community_name", community != null ? community.name : "未配置", "community_audit_mode", mode));
         data.put("unread_notifications", unread);
         data.put("my_space", mySpace);
         data.put("my_queue", myQueue);
@@ -103,9 +106,12 @@ public class ParkingService {
 
     @Transactional
     public Map<String, Object> apply(UserAccount user, Map<String, Object> req) {
-        if ("PROPERTY_ADMIN".equals(user.role)) throw new ApiException(403, "物业管理员账号负责资产统筹与履约监管，坚决禁止作为业主申请车位！");
+        communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
+        if (!"OWNER".equals(user.role)) throw new ApiException(403, "仅业主账号可以申请车位");
         String propertyNo = str(req.get("property_no"));
         String plate = str(req.get("plate_no"));
+        if (propertyNo.isBlank() || propertyNo.length() > 100 || plate.isBlank() || plate.length() > 32)
+            throw new ApiException(400, "请填写有效的房屋和车牌信息");
         if (propertyNo.contains("浦东") || propertyNo.contains("世纪大道") || propertyNo.contains("外区"))
             throw new ApiException(400, "仅限本小区产权房屋可申请车位，外区房产无法通过核验！");
         if (apps.findFirstByUserIdAndStatusIn(user.id, List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW")).isPresent())
@@ -124,10 +130,9 @@ public class ParkingService {
         String commMode = comm != null && comm.auditMode != null ? comm.auditMode : "THREE_CERT_AUTO";
         String userMode = user.auditMode;
         String effective = ("THREE_CERT_AUTO".equals(userMode) || "FLEXIBLE_HYBRID".equals(userMode)) ? userMode : commMode;
-        String asked = str(req.get("audit_mode"));
-        String mode = ("THREE_CERT_AUTO".equals(asked) || "FLEXIBLE_HYBRID".equals(asked)) ? asked : effective;
+        String mode = demoEnabled ? effective : "FLEXIBLE_HYBRID";
         List<Map<String, Object>> attachments = attachments(req.get("attachments"));
-        if (attachments.isEmpty()) {
+        if (attachments.isEmpty() && demoEnabled) {
             attachments.add(map("name", "居民身份证原件扫描件", "type", "ID_CARD", "desc", "权利人: " + user.realName + " (实人人脸比对核验通过)"));
             attachments.add(map("name", "不动产权证书原件扫描件", "type", "PROPERTY_CERT", "desc", "房屋坐落: " + propertyNo + " (市不动产中心联网比对通过)"));
             attachments.add(map("name", "机动车行驶证正副页扫描件", "type", "VEHICLE_LICENSE", "desc", "号牌号码: " + plate + " (公安交管比对通过)"));
@@ -152,10 +157,10 @@ public class ParkingService {
         String pri = priority == 1 ? "家庭一车" : "家庭二车";
         if ("FLEXIBLE_HYBRID".equals(mode)) {
             evidence.create(user.communityId, user.id, "APPLY_SUBMIT",
-                    "业主【" + user.realName + "】提交车位申请(AI初审校验通过·流转物业人工审核·" + relLabel + "·" + pri + ")",
+                    "业主【" + user.realName + "】提交车位申请，待物业人工审核（" + relLabel + "·" + pri + "）",
                     Map.of("property_no", propertyNo, "plate_no", plate, "audit_mode", "FLEXIBLE_HYBRID", "attachments_count", attachments.size(), "priority", priority), null);
-            saveNotice(user.id, "车位申请提交成功(待物业审核)", "您的车位申请AI基础初审已通过，已成功流转至物业人工审核阶段，请耐心等待审核结果通知。", "SYSTEM", "GO_QUEUE");
-            return map("id", app.id, "status", app.status, "audit_mode", app.auditMode, "_message", "AI基础校验通过！申请材料已成功流转至物业人工审核，请耐心等待审核。");
+            saveNotice(user.id, "车位申请提交成功（待物业审核）", "您的申请已提交，物业将核对房屋、车辆及身份证明后通知审核结果。", "SYSTEM", "GO_QUEUE");
+            return map("id", app.id, "status", app.status, "audit_mode", app.auditMode, "_message", "申请已提交，请按物业要求提供证明材料并等待人工审核。");
         }
         evidence.create(user.communityId, user.id, "APPLY",
                 "业主【" + user.realName + "】提交车位申请(三证合一AI直审通过·" + relLabel + "·" + pri + ")",
@@ -166,6 +171,7 @@ public class ParkingService {
 
     @Transactional
     public String cancel(UserAccount user, String reason) {
+        communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
         QueueApplication app = apps.findFirstByUserIdAndStatus(user.id, "WAITING").orElseThrow(() -> new ApiException(400, "未查询到处于排队中的申请"));
         int old = app.currentRank == null ? 0 : app.currentRank;
         app.status = "CANCELLED";
@@ -178,6 +184,7 @@ public class ParkingService {
 
     @Transactional
     public String accept(UserAccount user) {
+        communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
         QueueApplication app = apps.findFirstByUserIdAndStatus(user.id, "ALLOCATED").orElseThrow(() -> new ApiException(400, "未查询到待确认的中签申请"));
         app.status = "OFFLINE_PENDING";
         String spaceNo = "--";
@@ -195,6 +202,7 @@ public class ParkingService {
 
     @Transactional
     public String giveUp(UserAccount user) {
+        communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
         QueueApplication app = apps.findFirstByUserIdAndStatus(user.id, "ALLOCATED").orElseThrow(() -> new ApiException(400, "未查询到待确认的中签申请"));
         app.status = "CANCELLED";
         String spaceNo = "--";
@@ -212,6 +220,8 @@ public class ParkingService {
 
     @Transactional
     public String terminate(UserAccount user) {
+        if (!demoEnabled) throw new ApiException(403, "正式版退租请联系物业核对合同并办理");
+        communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
         RentalContract contract = contracts.findFirstByUserIdAndStatusIn(user.id, LIVE).orElseThrow(() -> new ApiException(400, "未查询到您名下正在生效的车位租约"));
         ParkingSpace sp = spaces.findById(contract.spaceId).orElse(null);
         contract.status = "TERMINATED";
@@ -219,7 +229,7 @@ public class ParkingService {
         String spaceNo = sp != null ? sp.spaceNo : "--";
         evidence.create(user.communityId, user.id, "TERMINATE", "业主【" + user.realName + "】主动退租车位【" + spaceNo + "】，租约终止车位释放回炉",
                 Map.of("contract_no", contract.contractNo, "space_no", spaceNo, "mode", "OWNER_INITIATED"), null);
-        saveNotice(user.id, "退租办理完成通知", "您的车位【" + spaceNo + "】退租手续已办结，租约终止并已上链存证。车位将由系统按排队顺位自动顺延分配。", "SYSTEM", null);
+        saveNotice(user.id, "退租办理完成通知", "您的车位【" + spaceNo + "】退租手续已办结，租约终止并已记入系统审计记录。车位将按排队顺位自动顺延分配。", "SYSTEM", null);
         engine.notifyApplicants(user.communityId, "车位退租释放公告", "车位【" + spaceNo + "】已退租释放。系统将按排队顺位自动分配，请关注您的排位与中签通知。", null, List.of(user.id), "SYSTEM", "GO_QUEUE");
         engine.recalculate(user.communityId);
         return "退租成功！车位【" + spaceNo + "】已释放，系统已自动顺延分配给排队顺位业主。";
@@ -227,6 +237,8 @@ public class ParkingService {
 
     @Transactional
     public Map<String, Object> renew(UserAccount user, Integer months) {
+        if (!demoEnabled) throw new ApiException(403, "正式版续租请联系物业完成缴费与合同确认");
+        communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
         RentalContract contract = contracts.findFirstByUserIdAndStatusIn(user.id, LIVE).orElseThrow(() -> new ApiException(400, "未查询到您名下正在生效的车位租约，无法续租"));
         int daysLeft = (int) ChronoUnit.DAYS.between(LocalDate.now(), contract.endDate);
         if ("ACTIVE".equals(contract.status) && daysLeft > 30)
@@ -245,8 +257,8 @@ public class ParkingService {
         payload.put("old_end_date", String.valueOf(oldEnd));
         payload.put("new_end_date", String.valueOf(contract.endDate));
         evidence.create(user.communityId, user.id, "RENEW", "业主【" + user.realName + "】完成车位【" + spaceNo + "】续租申请 (" + term.label + ")", payload, null);
-        saveNotice(user.id, "车位续租成功通知", "您的车位【" + spaceNo + "】已成功办理续租，租约有效期已顺延 " + term.label + " 至 " + contract.endDate + "，本次续租已上链存证。", "SYSTEM", "GO_CONFIRM");
-        return map("contract_no", contract.contractNo, "term", term.label, "new_end_date", String.valueOf(contract.endDate), "_message", "续租成功！租约已顺延 " + term.label + " 至 " + contract.endDate + "，存证已上链。");
+        saveNotice(user.id, "车位续租成功通知", "您的车位【" + spaceNo + "】已成功办理续租，租约有效期已顺延 " + term.label + " 至 " + contract.endDate + "，本次续租已记入系统审计记录。", "SYSTEM", "GO_CONFIRM");
+        return map("contract_no", contract.contractNo, "term", term.label, "new_end_date", String.valueOf(contract.endDate), "_message", "续租成功！租约已顺延 " + term.label + " 至 " + contract.endDate + "。");
     }
 
     @Transactional
@@ -298,7 +310,7 @@ public class ParkingService {
         if ("PENDING_REVIEW".equals(app.status)) {
             return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "status", "PENDING_REVIEW",
                     "status_label", "待物业人工审核", "audit_mode", or(app.auditMode, "FLEXIBLE_HYBRID"), "apply_time", Times.fmtBj(app.applyTime),
-                    "attachments", attachments, "notice", "AI 自动化初审已通过，正在等待物业人工审核材料资质...");
+                    "attachments", attachments, "notice", "申请已提交，正在等待物业人工核验材料。");
         }
         if ("REJECTED".equals(app.status)) {
             return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "status", "REJECTED",
@@ -336,7 +348,7 @@ public class ParkingService {
             if (ct != null) {
                 plate = ct.plateNo != null && ct.plateNo.length() >= 5 ? ct.plateNo.substring(0, 2) + "·***" + ct.plateNo.substring(ct.plateNo.length() - 2) : ct.plateNo;
                 end = String.valueOf(ct.endDate);
-                room = "12号楼 30*室";
+                room = "--";
             }
         } else if ("MAINTENANCE".equals(sp.status)) owner = "维修停用";
         return map("space_no", sp.spaceNo, "area_type", "GROUND".equals(sp.areaType) ? "地面" : "地下", "status", sp.status,

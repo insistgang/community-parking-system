@@ -17,7 +17,7 @@
           <span>🛡️</span>
           <span>系统管理员登录</span>
         </span>
-        <button
+        <button v-if="!isProduction"
           type="button"
           @click="fillDemoAdmin"
           class="px-2 py-0.5 rounded bg-indigo-600/50 hover:bg-indigo-600 text-white text-[10px] font-bold transition"
@@ -33,7 +33,7 @@
             v-model="form.username"
             type="text"
             required
-            placeholder="请输入管理员账号 (默认: admin)"
+            placeholder="请输入管理员手机号"
             class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white font-medium"
           />
         </div>
@@ -44,7 +44,7 @@
             v-model="form.password"
             type="password"
             required
-            placeholder="请输入登录密码 (默认: admin123)"
+            placeholder="请输入登录密码"
             class="w-full px-3.5 py-2.5 rounded-xl bg-slate-800 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-white font-medium"
           />
         </div>
@@ -86,10 +86,11 @@ const userStore = useUserStore()
 
 const loading = ref(false)
 const errorMsg = ref('')
+const isProduction = import.meta.env.VITE_APP_MODE === 'production'
 
 const form = ref({
-  username: 'admin',
-  password: 'admin123'
+  username: isProduction ? '' : 'admin',
+  password: isProduction ? '' : 'admin123'
 })
 
 const fillDemoAdmin = () => {

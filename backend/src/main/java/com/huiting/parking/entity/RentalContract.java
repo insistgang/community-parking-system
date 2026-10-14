@@ -18,6 +18,8 @@ public class RentalContract {
     public Integer userId;
     @Column(name = "plate_no")
     public String plateNo;
+    @Column(name = "payment_receipt_no")
+    public String paymentReceiptNo;
     @Column(name = "start_date")
     public LocalDate startDate;
     @Column(name = "end_date")

@@ -55,7 +55,7 @@
           <div>
             <div class="flex items-center justify-between mb-1">
               <label class="block font-bold text-slate-300">管辖小区名称</label>
-              <span class="text-[10px] text-purple-400">输入新小区将自动初始化50个车位</span>
+              <span class="text-[10px] text-purple-400">新小区建档后由物业录入真实车位</span>
             </div>
             <input
               v-model="form.community_name"
@@ -67,6 +67,12 @@
           </div>
 
           <!-- 管理员信息 -->
+          <div>
+            <label class="block font-bold text-slate-300 mb-1">物业入驻邀请码</label>
+            <input v-model.trim="form.invite_code" type="password" required autocomplete="off"
+              placeholder="请向平台管理员获取邀请码"
+              class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-slate-600 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium" />
+          </div>
           <div class="grid grid-cols-2 gap-2">
             <div>
               <label class="block font-bold text-slate-300 mb-1">管理员真实姓名</label>
@@ -173,6 +179,7 @@ const form = reactive({
   real_name: '',
   id_card: '',
   phone: '',
+  invite_code: '',
   password: '',
   confirm_pwd: ''
 })
@@ -185,8 +192,8 @@ const handleRegister = async () => {
     return
   }
 
-  if (form.password.length < 6) {
-    errorMsg.value = '密码长度不能少于6位'
+  if (form.password.length < 8) {
+    errorMsg.value = '密码长度不能少于8位'
     return
   }
 
@@ -205,6 +212,7 @@ const handleRegister = async () => {
       id_card: form.id_card,
       phone: form.phone,
       password: form.password,
+      invite_code: form.invite_code,
       role: 'PROPERTY_ADMIN',
       company_name: form.company_name
     })

@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-slate-100 text-slate-800">
-    <SeedAccountBar @fill="handleFill" />
+    <SeedAccountBar v-if="!isProduction" @fill="handleFill" />
     <router-view />
     <!-- 全局现代拟真模态弹窗与 Toast 容器 -->
     <GlobalDialog />
@@ -17,6 +17,7 @@ import { showToast } from './utils/dialog'
 
 const router = useRouter()
 const userStore = useUserStore()
+const isProduction = import.meta.env.VITE_APP_MODE === 'production'
 
 const handleFill = async ({ identifier, password }) => {
   try {

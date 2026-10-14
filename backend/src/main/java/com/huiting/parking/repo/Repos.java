@@ -2,6 +2,10 @@ package com.huiting.parking.repo;
 
 import com.huiting.parking.entity.*;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import jakarta.persistence.LockModeType;
 
 import java.util.List;
 import java.util.Optional;
@@ -9,6 +13,9 @@ import java.util.Optional;
 public class Repos {
     public interface CommunityRepo extends JpaRepository<Community, Integer> {
         Optional<Community> findByName(String name);
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("select c from Community c where c.id = :id")
+        Optional<Community> lockById(@Param("id") Integer id);
     }
     public interface UserRepo extends JpaRepository<UserAccount, Integer> {
         Optional<UserAccount> findByPhoneOrIdCard(String phone, String idCard);
@@ -17,7 +24,14 @@ public class Repos {
         List<UserAccount> findByCommunityIdAndRoleInOrderByIdAsc(Integer communityId, List<String> roles);
         boolean existsByPhoneOrIdCard(String phone, String idCard);
     }
+    public interface SessionRepo extends JpaRepository<AuthSession, Integer> {
+        Optional<AuthSession> findByTokenHash(String tokenHash);
+        void deleteByTokenHash(String tokenHash);
+        void deleteByUserId(Integer userId);
+        void deleteByExpiresAtBefore(java.time.LocalDateTime cutoff);
+    }
     public interface SpaceRepo extends JpaRepository<ParkingSpace, Integer> {
+        boolean existsByCommunityIdAndSpaceNo(Integer communityId, String spaceNo);
         List<ParkingSpace> findByCommunityIdOrderBySpaceNoAsc(Integer communityId);
         List<ParkingSpace> findByCommunityIdAndStatusOrderBySpaceNoAsc(Integer communityId, String status);
         long countByCommunityId(Integer communityId);
@@ -51,6 +65,9 @@ public class Repos {
     }
     public interface EvidenceRepo extends JpaRepository<ChainEvidence, Integer> {
         Optional<ChainEvidence> findFirstByOrderByIdDesc();
+        Optional<ChainEvidence> findFirstByCommunityIdOrderByIdDesc(Integer communityId);
+        Optional<ChainEvidence> findFirstByCommunityIdAndIdLessThanOrderByIdDesc(Integer communityId, Integer id);
+        List<ChainEvidence> findByCommunityIdOrderByIdAsc(Integer communityId);
         Optional<ChainEvidence> findByEvidenceId(String evidenceId);
         List<ChainEvidence> findByCommunityIdOrderByBlockHeightDesc(Integer communityId);
         List<ChainEvidence> findByCommunityIdAndUserIdOrCommunityIdAndEventTypeOrderByBlockHeightDesc(Integer communityId, Integer userId, Integer communityId2, String eventType);

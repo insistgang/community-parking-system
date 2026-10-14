@@ -24,12 +24,16 @@
               物业管理 PC 端
             </span>
           </div>
-          <p class="text-xs text-slate-400 break-words">服务小区：{{ userStore.communityName || '龙华新村' }} (总车位 50 个) | 当前管理员：{{ userStore.realName }}</p>
+          <p class="text-xs text-slate-400 break-words">服务小区：{{ userStore.communityName }}（总车位 {{ stats.total_spaces ?? 0 }} 个）| 当前管理员：{{ userStore.realName }}</p>
         </div>
       </div>
 
       <div class="flex items-center gap-2 flex-wrap text-xs">
-        <button
+        <button v-if="isProduction" @click="showAddSpace = true"
+          class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-semibold transition shadow-sm">
+          ＋ 录入真实车位
+        </button>
+        <button v-if="!isProduction"
           @click="handleResetDemo"
           class="px-3 py-1.5 rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-semibold transition active:scale-95 flex items-center gap-1.5 shadow-sm"
           title="防翻车：一键将所有车位和账号重置为初始演示状态"
@@ -249,7 +253,7 @@
                 {{ pendingAuditCount }} 待审
               </span>
             </button>
-            <button
+            <button v-if="!isProduction"
               @click="auditSubTab = 'strategy'"
               class="px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
               :class="auditSubTab === 'strategy' ? 'bg-purple-600 text-white shadow-md' : 'bg-slate-900/70 text-slate-300 hover:text-white border border-slate-700/80'"
@@ -276,7 +280,7 @@
                 </span>
               </h3>
               <p class="text-xs text-slate-400 mt-1">
-                点击【查验原件资料】可直接调出高保真证件与资料原件查验台，在线核验并快速就地审批。
+                {{ isProduction ? '申请资料需在线下核对原件并登记核验编号，再作出审核决定。' : '点击【查验原件资料】可调出证件资料演示查验台。' }}
               </p>
             </div>
 
@@ -325,7 +329,7 @@
                   <th class="p-3">申报房屋坐落</th>
                   <th class="p-3">车牌号 / 归属</th>
                   <th class="p-3">审核机制</th>
-                  <th class="p-3">证明材料附件</th>
+                  <th class="p-3">{{ isProduction ? '线下核验' : '证明材料附件' }}</th>
                   <th class="p-3">单据状态</th>
                   <th class="p-3">申报时间</th>
                   <th class="p-3 text-right">审核操作</th>
@@ -365,7 +369,7 @@
                       @click="openViewAttachmentsModal(app)"
                       class="text-blue-400 hover:text-blue-300 px-2.5 py-1 rounded-lg bg-blue-950/40 hover:bg-blue-900/40 border border-blue-800/50 transition text-xs flex items-center gap-1 font-medium"
                     >
-                      <span>📎 查验原件资料 ({{ (app.attachments?.length || 3) }}份)</span>
+                      <span>{{ isProduction ? '📋 打开审核' : `📎 查验原件资料 (${app.attachments?.length || 3}份)` }}</span>
                     </button>
                   </td>
                   <td class="p-3">
@@ -381,7 +385,7 @@
                   </td>
                   <td class="p-3 text-slate-400 font-mono text-[11px]">{{ app.apply_time }}</td>
                   <td class="p-3 text-right">
-                    <div v-if="app.status === 'PENDING_REVIEW'" class="flex items-center justify-end gap-1.5">
+                    <div v-if="app.status === 'PENDING_REVIEW' && !isProduction" class="flex items-center justify-end gap-1.5">
                       <button
                         @click="handleApproveApplication(app)"
                         :disabled="actionLoading"
@@ -397,7 +401,7 @@
                         ✕ 驳回
                       </button>
                     </div>
-                    <span v-else class="text-slate-500 text-[11px]">无需操作</span>
+                    <span v-else class="text-slate-500 text-[11px]">{{ isProduction && app.status === 'PENDING_REVIEW' ? '请打开审核' : '无需操作' }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -406,7 +410,7 @@
         </div>
 
         <!-- 子 Tab 2: 申报机制与特定业主特例通道 (低频配置，排在后面) -->
-        <div v-show="auditSubTab === 'strategy'" class="space-y-4">
+        <div v-if="!isProduction" v-show="auditSubTab === 'strategy'" class="space-y-4">
           <!-- 审核方式配置卡片 (全局基础策略) -->
           <div class="bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-700 space-y-4">
             <div class="flex items-center justify-between flex-wrap gap-2 border-b border-slate-700 pb-3">
@@ -719,7 +723,7 @@
             </div>
           </div>
           <div v-if="spaceArchive && spaceArchive.events.length > 0" class="pt-1.5 border-t border-slate-700/60 space-y-1">
-            <span class="text-[10px] text-slate-500 font-semibold">上链流转事件:</span>
+            <span class="text-[10px] text-slate-500 font-semibold">审计流转事件:</span>
             <div v-for="(ev, i) in spaceArchive.events" :key="i" class="text-[10px] text-slate-400 flex justify-between gap-2">
               <span class="truncate">{{ ev.summary }}</span>
               <span class="font-mono shrink-0">{{ ev.time.slice(5, 16) }}</span>
@@ -733,7 +737,7 @@
           <!-- 场景 A: 物业代清退 (仅在租时可用) -->
           <div v-if="currentSpace.status === 'RENTED'" class="p-3 bg-rose-950/40 border border-rose-800/60 rounded-xl space-y-2">
             <h4 class="text-xs font-bold text-rose-300 flex items-center gap-1.5">
-              <span>🚨 核心演示操作：物业强制代清退 (代办退租)</span>
+              <span>物业清退与退租办理</span>
             </h4>
             <p class="text-[11px] text-slate-400 leading-relaxed">
               用于老业主房屋买卖过户、失联违规占用等场景。清退后车位立即释放回池，<strong>系统排位引擎将秒级触发顺延，后续业主排位实时前进 1 位</strong>！
@@ -745,13 +749,16 @@
                 :options="terminateReasonOptions"
                 :dark="true"
               />
+              <input v-if="isProduction" v-model.trim="terminationReference" maxlength="100"
+                placeholder="线下清退办理凭据编号"
+                class="w-full rounded-lg bg-slate-900 border border-slate-600 px-3 py-2.5 text-white" />
 
               <button
                 @click="handleForceTerminate"
                 :disabled="actionLoading"
                 class="w-full py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1"
               >
-                <span>⚡ 执行强制代清退 (全流程存证上链)</span>
+                <span>执行清退并记入审计记录</span>
               </button>
             </div>
           </div>
@@ -767,7 +774,7 @@
               </span>
             </div>
             <p class="text-[11px] text-slate-400 leading-relaxed">
-              已完成现场纸质合同签署并收缴租金，点击确认后正式转为“已租”，生成正式电子租约与区块链存证。
+              请先核对纸质合同与线下缴费凭据，确认后车位转为“已租”并生成系统审计记录。
             </p>
 
             <!-- 签约租期时长选择 -->
@@ -799,7 +806,7 @@
               <span class="font-mono text-amber-300 font-bold">{{ todayStr }} ~ {{ calculatedDeliveryEndDate }}</span>
             </div>
 
-            <div>
+            <div v-if="!isProduction">
               <label class="block text-[11px] text-slate-300 font-bold mb-1.5">合同签署证明：</label>
               <label class="flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border border-dashed border-amber-500/40 bg-slate-900/80 cursor-pointer hover:border-amber-400 transition">
                 <input type="file" accept="image/*,.pdf" class="hidden" @change="onPickDeliveryProof" />
@@ -807,6 +814,15 @@
                   {{ deliveryProofName || '点击上传合同签署扫描件 / 照片' }}
                 </span>
                 <span class="text-[10px] text-amber-400 shrink-0">支持文件上传</span>
+              </label>
+            </div>
+            <div v-if="isProduction" class="space-y-2 text-xs">
+              <label class="block text-slate-300 font-bold">线下缴费凭据编号</label>
+              <input v-model.trim="deliveryReceiptNo" required maxlength="100" placeholder="填写已核实的收据或流水编号"
+                class="w-full rounded-lg bg-slate-900 border border-slate-600 px-3 py-2.5 text-white" />
+              <label class="flex items-center gap-2 text-amber-200">
+                <input v-model="deliveryPaymentConfirmed" type="checkbox" class="accent-amber-500" />
+                已核对纸质合同及缴费凭据
               </label>
             </div>
 
@@ -841,7 +857,7 @@
                   :dark="true"
                 />
               </div>
-              <div>
+              <div v-if="!isProduction">
                 <label class="block text-[11px] text-slate-300 font-bold mb-1.5">证明：</label>
                 <label class="flex items-center justify-between gap-2 w-full px-3 py-2 rounded-lg border border-dashed border-amber-500/40 bg-slate-900/80 cursor-pointer hover:border-amber-400 transition">
                   <input type="file" accept="image/*,.pdf" class="hidden" @change="onPickMaintenanceProof" />
@@ -851,6 +867,7 @@
                   <span class="text-[10px] text-amber-400 shrink-0">支持文件上传</span>
                 </label>
               </div>
+              <p v-if="isProduction" class="text-[11px] text-slate-400">维修照片和报修凭据请由物业在线下台账留存。</p>
               <button
                 @click="handleToggleMaintenance('SET_MAINTENANCE')"
                 :disabled="actionLoading"
@@ -1028,7 +1045,7 @@
     </div>
 
     <!-- 查看与查验证明材料附件原件 Modal (大屏高保真政务与证照文档查验中心) -->
-    <div v-if="viewAttachmentsModalVisible" class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in">
+    <div v-if="!isProduction && viewAttachmentsModalVisible" class="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in">
       <div class="bg-slate-900 rounded-3xl max-w-5xl w-full max-h-[92vh] flex flex-col text-slate-100 shadow-2xl border border-slate-700 overflow-hidden">
         <!-- 弹窗 Header -->
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-700/80 bg-slate-850">
@@ -1043,7 +1060,7 @@
                   class="px-2 py-0.5 rounded text-[10px] font-bold border"
                   :class="viewAttachmentsApp?.audit_mode === 'FLEXIBLE_HYBRID' ? 'bg-purple-900/60 text-purple-300 border-purple-500/40' : 'bg-emerald-900/60 text-emerald-300 border-emerald-500/40'"
                 >
-                  {{ viewAttachmentsApp?.audit_mode === 'FLEXIBLE_HYBRID' ? '灵活申报 · 物业人工核验' : '标准申报 · AI智能核验' }}
+                  {{ isProduction ? '物业人工核验' : (viewAttachmentsApp?.audit_mode === 'FLEXIBLE_HYBRID' ? '灵活申报 · 物业人工核验' : '标准申报 · AI智能核验') }}
                 </span>
                 <span
                   class="px-2 py-0.5 rounded text-[10px] font-bold border"
@@ -1480,7 +1497,7 @@
               <!-- 权威核验底栏 -->
               <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
                 <span>✓ 申请材料格式规范、承诺人签名及电子防伪捺印比对完备，符合受理要求</span>
-                <span class="font-mono text-[10px] text-emerald-400">AI初审通过</span>
+                <span class="font-mono text-[10px] text-emerald-400">待材料核验</span>
               </div>
             </div>
           </div>
@@ -1490,7 +1507,8 @@
         <div class="px-5 py-3.5 border-t border-slate-700/80 bg-slate-850 flex items-center justify-between flex-wrap gap-3">
           <div class="flex items-center gap-2 text-xs text-slate-300">
             <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
-            <span>已查验该单据全量证明材料 ({{ currentAttachments.length }}/{{ currentAttachments.length }})，可就地审批：</span>
+            <span v-if="isProduction">请线下核对身份证、房屋与车辆证明原件，再作出审核决定。</span>
+            <span v-else>已查验该单据全量证明材料 ({{ currentAttachments.length }}/{{ currentAttachments.length }})，可就地审批：</span>
           </div>
 
           <!-- 审批操作按钮组 -->
@@ -1523,6 +1541,60 @@
         </div>
       </div>
     </div>
+    <div v-if="productionReviewVisible && productionReviewApp" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      <div class="w-full max-w-lg rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-white">物业线下材料审核</h3>
+          <button type="button" @click="productionReviewVisible = false" class="text-slate-400 hover:text-white">✕</button>
+        </div>
+        <div class="rounded-xl bg-slate-900 p-3 text-xs text-slate-300 space-y-1">
+          <p>申请人：{{ productionReviewApp.applicant_name }}（{{ productionReviewApp.applicant_phone }}）</p>
+          <p>房屋：{{ productionReviewApp.property_no }}</p>
+          <p>车牌：{{ productionReviewApp.plate_no }}</p>
+          <p>状态：{{ productionReviewApp.status_label }}</p>
+        </div>
+        <p class="text-xs text-amber-200 leading-relaxed">系统尚未接入证照联网核验。请线下核对身份证、房屋和车辆证明原件，并在物业登记簿中留存核验记录。</p>
+        <template v-if="productionReviewApp.status === 'PENDING_REVIEW'">
+          <div>
+            <label class="block text-xs text-slate-300 mb-1">线下核验登记编号</label>
+            <input v-model.trim="auditReference" maxlength="100" placeholder="如 CHECK-2026-001"
+              class="w-full rounded-xl bg-slate-900 border border-slate-600 px-3 py-2.5 text-white" />
+          </div>
+          <label class="flex items-center gap-2 text-xs text-slate-200">
+            <input v-model="documentsVerified" type="checkbox" class="accent-emerald-500" />
+            我已核对申请人的证明材料原件
+          </label>
+          <div class="flex gap-2">
+            <button type="button" @click="handleProductionReject" class="flex-1 rounded-xl bg-rose-700 px-3 py-2.5 text-white font-semibold">驳回</button>
+            <button type="button" @click="handleProductionApprove" :disabled="actionLoading || !documentsVerified || !auditReference"
+              class="flex-1 rounded-xl bg-emerald-600 px-3 py-2.5 text-white font-semibold disabled:opacity-50">核验通过并入队</button>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <div v-if="showAddSpace" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
+      <form @submit.prevent="handleAddSpace" class="w-full max-w-sm rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
+        <div class="flex items-center justify-between">
+          <h3 class="font-bold text-white">录入真实车位</h3>
+          <button type="button" @click="showAddSpace = false" class="text-slate-400 hover:text-white">✕</button>
+        </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">车位编号</label>
+          <input v-model.trim="newSpaceNo" required maxlength="32" placeholder="如 A-001"
+            class="w-full rounded-xl bg-slate-900 border border-slate-600 px-3 py-2.5 text-white" />
+        </div>
+        <div>
+          <label class="block text-xs text-slate-300 mb-1">车位位置</label>
+          <select v-model="newSpaceArea" class="w-full rounded-xl bg-slate-900 border border-slate-600 px-3 py-2.5 text-white">
+            <option value="GROUND">地面</option>
+            <option value="UNDERGROUND">地下</option>
+          </select>
+        </div>
+        <p class="text-xs text-slate-400">仅录入已核实存在的车位，新增后将进入可分配车位池。</p>
+        <button type="submit" :disabled="actionLoading" class="w-full rounded-xl bg-emerald-600 px-4 py-2.5 font-bold text-white disabled:opacity-50">确认录入</button>
+      </form>
+    </div>
   </div>
 </template>
 
@@ -1536,6 +1608,54 @@ import CustomSelect from '../../components/CustomSelect.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
+const isProduction = import.meta.env.VITE_APP_MODE === 'production'
+const productionReviewVisible = ref(false)
+const productionReviewApp = ref(null)
+const auditReference = ref('')
+const documentsVerified = ref(false)
+
+const handleProductionApprove = async () => {
+  if (!productionReviewApp.value || !documentsVerified.value || !auditReference.value.trim()) return
+  actionLoading.value = true
+  try {
+    await api.post('/property/audit-application', {
+      app_id: productionReviewApp.value.id,
+      action: 'APPROVE',
+      documents_verified: true,
+      audit_reference: auditReference.value.trim()
+    })
+    showToast('审核通过，申请已进入轮候队列', 'success')
+    productionReviewVisible.value = false
+    await loadData()
+  } catch (err) {
+    showToast('审核失败: ' + err.message, 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
+
+const handleProductionReject = () => {
+  productionReviewVisible.value = false
+  openRejectModal(productionReviewApp.value)
+}
+const showAddSpace = ref(false)
+const newSpaceNo = ref('')
+const newSpaceArea = ref('GROUND')
+
+const handleAddSpace = async () => {
+  actionLoading.value = true
+  try {
+    await api.post('/property/spaces', { space_no: newSpaceNo.value, area_type: newSpaceArea.value })
+    showToast('车位录入成功', 'success')
+    showAddSpace.value = false
+    newSpaceNo.value = ''
+    await loadData()
+  } catch (err) {
+    showToast('录入失败: ' + err.message, 'error')
+  } finally {
+    actionLoading.value = false
+  }
+}
 
 const activePanel = ref('spaces')
 const panels = [
@@ -1737,6 +1857,7 @@ const statusFilter = ref('ALL')
 const selectedSpaceModal = ref(false)
 const currentSpace = ref({})
 const terminateReason = ref('房屋买卖过户且原业主失联')
+const terminationReference = ref('')
 const maintenanceReason = ref('地面沉降破损与路砖平整修补')
 const actionLoading = ref(false)
 
@@ -1776,6 +1897,8 @@ const quickMaintenanceSpaceOptions = computed(() => {
 
 // 线下交付签约租期选项
 const deliveryProofName = ref('')
+const deliveryReceiptNo = ref('')
+const deliveryPaymentConfirmed = ref(false)
 const maintenanceProofName = ref('')
 
 const onPickDeliveryProof = (e) => {
@@ -1981,6 +2104,13 @@ const handleConfirmReject = async () => {
 }
 
 const openViewAttachmentsModal = (app) => {
+  if (isProduction) {
+    productionReviewApp.value = app
+    auditReference.value = ''
+    documentsVerified.value = false
+    productionReviewVisible.value = true
+    return
+  }
   viewAttachmentsApp.value = app
   activeAttachmentIndex.value = 0
   viewAttachmentsModalVisible.value = true
@@ -2053,6 +2183,9 @@ const selectSpace = async (sp) => {
   spaceArchive.value = null
   maintenanceReason.value = '地面沉降破损与路砖平整修补'
   deliveryProofName.value = ''
+  terminationReference.value = ''
+  deliveryReceiptNo.value = ''
+  deliveryPaymentConfirmed.value = false
   maintenanceProofName.value = ''
   try {
     const res = await api.get(`/property/space-history/${sp.id}`)
@@ -2090,9 +2223,13 @@ const getSpaceColorClass = (sp) => {
 }
 
 const handleForceTerminate = async () => {
+  if (isProduction && !terminationReference.value.trim()) {
+    showToast('请填写线下清退凭据编号', 'warning')
+    return
+  }
   const confirmed = await showConfirm({
     title: '强制代清退车位确认',
-    content: `确认强制清退车位【${currentSpace.value.space_no}】吗？\n此操作将立即释放该车位，后序排队业主将秒级自动顺延前移，并生成区块链存证！`,
+    content: `确认清退车位【${currentSpace.value.space_no}】吗？\n此操作将释放车位并按顺位重新分配，相关操作会记入系统审计记录。`,
     type: 'danger',
     confirmText: '确认清退',
     cancelText: '取消'
@@ -2104,7 +2241,7 @@ const handleForceTerminate = async () => {
     const res = await api.post('/property/force-terminate', {
       space_id: currentSpace.value.id,
       reason: terminateReason.value,
-      attachment_url: 'mock_property_deed_proof.jpg'
+      evidence_reference: terminationReference.value
     })
     showToast(res.message || '清退成功！后序排位已自动前移', 'success')
     selectedSpaceModal.value = false
@@ -2121,12 +2258,18 @@ const handleConfirmDelivery = async () => {
     showToast('该车位暂无关联中签用户', 'warning')
     return
   }
+  if (isProduction && (!deliveryPaymentConfirmed.value || !deliveryReceiptNo.value.trim())) {
+    showToast('请核对合同并填写缴费凭据编号', 'warning')
+    return
+  }
   actionLoading.value = true
   try {
     const res = await api.post('/property/confirm-delivery', {
       space_id: currentSpace.value.id,
       user_id: currentSpace.value.user_id,
       months: selectedDeliveryMonths.value,
+      payment_confirmed: deliveryPaymentConfirmed.value,
+      receipt_no: deliveryReceiptNo.value,
       attachment_url: deliveryProofName.value || null
     })
     showToast(res.message || '交付成功，租约已生效！', 'success')
@@ -2143,7 +2286,7 @@ const handleToggleMaintenance = async (action) => {
   if (action === 'SET_MAINTENANCE') {
     const confirmed = await showConfirm({
       title: '车位维修停用确认',
-      content: `确认将车位【${currentSpace.value.space_no}】直接设为维修停用状态吗？\n停用期间车位将暂时移出分配资产池并存证上链。`,
+      content: `确认将车位【${currentSpace.value.space_no}】设为维修停用吗？\n停用期间车位将移出分配池，操作会记入系统审计记录。`,
       type: 'warning',
       confirmText: '确认停用',
       cancelText: '取消'

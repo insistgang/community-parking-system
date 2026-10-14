@@ -19,7 +19,7 @@
       <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
       </svg>
-      <span class="text-[10px]">区块链存证</span>
+      <span class="text-[10px]">审计记录</span>
     </router-link>
 
     <router-link v-if="userStore.isPropertyAdmin" to="/property/dashboard" class="flex flex-col items-center gap-0.5 text-purple-600 hover:text-purple-700 font-bold transition">

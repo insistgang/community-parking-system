@@ -16,4 +16,12 @@ public class Community {
     public Integer totalSpaces = 50;
     @Column(name = "audit_mode")
     public String auditMode = "THREE_CERT_AUTO";
+    @Column(name = "company_name")
+    public String companyName;
+    @Column(name = "contact_name")
+    public String contactName;
+    @Column(name = "contact_phone")
+    public String contactPhone;
+    @Column(name = "inventory_complete")
+    public Boolean inventoryComplete = true;
 }

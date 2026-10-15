@@ -179,6 +179,9 @@ class AuthController {
             community.subdistrict = String.valueOf(req.get("subdistrict"));
             community.totalSpaces = demoEnabled ? 50 : 0;
             community.auditMode = "FLEXIBLE_HYBRID";
+            community.companyName = String.valueOf(req.getOrDefault("company_name", ""));
+            community.contactName = String.valueOf(req.getOrDefault("real_name", ""));
+            community.contactPhone = phone;
             community = communities.save(community);
             if (demoEnabled) engine.initSpaces(community.id, 50);
             String trigger = "PROPERTY_ADMIN".equals(role) ? "物业管理员入驻" : "首位业主注册";

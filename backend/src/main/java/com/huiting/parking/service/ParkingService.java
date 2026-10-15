@@ -85,6 +85,9 @@ public class ParkingService {
                 "maintenance_spaces", spaces.countByCommunityIdAndStatus(user.communityId, "MAINTENANCE"),
                 "allocated_spaces", spaces.countByCommunityIdAndStatusIn(user.communityId, List.of("ALLOCATED", "OFFLINE_PENDING")),
                 "pending_audit_count", apps.countByCommunityIdAndStatus(user.communityId, "PENDING_REVIEW"),
+                "inventory_complete", community == null || !Boolean.FALSE.equals(community.inventoryComplete),
+                "inventory_note", community != null && Boolean.FALSE.equals(community.inventoryComplete)
+                        ? "当前仅录入历史在租车位，空闲及维修车位尚待物业补录。" : "",
                 "audit_mode", mode));
         data.put("public_spaces", publicSpaces);
         return data;
@@ -350,8 +353,18 @@ public class ParkingService {
                 end = String.valueOf(ct.endDate);
                 room = "--";
             }
+        } else if ("RENTED".equals(sp.status)) {
+            RentalContract legacy = contracts.findFirstBySpaceIdAndStatusNot(sp.id, "TERMINATED").orElse(null);
+            owner = legacy != null && legacy.legacyTenantName != null && !legacy.legacyTenantName.isBlank()
+                    ? legacy.legacyTenantName.charAt(0) + "**" : "已租";
+            if (legacy != null) {
+                plate = legacy.plateNo != null && legacy.plateNo.length() >= 5
+                        ? legacy.plateNo.substring(0, 2) + "·***" + legacy.plateNo.substring(legacy.plateNo.length() - 2)
+                        : "**";
+                end = legacy.endDate == null ? "**" : legacy.endDate.toString();
+            }
         } else if ("MAINTENANCE".equals(sp.status)) owner = "维修停用";
-        return map("space_no", sp.spaceNo, "area_type", "GROUND".equals(sp.areaType) ? "地面" : "地下", "status", sp.status,
+        return map("space_no", sp.spaceNo, "area_type", "GROUND".equals(sp.areaType) ? "地面" : "UNDERGROUND".equals(sp.areaType) ? "地下" : "**", "status", sp.status,
                 "owner_name", owner, "room_no", room, "plate_no", plate, "end_date", end);
     }
 

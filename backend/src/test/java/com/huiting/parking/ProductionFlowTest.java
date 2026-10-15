@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huiting.parking.entity.ChainEvidence;
 import com.huiting.parking.entity.Community;
 import com.huiting.parking.entity.ParkingSpace;
+import com.huiting.parking.entity.RentalContract;
 import com.huiting.parking.entity.UserAccount;
 import com.huiting.parking.repo.Repos;
 import com.huiting.parking.service.PasswordService;
@@ -117,6 +118,62 @@ class ProductionFlowTest {
         mvc.perform(post("/api/auth/login").contentType("application/json")
                 .content("{\"identifier\":\"13900000000\",\"login_type\":\"OTHER\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void legacyRentalWithoutIdentityRemainsOccupiedAndDisplaysMissingFields() throws Exception {
+        Community community = new Community();
+        community.name = "历史在租验收小区";
+        community.totalSpaces = 1;
+        community.auditMode = "FLEXIBLE_HYBRID";
+        community.inventoryComplete = false;
+        community = communities.save(community);
+        UserAccount manager = account("13900000021", "PROPERTY_ADMIN", community.id);
+        account("13800000021", "OWNER", community.id);
+        ParkingSpace space = new ParkingSpace();
+        space.communityId = community.id;
+        space.spaceNo = "1";
+        space.areaType = "**";
+        space.status = "RENTED";
+        space = spaces.save(space);
+        RentalContract contract = new RentalContract();
+        contract.contractNo = "IMPORT-TEST-1";
+        contract.spaceId = space.id;
+        contract.plateNo = "沪A12345";
+        contract.endDate = java.time.LocalDate.now().minusDays(1);
+        contract.status = "OVERDUE";
+        contract.legacyTenantName = "历史租户";
+        contract.legacyTenantPhone = "**";
+        contract.legacyIdCard = "**";
+        contract.legacyPropertyNo = "225-5-301";
+        contract.legacyStartDateText = "**";
+        contract.legacySourceContractNo = "**";
+        contract.legacyImportBatchId = "test-batch";
+        contract.legacySourceRow = 3;
+        contracts.save(contract);
+
+        String managerToken = login("/api/auth/login", "{\"identifier\":\"13900000021\",\"password\":\"password123\",\"login_type\":\"PASSWORD\"}");
+        mvc.perform(get("/api/property/stats").header("Authorization", bearer(managerToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.rented_spaces").value(1))
+                .andExpect(jsonPath("$.data.occupancy_rate").value("**"))
+                .andExpect(jsonPath("$.data.legacy_import_count").value(1));
+        mvc.perform(get("/api/property/spaces").header("Authorization", bearer(managerToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].user_name").value("历史租户"))
+                .andExpect(jsonPath("$.data[0].user_phone").value("**"))
+                .andExpect(jsonPath("$.data[0].area_type").value("**"))
+                .andExpect(jsonPath("$.data[0].legacy_unverified").value(true));
+        mvc.perform(get("/api/property/space-history/" + space.id).header("Authorization", bearer(managerToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.current.start_date").value("**"))
+                .andExpect(jsonPath("$.data.current.id_card").value("**"));
+        String ownerToken = login("/api/auth/login", "{\"identifier\":\"13800000021\",\"password\":\"password123\",\"login_type\":\"PASSWORD\"}");
+        mvc.perform(get("/api/user/home").header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.public_spaces[0].owner_name").value("历**"))
+                .andExpect(jsonPath("$.data.community_overview.inventory_complete").value(false));
+        mvc.perform(post("/api/property/set-maintenance").header("Authorization", bearer(managerToken))
+                .contentType("application/json")
+                .content("{\"space_id\":" + space.id + ",\"action\":\"SET_MAINTENANCE\",\"reason\":\"验收测试\"}"))
+                .andExpect(status().isOk());
+        assertThat(contracts.findById(contract.id).orElseThrow().status).isEqualTo("TERMINATED");
     }
 
     @Test

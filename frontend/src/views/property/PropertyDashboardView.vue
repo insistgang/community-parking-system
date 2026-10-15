@@ -100,10 +100,14 @@
         </button>
       </div>
 
+      <div v-if="stats.inventory_complete === false" class="rounded-xl border border-amber-500/50 bg-amber-950/40 px-4 py-3 text-xs text-amber-100">
+        已导入 {{ stats.legacy_import_count ?? 0 }} 条历史在租台账，租户身份尚待补齐。空闲和维修车位清单未提供，出租率暂不计算；缺失字段显示 **。
+      </div>
+
       <!-- 第 1 栏: 7 大关键大屏看板指标 -->
       <div v-show="activePanel === 'kpi'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
-          <span class="text-xs text-slate-400 block font-medium">总规划车位数</span>
+          <span class="text-xs text-slate-400 block font-medium">{{ stats.inventory_complete === false ? '已录入车位数' : '总规划车位数' }}</span>
           <span class="text-2xl font-black text-white mt-1 block font-mono">{{ stats.total_spaces ?? 0 }}</span>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
@@ -144,7 +148,7 @@
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
           <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-700/60">
             <span class="text-[10px] text-slate-400 block">平均周转周期</span>
-            <span class="text-xl font-black text-cyan-400 font-mono mt-1 block">{{ stats.avg_turnover_days ?? 365 }}<span class="text-[10px] font-normal text-slate-400"> 天</span></span>
+            <span class="text-xl font-black text-cyan-400 font-mono mt-1 block">{{ stats.avg_turnover_days ?? 0 }}<span class="text-[10px] font-normal text-slate-400"> 天</span></span>
           </div>
           <div class="bg-slate-900/60 rounded-xl p-3 border border-slate-700/60">
             <span class="text-[10px] text-slate-400 block">轮候平均已等待</span>
@@ -226,7 +230,7 @@
           >
             <div class="flex items-center justify-between gap-0.5">
               <span class="font-mono font-black text-[11px] sm:text-sm">{{ sp.space_no }}</span>
-              <span class="text-[9px] sm:text-[10px] opacity-75 hidden sm:inline">{{ sp.area_type === 'GROUND' ? '地面' : '地下' }}</span>
+              <span class="text-[9px] sm:text-[10px] opacity-75 hidden sm:inline">{{ spaceAreaLabel(sp.area_type) }}</span>
             </div>
 
             <div class="my-auto py-0.5 min-w-0">
@@ -697,6 +701,9 @@
           <div class="flex justify-between">
             <span class="text-slate-400">租期截止日:</span>
             <span class="font-mono text-slate-300">{{ currentSpace.end_date || '无' }}</span>
+          </div>
+          <div v-if="currentSpace.legacy_unverified" class="rounded-lg border border-amber-700/60 bg-amber-950/40 p-2 text-amber-200">
+            历史在租台账 · 业主账号待核验关联；房屋坐落：{{ currentSpace.property_no || '**' }}；身份证号：{{ spaceArchive?.current?.id_card || '**' }}
           </div>
         </div>
         </div>
@@ -1955,7 +1962,7 @@ const quickMaintenanceReason = ref('地面沉降破损与路砖平整修补')
 
 const quickMaintenanceSpaceOptions = computed(() => {
   return spaceList.value.map(sp => ({
-    label: `${sp.space_no} (${getStatusLabel(sp.status)}) ${sp.area_type === 'GROUND' ? '地面' : '地下'}${sp.user_name ? ' [' + sp.user_name + ']' : ''}`,
+    label: `${sp.space_no} (${getStatusLabel(sp.status)}) ${spaceAreaLabel(sp.area_type)}${sp.user_name ? ' [' + sp.user_name + ']' : ''}`,
     value: sp.id
   }))
 })
@@ -2270,6 +2277,8 @@ const getStatusLabel = (st) => {
     default: return st
   }
 }
+
+const spaceAreaLabel = (areaType) => areaType === 'GROUND' ? '地面' : areaType === 'UNDERGROUND' ? '地下' : '**'
 
 const getSpaceColorClass = (sp) => {
   switch (sp.status) {

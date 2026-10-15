@@ -301,13 +301,14 @@
             <span class="w-1.5 h-3.5 bg-blue-600 rounded-full"></span>
             <span>小区车辆概况</span>
           </h3>
-          <span class="text-[11px] text-slate-400">总车位 {{ overview?.total_spaces ?? 0 }} 个</span>
+          <span class="text-[11px] text-slate-400">{{ overview?.inventory_complete === false ? '已录入车位' : '总车位' }} {{ overview?.total_spaces ?? 0 }} 个</span>
         </div>
+        <p v-if="overview?.inventory_complete === false" class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">{{ overview.inventory_note }}</p>
 
         <div class="grid grid-cols-4 gap-2 text-center text-xs">
           <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
             <span class="text-slate-400 text-[10px] block">已租车位</span>
-            <span class="text-base font-extrabold text-slate-800 mt-0.5 block">{{ overview?.rented_spaces ?? 46 }}</span>
+            <span class="text-base font-extrabold text-slate-800 mt-0.5 block">{{ overview?.rented_spaces ?? 0 }}</span>
           </div>
           <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
             <span class="text-emerald-600 text-[10px] block font-medium">空闲可用</span>
@@ -319,7 +320,7 @@
           </div>
           <div class="bg-orange-50 p-2.5 rounded-xl border border-orange-100">
             <span class="text-orange-600 text-[10px] block font-medium">维修停用</span>
-            <span class="text-base font-extrabold text-orange-700 mt-0.5 block">{{ overview?.maintenance_spaces ?? 1 }}</span>
+            <span class="text-base font-extrabold text-orange-700 mt-0.5 block">{{ overview?.maintenance_spaces ?? 0 }}</span>
           </div>
         </div>
 

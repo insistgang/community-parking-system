@@ -68,17 +68,24 @@ public class PropertyService {
         long pendingAudit = apps.countByCommunityIdAndStatus(cid, "PENDING_REVIEW");
         Set<Integer> spaceIds = new HashSet<>();
         spaces.findByCommunityIdOrderBySpaceNoAsc(cid).forEach(s -> spaceIds.add(s.id));
-        List<RentalContract> terminated = contracts.findAll().stream().filter(c -> "TERMINATED".equals(c.status) && spaceIds.contains(c.spaceId)).toList();
+        List<RentalContract> communityContracts = contracts.findAll().stream().filter(c -> spaceIds.contains(c.spaceId)).toList();
+        List<RentalContract> terminated = communityContracts.stream()
+                .filter(c -> "TERMINATED".equals(c.status) && c.startDate != null && c.endDate != null).toList();
         int avgTurn = terminated.isEmpty() ? 0 : (int) Math.round(terminated.stream().mapToLong(c -> ChronoUnit.DAYS.between(c.startDate, c.endDate)).average().orElse(0));
         List<QueueApplication> waitingApps = apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(cid, "WAITING");
         int avgWait = waitingApps.isEmpty() ? 0 : (int) Math.round(waitingApps.stream().mapToLong(a -> ChronoUnit.DAYS.between(a.applyTime.toLocalDate(), Times.utcNow().toLocalDate())).average().orElse(0));
-        long expiring = contracts.findAll().stream().filter(c -> "EXPIRING".equals(c.status) && spaceIds.contains(c.spaceId)).count();
+        long expiring = communityContracts.stream().filter(c -> "EXPIRING".equals(c.status)).count();
+        long legacyCount = communityContracts.stream().filter(c -> c.legacyImportBatchId != null).count();
+        boolean inventoryComplete = comm == null || !Boolean.FALSE.equals(comm.inventoryComplete);
         long pendingDelivery = apps.countByCommunityIdAndStatus(cid, "OFFLINE_PENDING");
         String mode = comm != null && comm.auditMode != null ? comm.auditMode : "THREE_CERT_AUTO";
         return ParkingService.map(
                 "total_spaces", total, "rented_spaces", rented, "vacant_spaces", vacant, "maintenance_spaces", maint,
                 "allocated_spaces", allocated, "waiting_count", waiting, "pending_audit_count", pendingAudit,
-                "occupancy_rate", String.format("%.1f%%", rented * 100.0 / Math.max(1, total)),
+                "occupancy_rate", inventoryComplete ? String.format("%.1f%%", rented * 100.0 / Math.max(1, total)) : "**",
+                "inventory_complete", inventoryComplete,
+                "legacy_import_count", legacyCount,
+                "inventory_note", inventoryComplete ? "" : "已导入在租车位台账；空闲及维修车位清单尚待补录，占用率暂不可计算。",
                 "pending_warnings", expiring + pendingDelivery + pendingAudit,
                 "avg_turnover_days", avgTurn, "avg_queue_wait_days", avgWait,
                 "completed_allocations", apps.countByCommunityIdAndStatus(cid, "COMPLETED"),
@@ -92,18 +99,27 @@ public class PropertyService {
         List<Map<String, Object>> result = new ArrayList<>();
         for (ParkingSpace sp : spaces.findByCommunityIdOrderBySpaceNoAsc(admin.communityId)) {
             String name = "--", phone = "--", plate = "--", end = "--";
+            RentalContract ct = contracts.findFirstBySpaceIdAndStatusNot(sp.id, "TERMINATED").orElse(null);
             if (sp.currentUserId != null) {
                 UserAccount u = users.findById(sp.currentUserId).orElse(null);
                 if (u != null) { name = u.realName; phone = u.phone; }
-                RentalContract ct = contracts.findFirstBySpaceIdAndStatusNot(sp.id, "TERMINATED").orElse(null);
-                if (ct != null) { plate = ct.plateNo; end = String.valueOf(ct.endDate); }
-                else {
+                if (ct == null) {
                     QueueApplication app = apps.findFirstByAllocatedSpaceId(sp.id).orElse(null);
                     if (app != null) { plate = app.plateNo; end = "48h待签约"; }
                 }
             }
+            if (ct != null) {
+                plate = ct.plateNo;
+                end = ct.endDate == null ? "**" : ct.endDate.toString();
+                if (ct.legacyImportBatchId != null && sp.currentUserId == null) {
+                    name = legacyValue(ct.legacyTenantName);
+                    phone = legacyValue(ct.legacyTenantPhone);
+                }
+            }
             result.add(ParkingService.map("id", sp.id, "space_no", sp.spaceNo, "area_type", sp.areaType, "status", sp.status,
-                    "user_id", sp.currentUserId, "user_name", name, "user_phone", phone, "plate_no", plate, "end_date", end));
+                    "user_id", sp.currentUserId, "user_name", name, "user_phone", phone, "plate_no", plate, "end_date", end,
+                    "legacy_unverified", ct != null && ct.legacyImportBatchId != null && ct.userId == null,
+                    "property_no", ct != null && ct.legacyImportBatchId != null ? legacyValue(ct.legacyPropertyNo) : "--"));
         }
         return result;
     }
@@ -157,7 +173,8 @@ public class PropertyService {
                 if (contract != null) {
                     affected = contract.userId;
                     contract.status = "TERMINATED";
-                    saveNotice(contract.userId, "承租车位维修停用通知", "您承租的车位【" + sp.spaceNo + "】已由物业置为维修停用（原因: " + reason + "），原租约已终止并记入系统审计记录。", "SYSTEM", null);
+                    if (contract.userId != null)
+                        saveNotice(contract.userId, "承租车位维修停用通知", "您承租的车位【" + sp.spaceNo + "】已由物业置为维修停用（原因: " + reason + "），原租约已终止并记入系统审计记录。", "SYSTEM", null);
                 }
             }
             sp.status = "MAINTENANCE";
@@ -248,6 +265,10 @@ public class PropertyService {
         Integer oldUserId = sp.currentUserId;
         String oldName = "老业主";
         if (oldUserId != null) oldName = users.findById(oldUserId).map(u -> u.realName).orElse(oldName);
+        else {
+            RentalContract legacy = contracts.findFirstBySpaceIdAndStatusNot(sp.id, "TERMINATED").orElse(null);
+            if (legacy != null && legacy.legacyImportBatchId != null) oldName = legacyValue(legacy.legacyTenantName);
+        }
         QueueApplication pending = apps.findFirstByAllocatedSpaceIdAndStatusIn(sp.id, List.of("ALLOCATED", "OFFLINE_PENDING")).orElse(null);
         if (pending != null) {
             pending.status = "CANCELLED";
@@ -278,14 +299,17 @@ public class PropertyService {
         Map<String, Object> current = null;
         RentalContract ct = contracts.findFirstBySpaceIdAndStatusNot(sp.id, "TERMINATED").orElse(null);
         if (ct != null) {
-            UserAccount u = users.findById(ct.userId).orElse(null);
-            current = ParkingService.map("user_name", u != null ? u.realName : "--", "phone", u != null ? u.phone : "--", "plate_no", ct.plateNo, "start_date", String.valueOf(ct.startDate), "end_date", String.valueOf(ct.endDate), "status", ct.status);
+            current = ParkingService.map("user_name", contractName(ct), "phone", contractPhone(ct),
+                    "plate_no", ct.plateNo, "start_date", contractStart(ct), "end_date", contractEnd(ct),
+                    "status", ct.status, "property_no", ct.legacyImportBatchId == null ? "--" : legacyValue(ct.legacyPropertyNo),
+                    "id_card", ct.legacyImportBatchId == null ? "--" : legacyValue(ct.legacyIdCard),
+                    "legacy_unverified", ct.legacyImportBatchId != null && ct.userId == null);
         }
         List<Map<String, Object>> history = new ArrayList<>();
         for (RentalContract c : contracts.findBySpaceIdOrderByIdDesc(sp.id)) {
-            UserAccount u = users.findById(c.userId).orElse(null);
-            history.add(ParkingService.map("contract_no", c.contractNo, "user_name", u != null ? u.realName : "--", "phone", u != null ? u.phone : "--",
-                    "plate_no", c.plateNo, "start_date", String.valueOf(c.startDate), "end_date", String.valueOf(c.endDate), "status", c.status, "status_label", labels.getOrDefault(c.status, c.status)));
+            history.add(ParkingService.map("contract_no", contractDisplayNo(c), "user_name", contractName(c), "phone", contractPhone(c),
+                    "plate_no", c.plateNo, "start_date", contractStart(c), "end_date", contractEnd(c), "status", c.status,
+                    "status_label", labels.getOrDefault(c.status, c.status), "legacy_unverified", c.legacyImportBatchId != null && c.userId == null));
         }
         List<Map<String, Object>> events = new ArrayList<>();
         for (ChainEvidence e : evidences.findTop10ByCommunityIdAndRawPayloadJsonContainingOrderByIdDesc(admin.communityId, sp.spaceNo)) {
@@ -311,16 +335,20 @@ public class PropertyService {
             row(ws, head, "车位编号", "区域类型", "车位状态", "关联业主", "联系电话", "登记车牌", "租约编号", "租期截止日");
             for (ParkingSpace sp : spaces.findByCommunityIdOrderBySpaceNoAsc(admin.communityId)) {
                 String name = "--", phone = "--", plate = "--", no = "--", end = "--";
-                if (sp.currentUserId != null) {
+                RentalContract ct = contracts.findFirstBySpaceIdAndStatusNot(sp.id, "TERMINATED").orElse(null);
+                if (ct != null) {
+                    name = contractName(ct);
+                    phone = contractPhone(ct);
+                    plate = ct.plateNo;
+                    no = contractDisplayNo(ct);
+                    end = contractEnd(ct);
+                } else if (sp.currentUserId != null) {
                     UserAccount u = users.findById(sp.currentUserId).orElse(null);
                     if (u != null) { name = u.realName; phone = u.phone; }
-                    RentalContract ct = contracts.findFirstBySpaceIdAndStatusNot(sp.id, "TERMINATED").orElse(null);
-                    if (ct != null) { plate = ct.plateNo; no = ct.contractNo; end = String.valueOf(ct.endDate); }
-                    else apps.findFirstByAllocatedSpaceIdAndStatusIn(sp.id, List.of("ALLOCATED", "OFFLINE_PENDING")).ifPresent(a -> { /* plate overwritten below */ });
                     QueueApplication app = apps.findFirstByAllocatedSpaceIdAndStatusIn(sp.id, List.of("ALLOCATED", "OFFLINE_PENDING")).orElse(null);
-                    if (ct == null && app != null) { plate = app.plateNo; end = "48h待签约"; }
+                    if (app != null) { plate = app.plateNo; end = "48h待签约"; }
                 }
-                row(ws, null, sp.spaceNo, "GROUND".equals(sp.areaType) ? "地面" : "地下", statusMap.getOrDefault(sp.status, sp.status), name, phone, plate, no, end);
+                row(ws, null, sp.spaceNo, areaLabel(sp.areaType), statusMap.getOrDefault(sp.status, sp.status), name, phone, plate, no, end);
             }
             Sheet ws2 = wb.createSheet("排队轮候名单");
             row(ws2, head, "实时排位", "业主姓名", "联系电话", "登记车牌", "优先级", "申报房屋", "申请时间");
@@ -522,6 +550,29 @@ public class PropertyService {
     }
 
     private static String label(String mode) { return "THREE_CERT_AUTO".equals(mode) ? "三证合一（AI 自动化审核）" : "灵活配置（AI 自动化 + 人工审核）"; }
+    private String contractName(RentalContract contract) {
+        if (contract.userId != null) return users.findById(contract.userId).map(u -> u.realName).orElse("--");
+        return contract.legacyImportBatchId == null ? "--" : legacyValue(contract.legacyTenantName);
+    }
+    private String contractPhone(RentalContract contract) {
+        if (contract.userId != null) return users.findById(contract.userId).map(u -> u.phone).orElse("--");
+        return contract.legacyImportBatchId == null ? "--" : legacyValue(contract.legacyTenantPhone);
+    }
+    private static String contractStart(RentalContract contract) {
+        return contract.startDate != null ? contract.startDate.toString()
+                : contract.legacyImportBatchId == null ? "--" : legacyValue(contract.legacyStartDateText);
+    }
+    private static String contractEnd(RentalContract contract) {
+        return contract.endDate != null ? contract.endDate.toString()
+                : contract.legacyImportBatchId == null ? "--" : "**";
+    }
+    private static String contractDisplayNo(RentalContract contract) {
+        return contract.legacyImportBatchId == null ? contract.contractNo : legacyValue(contract.legacySourceContractNo);
+    }
+    private static String legacyValue(String value) { return value == null || value.isBlank() ? "**" : value; }
+    private static String areaLabel(String areaType) {
+        return "GROUND".equals(areaType) ? "地面" : "UNDERGROUND".equals(areaType) ? "地下" : "**";
+    }
     private static String str(Object o) { return o == null ? "" : String.valueOf(o); }
     private static String or(String a, String b) { return a == null || a.isBlank() || "null".equals(a) ? b : a; }
     private static String emptyToNull(String s) { return s == null || s.isBlank() || "null".equals(s) ? null : s; }

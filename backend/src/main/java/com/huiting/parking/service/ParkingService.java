@@ -66,6 +66,7 @@ public class ParkingService {
                     "days_left", Math.max(0, days), "status", contract.status);
         }
         QueueApplication app = apps.findByUserIdAndStatusInOrderByIdDesc(user.id, OPEN_APP).stream().findFirst().orElse(null);
+        if (app == null) app = pendingLegacyQueue(user);
         String view = contract != null ? "RENTED" : (app != null ? app.status : "NO_APPLY");
         Map<String, Object> myQueue = null;
         if (contract == null && app != null) myQueue = queueView(app, user, community);
@@ -114,6 +115,8 @@ public class ParkingService {
     public Map<String, Object> apply(UserAccount user, Map<String, Object> req) {
         communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
         if (!"OWNER".equals(user.role)) throw new ApiException(403, "仅业主账号可以申请车位");
+        if (!demoEnabled && (user.idCard == null || user.idCard.isBlank()))
+            throw new ApiException(403, "身份资料待核实，请联系物业补齐后再申请");
         String propertyNo = str(req.get("property_no")).trim();
         String plate = str(req.get("plate_no")).trim();
         if (propertyNo.isBlank() || propertyNo.length() > 100 || plate.isBlank() || plate.length() > 32)
@@ -290,6 +293,7 @@ public class ParkingService {
     @Transactional(readOnly = true)
     public Map<String, Object> queue(UserAccount user) {
         List<QueueApplication> waiting = QueueEngine.orderedWaiting(apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(user.communityId, "WAITING"));
+        QueueApplication pendingLegacy = pendingLegacyQueue(user);
         List<Map<String, Object>> result = new ArrayList<>();
         int idx = 1;
         for (QueueApplication app : waiting) {
@@ -297,7 +301,7 @@ public class ParkingService {
             result.add(map("rank", idx, "masked_name", maskName(u == null ? app.legacyApplicantName : u.realName),
                     "masked_phone", maskPhone(u == null ? app.legacyApplicantPhone : u.phone),
                     "priority_level", app.priorityLevel, "priority_type", app.priorityLevel != null && app.priorityLevel == 1 ? "常规轮候" : "同户二车",
-                    "apply_time", formatApplicationTime(app), "is_me", Objects.equals(app.userId, user.id),
+                    "apply_time", formatApplicationTime(app), "is_me", Objects.equals(app.userId, user.id) || Objects.equals(app.id, pendingLegacy == null ? null : pendingLegacy.id),
                     "legacy_imported", app.legacyImportBatchId != null));
             idx++;
         }
@@ -358,9 +362,12 @@ public class ParkingService {
         int totalWaiting = (int) apps.countByCommunityIdAndStatus(user.communityId, "WAITING");
         int totalSpaces = community != null && community.totalSpaces != null ? community.totalSpaces : 50;
         String[] est = QueueEngine.estimate(app.currentRank == null ? 0 : app.currentRank, totalSpaces);
+        boolean identityPending = app.userId == null && app.legacyImportBatchId != null;
+        if (identityPending) est[1] = "历史排队记录已保留，身份资料核实后才能参与车位分配。";
         return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "priority_level", app.priorityLevel,
                 "priority_label", app.priorityLevel != null && app.priorityLevel == 1 ? "常规优先轮候" : "同户二车(顺延后置)",
-                "current_rank", app.currentRank, "total_queue", totalWaiting, "is_first_candidate", app.currentRank != null && app.currentRank == 1,
+                "current_rank", app.currentRank, "total_queue", totalWaiting, "is_first_candidate", !identityPending && app.currentRank != null && app.currentRank == 1,
+                "identity_pending", identityPending, "can_cancel", !identityPending,
                 "apply_time", formatApplicationTime(app), "ai_waiting_time", est[0], "ai_estimation_basis", est[1],
                 "allocated_space_no", allocatedNo, "countdown_seconds", countdown, "attachments", attachments,
                 "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"));
@@ -420,6 +427,13 @@ public class ParkingService {
         if (app.legacyImportBatchId != null && app.legacyApplyTimeText != null && !app.legacyApplyTimeText.isBlank())
             return app.legacyApplyTimeText;
         return Times.fmtBj(app.applyTime);
+    }
+
+    private QueueApplication pendingLegacyQueue(UserAccount user) {
+        if (!"OWNER".equals(user.role) || user.idCard != null || user.phone == null || user.communityId == null) return null;
+        return apps.findByCommunityIdAndLegacyApplicantPhoneAndUserIdIsNullAndStatus(user.communityId, user.phone, "WAITING")
+                .stream().filter(app -> app.legacyImportBatchId != null && Objects.equals(app.legacyApplicantName, user.realName))
+                .findFirst().orElse(null);
     }
 
     private static String maskName(UserAccount u) { return maskName(u == null ? null : u.realName); }

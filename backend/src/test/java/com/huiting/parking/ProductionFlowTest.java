@@ -476,6 +476,9 @@ class ProductionFlowTest {
         community.sourceAuditMode = "三证自动";
         community = communities.save(community);
         UserAccount legacyOwner = account("13800000101", "OWNER", community.id);
+        legacyOwner.realName = "历史业主甲";
+        legacyOwner.idCard = null;
+        users.save(legacyOwner);
         UserAccount newOwner = account("13800000102", "OWNER", community.id);
         UserAccount manager = account("13900000101", "PROPERTY_ADMIN", community.id);
         manager.jobTitle = "物业负责人";
@@ -524,6 +527,19 @@ class ProductionFlowTest {
                 .andExpect(jsonPath("$.data.waiting[0].apply_time").value("2025-01-12 00:00:00"))
                 .andExpect(jsonPath("$.data.waiting[0].legacy_imported").value(true))
                 .andExpect(jsonPath("$.data.waiting[0].is_me").value(false));
+        String provisionalToken = login("/api/auth/login", "{\"identifier\":\"13800000101\",\"password\":\"password123\"}");
+        mvc.perform(get("/api/user/home").header("Authorization", bearer(provisionalToken)))
+                .andExpect(jsonPath("$.data.view_state").value("WAITING"))
+                .andExpect(jsonPath("$.data.my_queue.current_rank").value(1))
+                .andExpect(jsonPath("$.data.my_queue.apply_time").value("2025-01-12 00:00:00"))
+                .andExpect(jsonPath("$.data.my_queue.identity_pending").value(true))
+                .andExpect(jsonPath("$.data.my_queue.can_cancel").value(false));
+        mvc.perform(get("/api/parking/queue").header("Authorization", bearer(provisionalToken)))
+                .andExpect(jsonPath("$.data.waiting[0].is_me").value(true));
+        mvc.perform(post("/api/parking/apply").header("Authorization", bearer(provisionalToken))
+                        .contentType("application/json").content("{}"))
+                .andExpect(status().isForbidden());
+        assertThat(applications.findById(legacy.id).orElseThrow().userId).isNull();
         mvc.perform(get("/api/property/stats").header("Authorization", bearer(managerToken)))
                 .andExpect(jsonPath("$.data.legacy_queue_unlinked_count").value(1))
                 .andExpect(jsonPath("$.data.source_audit_mode").value("三证自动"));
@@ -553,6 +569,7 @@ class ProductionFlowTest {
     private UserAccount account(String phone, String role, Integer communityId) {
         UserAccount user = new UserAccount();
         user.phone = phone;
+        user.idCard = "0000000" + phone;
         user.realName = "测试用户";
         user.role = role;
         user.communityId = communityId;

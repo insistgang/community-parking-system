@@ -60,6 +60,7 @@ public class Repos {
         List<QueueApplication> findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(Integer communityId, String status);
         List<QueueApplication> findByCommunityIdOrderByIdDesc(Integer communityId);
         List<QueueApplication> findByCommunityIdAndStatusOrderByIdDesc(Integer communityId, String status);
+        List<QueueApplication> findByCommunityIdAndLegacyApplicantPhoneAndUserIdIsNullAndStatus(Integer communityId, String phone, String status);
         Optional<QueueApplication> findFirstByUserIdAndStatusIn(Integer userId, List<String> statuses);
         Optional<QueueApplication> findFirstByUserIdAndStatus(Integer userId, String status);
         Optional<QueueApplication> findFirstByAllocatedSpaceIdAndStatusIn(Integer spaceId, List<String> statuses);

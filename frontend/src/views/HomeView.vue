@@ -118,7 +118,10 @@
           </div>
 
           <!-- 候补首位特殊提示 -->
-          <div v-if="myQueue.current_rank === 1" class="mt-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium flex items-center gap-2">
+          <div v-if="myQueue.identity_pending" class="mt-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+            历史排队顺位已保留。身份证资料待物业核实，核实前暂不参与自动分配。
+          </div>
+          <div v-else-if="myQueue.current_rank === 1" class="mt-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium flex items-center gap-2">
             <span class="text-base"><AppIcon name="star" size="1em" /></span>
             <span>您已升至候补首位！一旦有空闲车位释放，系统将第一时间为您锁定并推送 48h 确认通知！</span>
           </div>
@@ -136,7 +139,7 @@
         />
 
         <!-- 撤销申请按钮 -->
-        <div class="pt-1">
+        <div v-if="myQueue.can_cancel !== false" class="pt-1">
           <button
             @click="handleCancelApply"
             class="w-full py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 font-semibold text-xs border border-rose-200 shadow-sm transition active:scale-[0.99] flex items-center justify-center gap-1.5"

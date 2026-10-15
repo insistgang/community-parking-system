@@ -4,6 +4,8 @@ import com.huiting.parking.common.ApiException;
 import com.huiting.parking.common.ApiResponse;
 import com.huiting.parking.common.Times;
 import com.huiting.parking.entity.Community;
+import com.huiting.parking.entity.ChainEvidence;
+import com.huiting.parking.entity.ImportBatch;
 import com.huiting.parking.entity.UserAccount;
 import com.huiting.parking.repo.Repos;
 import com.huiting.parking.service.AuditLogService;
@@ -14,7 +16,9 @@ import com.huiting.parking.service.PasswordService;
 import com.huiting.parking.service.SessionService;
 import com.huiting.parking.service.LoginThrottle;
 import com.huiting.parking.service.InviteService;
+import com.huiting.parking.service.EvidenceService;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -31,6 +35,10 @@ public class AdminController {
     private final Repos.OperationLogRepo operationLogs;
     private final Repos.ExternalApiLogRepo externalApiLogs;
     private final Repos.NoticeRepo notices;
+    private final Repos.ImportBatchRepo batches;
+    private final Repos.ContractRepo contracts;
+    private final Repos.EvidenceRepo evidences;
+    private final EvidenceService evidence;
     private final AuditLogService auditLog;
     private final BootJobs bootJobs;
     private final PasswordService passwords;
@@ -43,6 +51,8 @@ public class AdminController {
     public AdminController(Repos.UserRepo users, Repos.CommunityRepo communities, Repos.SpaceRepo spaces,
                            Repos.AppRepo apps, Repos.LoginLogRepo loginLogs, Repos.OperationLogRepo operationLogs,
                            Repos.ExternalApiLogRepo externalApiLogs, Repos.NoticeRepo notices,
+                           Repos.ImportBatchRepo batches, Repos.ContractRepo contracts, Repos.EvidenceRepo evidences,
+                           EvidenceService evidence,
                            AuditLogService auditLog, BootJobs bootJobs, PasswordService passwords,
                            SessionService sessions, LoginThrottle loginThrottle, InviteService invites) {
         this.users = users;
@@ -53,6 +63,10 @@ public class AdminController {
         this.operationLogs = operationLogs;
         this.externalApiLogs = externalApiLogs;
         this.notices = notices;
+        this.batches = batches;
+        this.contracts = contracts;
+        this.evidences = evidences;
+        this.evidence = evidence;
         this.auditLog = auditLog;
         this.bootJobs = bootJobs;
         this.passwords = passwords;
@@ -111,6 +125,37 @@ public class AdminController {
     public ApiResponse issuePropertyInvite(@RequestAttribute(name = "authUserId") Integer uid,
                                            @RequestBody Map<String, Object> req) {
         return ApiResponse.ok("物业入驻邀请码已生成", invites.issueProperty(requireAdmin(uid), req));
+    }
+
+    @PostMapping("/import-evidence/{sourceSha256}")
+    @Transactional
+    public ApiResponse recordImportEvidence(@RequestAttribute(name = "authUserId") Integer uid,
+                                            @PathVariable String sourceSha256,
+                                            HttpServletRequest request) {
+        UserAccount admin = requireAdmin(uid);
+        if (!sourceSha256.matches("[a-f0-9]{64}")) throw new ApiException(400, "无效的来源文件校验值");
+        ImportBatch batch = batches.findBySourceSha256(sourceSha256)
+                .orElseThrow(() -> new ApiException(404, "未找到该初始化批次"));
+        communities.lockById(batch.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
+        long rentalCount = contracts.countByLegacyImportBatchId(sourceSha256);
+        long queueCount = apps.countByCommunityIdAndLegacyImportBatchId(batch.communityId, sourceSha256);
+        if (rentalCount != batch.rentalCount || queueCount != batch.queueCount)
+            throw new ApiException(409, "初始化台账数量与已导入记录不一致");
+        ChainEvidence existing = evidences.findFirstByCommunityIdAndEventTypeAndRawPayloadJsonContainingOrderByIdDesc(
+                batch.communityId, "PILOT_IMPORT", sourceSha256).orElse(null);
+        if (existing != null) return ApiResponse.ok("初始化存证已存在", ParkingService.map(
+                "evidence_id", existing.evidenceId, "record_type", "LOCAL_HASH_CHAIN", "already_recorded", true));
+        long accountCount = users.countByCommunityIdAndNotesStartingWith(batch.communityId,
+                "PILOT_V2.1:" + sourceSha256.substring(0, 12) + ":");
+        ChainEvidence record = evidence.create(batch.communityId, admin.id, "PILOT_IMPORT",
+                "试点小区历史台账初始化记录", ParkingService.map(
+                        "source_sha256", sourceSha256, "rental_count", rentalCount,
+                        "queue_count", queueCount, "identity_pending_accounts", accountCount), null);
+        auditLog.recordOperation(admin.id, admin.realName, admin.role, "IMPORT", "RECORD_LOCAL_EVIDENCE",
+                "试点小区初始化台账写入本地审计链", getIp(request),
+                ParkingService.map("source_sha256", sourceSha256, "evidence_id", record.evidenceId));
+        return ApiResponse.ok("初始化台账已写入本地审计链", ParkingService.map(
+                "evidence_id", record.evidenceId, "record_type", "LOCAL_HASH_CHAIN", "already_recorded", false));
     }
 
     @GetMapping("/stats")

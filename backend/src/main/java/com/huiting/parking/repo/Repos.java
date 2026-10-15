@@ -27,6 +27,7 @@ public class Repos {
         Optional<UserAccount> findByIdCard(String idCard);
         List<UserAccount> findByCommunityIdAndRoleInOrderByIdAsc(Integer communityId, List<String> roles);
         boolean existsByPhoneOrIdCard(String phone, String idCard);
+        long countByCommunityIdAndNotesStartingWith(Integer communityId, String prefix);
     }
     public interface SessionRepo extends JpaRepository<AuthSession, Integer> {
         Optional<AuthSession> findByTokenHash(String tokenHash);
@@ -55,6 +56,7 @@ public class Repos {
         long countByCommunityIdAndStatusIn(Integer communityId, List<String> statuses);
     }
     public interface AppRepo extends JpaRepository<QueueApplication, Integer> {
+        long countByCommunityIdAndLegacyImportBatchId(Integer communityId, String sourceSha256);
         List<QueueApplication> findByUserIdAndStatusInOrderByIdDesc(Integer userId, List<String> statuses);
         List<QueueApplication> findByCommunityIdAndStatusIn(Integer communityId, List<String> statuses);
         List<QueueApplication> findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(Integer communityId, String status);
@@ -73,6 +75,7 @@ public class Repos {
         List<QueueApplication> findByCommunityIdAndStatusInOrderByAllocatedTimeAsc(Integer communityId, List<String> statuses);
     }
     public interface ContractRepo extends JpaRepository<RentalContract, Integer> {
+        long countByLegacyImportBatchId(String sourceSha256);
         Optional<RentalContract> findFirstByUserIdAndStatusIn(Integer userId, List<String> statuses);
         Optional<RentalContract> findFirstBySpaceIdAndStatusNot(Integer spaceId, String status);
         Optional<RentalContract> findFirstBySpaceIdAndStatusIn(Integer spaceId, List<String> statuses);
@@ -81,6 +84,7 @@ public class Repos {
         long countByStatus(String status);
     }
     public interface EvidenceRepo extends JpaRepository<ChainEvidence, Integer> {
+        Optional<ChainEvidence> findFirstByCommunityIdAndEventTypeAndRawPayloadJsonContainingOrderByIdDesc(Integer communityId, String eventType, String sourceSha256);
         Optional<ChainEvidence> findFirstByOrderByIdDesc();
         Optional<ChainEvidence> findFirstByCommunityIdOrderByIdDesc(Integer communityId);
         Optional<ChainEvidence> findFirstByCommunityIdAndIdLessThanOrderByIdDesc(Integer communityId, Integer id);
@@ -90,6 +94,9 @@ public class Repos {
         List<ChainEvidence> findByCommunityIdAndUserIdOrCommunityIdAndEventTypeOrderByBlockHeightDesc(Integer communityId, Integer userId, Integer communityId2, String eventType);
         long countByCommunityIdAndEventType(Integer communityId, String eventType);
         List<ChainEvidence> findTop10ByCommunityIdAndRawPayloadJsonContainingOrderByIdDesc(Integer communityId, String spaceNo);
+    }
+    public interface ImportBatchRepo extends JpaRepository<ImportBatch, Integer> {
+        Optional<ImportBatch> findBySourceSha256(String sourceSha256);
     }
     public interface NoticeRepo extends JpaRepository<Notification, Integer> {
         long countByUserIdAndReadFlag(Integer userId, Boolean readFlag);

@@ -10,7 +10,7 @@
           </div>
           <div>
             <h2 class="text-base font-extrabold tracking-wide">个人审计记录中心</h2>
-            <p class="text-xs text-blue-200 mt-0.5">本地 SHA-256 哈希链 · 可核验记录完整性</p>
+            <p class="text-xs text-blue-200 mt-0.5">本地 SHA-256 哈希链 · 浦江数链待接入</p>
           </div>
         </div>
       </div>

@@ -67,7 +67,8 @@ public class ParkingService {
         }
         QueueApplication app = apps.findByUserIdAndStatusInOrderByIdDesc(user.id, OPEN_APP).stream().findFirst().orElse(null);
         if (app == null) app = pendingLegacyQueue(user);
-        String view = contract != null ? "RENTED" : (app != null ? app.status : "NO_APPLY");
+        boolean identityPending = !demoEnabled && "OWNER".equals(user.role) && (user.idCard == null || user.idCard.isBlank());
+        String view = contract != null ? "RENTED" : (app != null ? app.status : (identityPending ? "IDENTITY_PENDING" : "NO_APPLY"));
         Map<String, Object> myQueue = null;
         if (contract == null && app != null) myQueue = queueView(app, user, community);
         long unread = notices.countByUserIdAndReadFlag(user.id, false);
@@ -78,6 +79,7 @@ public class ParkingService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("view_state", view);
         data.put("user_info", map("id", user.id, "real_name", user.realName, "role", user.role,
+                "identity_pending", identityPending,
                 "community_name", community != null ? community.name : "未配置", "community_audit_mode", mode));
         data.put("unread_notifications", unread);
         data.put("my_space", mySpace);

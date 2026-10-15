@@ -388,7 +388,7 @@ public class PropertyService {
         List<ParkingSpace> list = engine.initSpaces(admin.communityId, 50);
         communities.findById(admin.communityId).ifPresent(c -> c.totalSpaces = 50);
         evidence.create(admin.communityId, admin.id, "INIT", "物业管理员【" + admin.realName + "】完成本小区 50 个车位台账初始化导入锁定", Map.of("total_spaces", 50, "manager", admin.realName), null);
-        return "已成功注入 50 个车位资产 (" + list.get(0).spaceNo + " ~ " + list.get(list.size() - 1).spaceNo + ")，台账已上链锁定！";
+        return "已成功注入 50 个车位资产 (" + list.get(0).spaceNo + " ~ " + list.get(list.size() - 1).spaceNo + ")，台账已写入本地审计链。";
     }
 
     @Transactional(readOnly = true)

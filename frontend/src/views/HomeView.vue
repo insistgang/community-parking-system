@@ -250,6 +250,12 @@
         </div>
       </div>
 
+      <div v-else-if="viewState === 'IDENTITY_PENDING'" class="rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm space-y-3">
+        <AppIcon name="shield" class="mx-auto h-9 w-9 text-amber-600" />
+        <h3 class="text-base font-bold text-slate-800">账号已开通，历史台账待核实</h3>
+        <p class="text-xs leading-relaxed text-slate-600">Excel 台账中的姓名或身份证资料不完整。请联系物业核实身份并关联历史租约；完成前可查看小区概况和公开排队信息。</p>
+      </div>
+
       <!-- 视图 B: 新客无车位视图 / 物业管理员巡检视图 -->
       <div v-else class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 text-center space-y-4">
         <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-inner" :class="userStore.isPropertyAdmin ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'">

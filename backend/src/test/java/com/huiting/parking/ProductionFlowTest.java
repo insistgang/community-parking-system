@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.huiting.parking.entity.ChainEvidence;
 import com.huiting.parking.entity.Community;
+import com.huiting.parking.entity.ImportBatch;
 import com.huiting.parking.entity.ParkingSpace;
 import com.huiting.parking.entity.RentalContract;
 import com.huiting.parking.entity.UserAccount;
@@ -50,6 +51,7 @@ class ProductionFlowTest {
     @Autowired QueueEngine queueEngine;
     @Autowired Repos.ContractRepo contracts;
     @Autowired Repos.EvidenceRepo evidences;
+    @Autowired Repos.ImportBatchRepo batches;
     @Autowired Repos.InviteRepo ownerInvites;
     @Autowired Repos.PropertyInviteRepo propertyInvites;
     @Autowired PasswordService passwords;
@@ -480,6 +482,9 @@ class ProductionFlowTest {
         legacyOwner.idCard = null;
         users.save(legacyOwner);
         UserAccount newOwner = account("13800000102", "OWNER", community.id);
+        UserAccount pendingRental = account("13800000103", "OWNER", community.id);
+        pendingRental.idCard = null;
+        users.save(pendingRental);
         UserAccount manager = account("13900000101", "PROPERTY_ADMIN", community.id);
         manager.jobTitle = "物业负责人";
         manager.notes = "经理";
@@ -518,6 +523,13 @@ class ProductionFlowTest {
         assertThat(spaces.findById(space.id).orElseThrow().status).isEqualTo("VACANT");
         assertThat(notices.findAll()).allMatch(n -> n.userId != null);
         String ownerToken = login("/api/auth/login", "{\"identifier\":\"13800000102\",\"password\":\"password123\"}");
+        String pendingRentalToken = login("/api/auth/login", "{\"identifier\":\"13800000103\",\"password\":\"password123\"}");
+        mvc.perform(get("/api/user/home").header("Authorization", bearer(pendingRentalToken)))
+                .andExpect(jsonPath("$.data.view_state").value("IDENTITY_PENDING"))
+                .andExpect(jsonPath("$.data.user_info.identity_pending").value(true));
+        mvc.perform(post("/api/parking/apply").header("Authorization", bearer(pendingRentalToken))
+                        .contentType("application/json").content("{}"))
+                .andExpect(status().isForbidden());
         String managerToken = login("/api/auth/login", "{\"identifier\":\"13900000101\",\"password\":\"password123\"}");
         mvc.perform(get("/api/parking/queue").header("Authorization", bearer(ownerToken)))
                 .andExpect(status().isOk())
@@ -564,6 +576,55 @@ class ProductionFlowTest {
         assertThat(spaces.findById(space.id).orElseThrow().currentUserId).isEqualTo(legacyOwner.id);
         assertThat(applications.findById(legacy.id).orElseThrow().status).isEqualTo("ALLOCATED");
         assertThat(applications.findById(current.id).orElseThrow().currentRank).isEqualTo(1);
+    }
+
+    @Test
+    void importEvidenceIsAdminOnlyIdempotentAndLocallyVerifiable() throws Exception {
+        Community community = new Community();
+        community.name = "初始化存证验收小区";
+        community.totalSpaces = 0;
+        community = communities.save(community);
+        ImportBatch batch = new ImportBatch();
+        batch.sourceSha256 = "a".repeat(64);
+        batch.sourceFileName = "source.xlsx";
+        batch.communityId = community.id;
+        batch.rentalCount = 1;
+        batch.overdueCount = 0;
+        batch.missingIdCount = 0;
+        batch.missingStartCount = 0;
+        batch.missingPhoneCount = 0;
+        batch.skippedQueueCount = 0;
+        batch.queueCount = 0;
+        batch.importedAt = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC);
+        batches.save(batch);
+        String path = "/api/admin/import-evidence/" + batch.sourceSha256;
+        mvc.perform(post(path)).andExpect(status().isUnauthorized());
+        String ownerToken = login("/api/auth/login", "{\"identifier\":\"13900000000\",\"password\":\"test-bootstrap-admin-password\"}");
+        mvc.perform(post(path).header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isConflict());
+        batch.rentalCount = 0;
+        batches.save(batch);
+        String first = mvc.perform(post(path).header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.record_type").value("LOCAL_HASH_CHAIN"))
+                .andExpect(jsonPath("$.data.already_recorded").value(false))
+                .andReturn().getResponse().getContentAsString();
+        String evidenceId = json.readTree(first).path("data").path("evidence_id").asText();
+        assertThat(evidenceService.verify(evidences.findByEvidenceId(evidenceId).orElseThrow())).isTrue();
+        account("13800000104", "OWNER", community.id);
+        String communityOwnerToken = login("/api/auth/login", "{\"identifier\":\"13800000104\",\"password\":\"password123\"}");
+        mvc.perform(post(path).header("Authorization", bearer(communityOwnerToken)))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/evidence/list").header("Authorization", bearer(communityOwnerToken)))
+                .andExpect(jsonPath("$.data[0].event_type").value("PILOT_IMPORT"))
+                .andExpect(jsonPath("$.data[0].external_status").value("NOT_CONNECTED"));
+        mvc.perform(get("/api/evidence/verify/" + evidenceId).header("Authorization", bearer(communityOwnerToken)))
+                .andExpect(jsonPath("$.data.is_valid").value(true))
+                .andExpect(jsonPath("$.data.verification_status").value("LOCAL_INTEGRITY_VERIFIED"));
+        mvc.perform(post(path).header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.already_recorded").value(true));
+        assertThat(evidences.countByCommunityIdAndEventType(community.id, "PILOT_IMPORT")).isEqualTo(1);
     }
 
     private UserAccount account(String phone, String role, Integer communityId) {

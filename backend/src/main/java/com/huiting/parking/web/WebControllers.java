@@ -455,12 +455,14 @@ class EvidenceController {
         UserAccount user = parking.requireUser(uid);
         List<ChainEvidence> records = repo.findByCommunityIdOrderByBlockHeightDesc(user.communityId);
         if (!"PROPERTY_ADMIN".equals(user.role)) {
-            records = records.stream().filter(r -> user.id.equals(r.userId) || "INIT".equals(r.eventType)).toList();
+            records = records.stream().filter(r -> user.id.equals(r.userId)
+                    || "INIT".equals(r.eventType) || "PILOT_IMPORT".equals(r.eventType)).toList();
         }
         List<Map<String, Object>> data = new ArrayList<>();
         for (ChainEvidence r : records) {
             data.add(ParkingService.map("evidence_id", r.evidenceId, "event_type", r.eventType, "block_height", r.blockHeight,
-                    "tx_hash", r.txHash, "prev_hash", r.prevHash, "event_summary", r.eventSummary, "timestamp", r.timestamp, "created_at", Times.fmtBj(r.createdAt)));
+                    "tx_hash", r.txHash, "prev_hash", r.prevHash, "event_summary", r.eventSummary, "timestamp", r.timestamp,
+                    "created_at", Times.fmtBj(r.createdAt), "record_type", "LOCAL_HASH_CHAIN", "external_status", "NOT_CONNECTED"));
         }
         return ApiResponse.ok(data);
     }
@@ -470,12 +472,14 @@ class EvidenceController {
         UserAccount user = parking.requireUser(uid);
         ChainEvidence rec = repo.findByEvidenceId(evidenceId).orElseThrow(() -> new ApiException(404, "未找到该存证记录"));
         if (!Objects.equals(rec.communityId, user.communityId)
-                || (!"PROPERTY_ADMIN".equals(user.role) && !Objects.equals(rec.userId, user.id) && !"INIT".equals(rec.eventType)))
+                || (!"PROPERTY_ADMIN".equals(user.role) && !Objects.equals(rec.userId, user.id)
+                    && !"INIT".equals(rec.eventType) && !"PILOT_IMPORT".equals(rec.eventType)))
             throw new ApiException(404, "未找到该存证记录");
         boolean valid = evidence.verify(rec);
         return ApiResponse.ok(ParkingService.map("evidence_id", rec.evidenceId, "is_valid", valid, "block_height", rec.blockHeight,
                 "tx_hash", rec.txHash, "prev_hash", rec.prevHash, "timestamp", rec.timestamp, "event_summary", rec.eventSummary,
                 "verification_status", valid ? "LOCAL_INTEGRITY_VERIFIED" : "LOCAL_INTEGRITY_FAILED",
+                "record_type", "LOCAL_HASH_CHAIN", "external_status", "NOT_CONNECTED",
                 "cert_agency", "本系统本地审计记录"));
     }
 }

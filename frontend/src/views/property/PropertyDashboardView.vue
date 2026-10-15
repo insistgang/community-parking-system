@@ -1158,9 +1158,9 @@
                 </span>
               </div>
               <div class="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
-                <span class="text-emerald-400 flex items-center gap-1">
-                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                  <span>国家政务链上防伪存证通过</span>
+                <span class="text-amber-300 flex items-center gap-1">
+                  <span class="w-2 h-2 rounded-full bg-amber-300"></span>
+                  <span>材料已提交 · 待物业人工核验</span>
                 </span>
               </div>
             </div>
@@ -2114,7 +2114,7 @@ const handleChangeAuditMode = async (newMode) => {
     const res = await api.post('/property/audit-config', { audit_mode: newMode })
     if (res.code === 200) {
       currentAuditMode.value = newMode
-      showToast(res.message || '审核方式配置已更新并上链存证！', 'success')
+      showToast(res.message || '审核方式配置已更新并记录在本地审计链', 'success')
       await loadData()
     }
   } catch (err) {

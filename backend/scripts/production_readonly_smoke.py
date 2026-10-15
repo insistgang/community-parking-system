@@ -79,6 +79,13 @@ def main():
                       "/property/community-users", "/property/applications"):
             require(base_url, "GET", route, manager)
             checked += 1
+        property_stats = require(base_url, "GET", "/property/stats", manager)["data"]
+        if property_stats["legacy_import_count"] == 167:
+            if property_stats["total_spaces"] != 167 or property_stats["rented_spaces"] != 167:
+                raise AssertionError("Pilot parking inventory counts changed")
+            if property_stats["occupancy_rate"] != "100%":
+                raise AssertionError("Recorded pilot occupancy is not 100%")
+        checked += 1
         require(base_url, "GET", "/property/export-spaces", manager, binary=True)
         checked += 1
         for route in ("/user/home", "/parking/audit-mode", "/parking/queue",

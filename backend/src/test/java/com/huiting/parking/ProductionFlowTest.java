@@ -38,6 +38,8 @@ class ProductionFlowTest {
     @Autowired Repos.SpaceRepo spaces;
     @Autowired Repos.ContractRepo contracts;
     @Autowired Repos.EvidenceRepo evidences;
+    @Autowired Repos.InviteRepo ownerInvites;
+    @Autowired Repos.PropertyInviteRepo propertyInvites;
     @Autowired PasswordService passwords;
     @Autowired EvidenceService evidenceService;
     @Autowired InviteService inviteService;
@@ -55,12 +57,40 @@ class ProductionFlowTest {
         mvc.perform(post("/api/auth/register").contentType("application/json")
                 .content("{\"phone\":\"13900000001\",\"id_card\":\"310104198005055555\",\"password\":\"password123\",\"role\":\"PROPERTY_ADMIN\",\"community_name\":\"未授权小区\"}"))
                 .andExpect(status().isForbidden());
-        String managerRegistration = mvc.perform(post("/api/auth/register").contentType("application/json")
-                .content("{\"phone\":\"13900000001\",\"id_card\":\"310104198005055555\",\"password\":\"password123\",\"role\":\"PROPERTY_ADMIN\",\"invite_code\":\"test-property-invite\",\"community_name\":\"新建真实小区\",\"district\":\"徐汇区\",\"subdistrict\":\"龙华街道\",\"real_name\":\"物业经理\"}"))
+        mvc.perform(post("/api/admin/property-invites").contentType("application/json")
+                .content("{\"phone\":\"13900000001\",\"id_card\":\"310104198005055555\",\"community_name\":\"新建真实小区\"}"))
+                .andExpect(status().isUnauthorized());
+        String propertyInviteBody = mvc.perform(post("/api/admin/property-invites")
+                .header("Authorization", bearer(adminToken)).contentType("application/json")
+                .content("{\"phone\":\"13900000001\",\"id_card\":\"310104198005055555\",\"community_name\":\"新建真实小区\"}"))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String propertyInvite = json.readTree(propertyInviteBody).path("data").path("invite_code").asText();
+        mvc.perform(post("/api/auth/register").contentType("application/json")
+                .content("{\"phone\":\"13900000001\",\"id_card\":\"310104198005055555\",\"password\":\"password123\",\"role\":\"PROPERTY_ADMIN\",\"invite_code\":\"" + propertyInvite + "\",\"community_name\":\"其他小区\"}"))
+                .andExpect(status().isForbidden());
+        String managerRegistration = mvc.perform(post("/api/auth/register").contentType("application/json")
+                .content("{\"phone\":\"13900000001\",\"id_card\":\"310104198005055555\",\"password\":\"password123\",\"role\":\"PROPERTY_ADMIN\",\"invite_code\":\"" + propertyInvite + "\",\"community_name\":\"新建真实小区\",\"district\":\"徐汇区\",\"subdistrict\":\"龙华街道\",\"real_name\":\"物业经理\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        assertThat(propertyInvites.findAll().get(0).usedAt).isNotNull();
+        mvc.perform(post("/api/auth/register").contentType("application/json")
+                .content("{\"phone\":\"13900000002\",\"id_card\":\"310104198005055556\",\"password\":\"password123\",\"role\":\"PROPERTY_ADMIN\",\"invite_code\":\"" + propertyInvite + "\",\"community_name\":\"新建真实小区\"}"))
+                .andExpect(status().isForbidden());
         Community created = communities.findByName("新建真实小区").orElseThrow();
         assertThat(spaces.countByCommunityId(created.id)).isZero();
         String managerToken = json.readTree(managerRegistration).path("data").path("token").asText();
+        String secondInviteBody = mvc.perform(post("/api/admin/property-invites")
+                .header("Authorization", bearer(adminToken)).contentType("application/json")
+                .content("{\"phone\":\"13900000002\",\"id_card\":\"310104198005055556\",\"community_name\":\"新建真实小区\"}"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        String secondInvite = json.readTree(secondInviteBody).path("data").path("invite_code").asText();
+        mvc.perform(post("/api/auth/register").contentType("application/json")
+                .content("{\"phone\":\"13900000002\",\"id_card\":\"310104198005055556\",\"password\":\"password123\",\"role\":\"PROPERTY_ADMIN\",\"invite_code\":\"" + secondInvite + "\",\"community_name\":\"新建真实小区\",\"real_name\":\"第二位物业经理\"}"))
+                .andExpect(status().isOk());
+        assertThat(users.findByPhone("13900000002").orElseThrow().communityId).isEqualTo(created.id);
+        mvc.perform(post("/api/admin/property-invites").header("Authorization", bearer(managerToken))
+                .contentType("application/json")
+                .content("{\"phone\":\"13900000003\",\"id_card\":\"310104198005055557\",\"community_name\":\"新建真实小区\"}"))
+                .andExpect(status().isForbidden());
         mvc.perform(post("/api/auth/register").contentType("application/json")
                 .content("{\"phone\":\"13800000001\",\"id_card\":\"310104199201011111\",\"password\":\"password123\",\"role\":\"OWNER\",\"community_name\":\"新建真实小区\",\"real_name\":\"业主\"}"))
                 .andExpect(status().isForbidden());
@@ -74,6 +104,16 @@ class ProductionFlowTest {
                 .andExpect(status().isOk());
         assertThatThrownBy(() -> inviteService.consume(invite, "13800000001", "310104199201011111", created.id))
                 .isInstanceOf(ApiException.class);
+        for (var oldPropertyInvite : propertyInvites.findAll()) {
+            oldPropertyInvite.expiresAt = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).minusDays(1);
+            propertyInvites.save(oldPropertyInvite);
+        }
+        var oldOwnerInvite = ownerInvites.findAll().get(0);
+        oldOwnerInvite.expiresAt = java.time.LocalDateTime.now(java.time.ZoneOffset.UTC).minusDays(1);
+        ownerInvites.save(oldOwnerInvite);
+        inviteService.removeExpired();
+        assertThat(propertyInvites.count()).isZero();
+        assertThat(ownerInvites.count()).isZero();
         mvc.perform(post("/api/auth/login").contentType("application/json")
                 .content("{\"identifier\":\"13900000000\",\"login_type\":\"OTHER\"}"))
                 .andExpect(status().isBadRequest());

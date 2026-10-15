@@ -34,6 +34,13 @@ public class Repos {
         @Lock(LockModeType.PESSIMISTIC_WRITE)
         @Query("select i from RegistrationInvite i where i.codeHash = :codeHash")
         Optional<RegistrationInvite> lockByCodeHash(@Param("codeHash") String codeHash);
+        void deleteByExpiresAtBefore(java.time.LocalDateTime cutoff);
+    }
+    public interface PropertyInviteRepo extends JpaRepository<PropertyRegistrationInvite, Integer> {
+        @Lock(LockModeType.PESSIMISTIC_WRITE)
+        @Query("select i from PropertyRegistrationInvite i where i.codeHash = :codeHash")
+        Optional<PropertyRegistrationInvite> lockByCodeHash(@Param("codeHash") String codeHash);
+        void deleteByExpiresAtBefore(java.time.LocalDateTime cutoff);
     }
     public interface SpaceRepo extends JpaRepository<ParkingSpace, Integer> {
         boolean existsByCommunityIdAndSpaceNo(Integer communityId, String spaceNo);

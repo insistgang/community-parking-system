@@ -301,7 +301,7 @@
             <span class="w-1.5 h-3.5 bg-blue-600 rounded-full"></span>
             <span>小区车辆概况</span>
           </h3>
-          <span class="text-[11px] text-slate-400">总车位 {{ overview?.total_spaces ?? 50 }} 个</span>
+          <span class="text-[11px] text-slate-400">总车位 {{ overview?.total_spaces ?? 0 }} 个</span>
         </div>
 
         <div class="grid grid-cols-4 gap-2 text-center text-xs">

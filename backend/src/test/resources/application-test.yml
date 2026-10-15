@@ -14,7 +14,6 @@ spring:
 app:
   demo:
     enabled: false
-  property-invite-code: test-property-invite
   bootstrap:
     admin-phone: "13900000000"
     admin-password: "test-bootstrap-admin-password"

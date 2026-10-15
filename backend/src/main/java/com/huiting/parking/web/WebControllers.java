@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -42,8 +41,6 @@ class AuthController {
     private final InviteService invites;
     @Value("${app.demo.enabled:false}")
     private boolean demoEnabled;
-    @Value("${app.property-invite-code:}")
-    private String propertyInviteCode;
     private final Map<String, long[]> sms = new ConcurrentHashMap<>();
 
     AuthController(Repos.UserRepo users, Repos.CommunityRepo communities, QueueEngine engine,
@@ -168,15 +165,11 @@ class AuthController {
             throw new ApiException(400, "请输入有效的手机号和18位身份证号");
         if (password.length() < 8) throw new ApiException(400, "密码长度不能少于8位");
         if (!"OWNER".equals(role) && !"PROPERTY_ADMIN".equals(role)) throw new ApiException(400, "无效的用户角色");
-        if ("PROPERTY_ADMIN".equals(role)) {
-            String invite = String.valueOf(req.getOrDefault("invite_code", ""));
-            if (propertyInviteCode.isBlank() || !MessageDigest.isEqual(
-                    invite.getBytes(StandardCharsets.UTF_8), propertyInviteCode.getBytes(StandardCharsets.UTF_8)))
-                throw new ApiException(403, "物业管理员注册需要有效邀请码");
-        }
         if (users.existsByPhoneOrIdCard(phone, idCard)) throw new ApiException(400, "该手机号或身份证号已被注册");
         String communityName = String.valueOf(req.getOrDefault("community_name", "")).trim();
         if (communityName.isBlank()) throw new ApiException(400, "请选择所属小区");
+        if ("PROPERTY_ADMIN".equals(role))
+            invites.consumeProperty(String.valueOf(req.getOrDefault("invite_code", "")), phone, idCard, communityName);
         Community community = communities.findByName(communityName).orElse(null);
         if (community == null) {
             if (!"PROPERTY_ADMIN".equals(role)) throw new ApiException(400, "小区尚未开通，请联系物业管理员");
@@ -215,7 +208,7 @@ class AuthController {
     }
 
     private Map<String, Object> tokenBody(UserAccount user) {
-        Community community = communities.findById(user.communityId).orElse(null);
+        Community community = user.communityId == null ? null : communities.findById(user.communityId).orElse(null);
         String token = sessions.create(user);
         return ParkingService.map("token", token, "user", ParkingService.map(
                 "id", user.id, "phone", user.phone, "real_name", user.realName, "role", user.role,

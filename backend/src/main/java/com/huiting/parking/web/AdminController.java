@@ -13,6 +13,7 @@ import com.huiting.parking.service.SeedService;
 import com.huiting.parking.service.PasswordService;
 import com.huiting.parking.service.SessionService;
 import com.huiting.parking.service.LoginThrottle;
+import com.huiting.parking.service.InviteService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +36,7 @@ public class AdminController {
     private final PasswordService passwords;
     private final SessionService sessions;
     private final LoginThrottle loginThrottle;
+    private final InviteService invites;
     @Value("${app.demo.enabled:false}")
     private boolean demoEnabled;
 
@@ -42,7 +44,7 @@ public class AdminController {
                            Repos.AppRepo apps, Repos.LoginLogRepo loginLogs, Repos.OperationLogRepo operationLogs,
                            Repos.ExternalApiLogRepo externalApiLogs, Repos.NoticeRepo notices,
                            AuditLogService auditLog, BootJobs bootJobs, PasswordService passwords,
-                           SessionService sessions, LoginThrottle loginThrottle) {
+                           SessionService sessions, LoginThrottle loginThrottle, InviteService invites) {
         this.users = users;
         this.communities = communities;
         this.spaces = spaces;
@@ -56,6 +58,7 @@ public class AdminController {
         this.passwords = passwords;
         this.sessions = sessions;
         this.loginThrottle = loginThrottle;
+        this.invites = invites;
     }
 
     private UserAccount requireAdmin(Integer uid) {
@@ -102,6 +105,12 @@ public class AdminController {
                         "phone", admin.phone
                 )
         ));
+    }
+
+    @PostMapping("/property-invites")
+    public ApiResponse issuePropertyInvite(@RequestAttribute(name = "authUserId") Integer uid,
+                                           @RequestBody Map<String, Object> req) {
+        return ApiResponse.ok("物业入驻邀请码已生成", invites.issueProperty(requireAdmin(uid), req));
     }
 
     @GetMapping("/stats")

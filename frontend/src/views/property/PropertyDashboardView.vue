@@ -104,7 +104,7 @@
       <div v-show="activePanel === 'kpi'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
           <span class="text-xs text-slate-400 block font-medium">总规划车位数</span>
-          <span class="text-2xl font-black text-white mt-1 block font-mono">{{ stats.total_spaces ?? 50 }}</span>
+          <span class="text-2xl font-black text-white mt-1 block font-mono">{{ stats.total_spaces ?? 0 }}</span>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
           <span class="text-xs text-blue-400 block font-medium">已租车位 (出租率)</span>
@@ -166,7 +166,7 @@
         <div class="flex items-center justify-between flex-wrap gap-2">
           <div>
             <h2 class="text-sm font-bold text-white flex items-center gap-2 flex-wrap">
-              <span>{{ userStore.communityName || '龙华新村' }} 50 车位资产实时运行矩阵</span>
+              <span>{{ userStore.communityName }} {{ stats.total_spaces ?? 0 }} 车位资产实时运行矩阵</span>
               <span class="text-xs text-slate-400 font-normal hidden sm:inline">(点击任意车位卡片可发起管理操作)</span>
             </h2>
           </div>

@@ -15,8 +15,7 @@ RUN mkdir -p /app/data
 EXPOSE 8080
 
 # 环境变量配置
-ENV SERVER_PORT=8080 \
-    SPRING_DATASOURCE_URL="jdbc:sqlite:/app/data/parking.db"
+ENV SERVER_PORT=8080
 
 # 启动 Spring Boot 应用
 CMD ["java", "-Dfile.encoding=UTF-8", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app/app.jar"]

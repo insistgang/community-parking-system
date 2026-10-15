@@ -34,7 +34,6 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
       BOOTSTRAP_ADMIN_PHONE: ${BOOTSTRAP_ADMIN_PHONE:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
-      PROPERTY_INVITE_CODE: ${PROPERTY_INVITE_CODE:?PROPERTY_INVITE_CODE is required}
     depends_on:
       mysql:
         condition: service_healthy

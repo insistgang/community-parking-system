@@ -38,7 +38,7 @@ cp .env.production.example .env.production
 chmod 600 .env.production
 ```
 
-编辑 `.env.production`：填写两个不同的 MySQL 随机密码、首次平台管理员手机号及至少 12 位随机密码、物业入驻邀请码；将 `PROD_BIND_IP` 改为服务器实际内网 IP。不要提交或发送该文件。
+编辑 `.env.production`：填写两个不同的 MySQL 随机密码、首次平台管理员手机号及至少 12 位随机密码；将 `PROD_BIND_IP` 改为服务器实际内网 IP。不要提交或发送该文件。
 
 ```bash
 docker compose --env-file .env.production \
@@ -51,7 +51,7 @@ curl -fsS http://192.168.0.147:39180/api/health
 
 健康检查中的 IP 应与 `.env.production` 的 `PROD_BIND_IP` 一致。首次启动后确认平台管理员可登录，再从 `.env.production` 删除 `BOOTSTRAP_ADMIN_PASSWORD`，执行 `docker compose --env-file .env.production -f docker-compose.production.yml -f docker-compose.production.internal.yml up -d --force-recreate backend`；已有管理员会保留在数据库中。
 
-验收顺序：平台管理员登录 → 使用物业入驻邀请码注册物业与小区 → 确认空车位台账 → 物业录入真实车位 → 物业线下核对业主身份并签发一次性业主邀请码 → 业主注册与申请 → 物业线下核验证明并登记编号后审核 → 按顺位分配 → 物业凭合同及缴费凭据编号确认交付 → 检查审计记录核验。生产端不提供演示数据重置、固定短信码、自动人脸/OCR 或外部区块链认证。
+验收顺序：平台管理员登录 → 在线下核验物业负责人身份后，在管理员后台签发绑定手机号、身份证号和小区名称的一次性物业入驻邀请码 → 物业注册并确认空车位台账 → 物业录入真实车位 → 物业线下核对业主身份并签发一次性业主邀请码 → 业主注册与申请 → 物业线下核验证明并登记编号后审核 → 按顺位分配 → 物业凭合同及缴费凭据编号确认交付 → 检查审计记录核验。两类邀请码均在七天后到期，并由每日任务清理；生产端不提供演示数据重置、固定短信码、自动人脸/OCR 或外部区块链认证。
 
 ## 切换 HTTPS 公网入口
 

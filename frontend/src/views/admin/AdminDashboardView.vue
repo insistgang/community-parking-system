@@ -18,6 +18,12 @@
       </div>
 
       <div class="flex items-center gap-2 flex-wrap text-xs">
+        <button v-if="isProduction"
+          @click="openPropertyInvite"
+          class="px-3.5 py-1.5 rounded-xl bg-purple-700 hover:bg-purple-600 text-white font-bold transition"
+        >
+          签发物业入驻邀请码
+        </button>
         <!-- 24小时未读短信催办快捷测试按钮 -->
         <button v-if="!isProduction"
           @click="handleTriggerSmsUpgrade"
@@ -77,7 +83,7 @@
         </div>
         <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
           <span class="text-emerald-400 block">纳管车位总量</span>
-          <span class="text-2xl font-black text-emerald-400 mt-1 block font-mono">{{ stats.total_spaces ?? 50 }}</span>
+          <span class="text-2xl font-black text-emerald-400 mt-1 block font-mono">{{ stats.total_spaces ?? 0 }}</span>
         </div>
         <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
           <span class="text-amber-400 block">车位申请总量</span>
@@ -465,6 +471,39 @@
         </div>
       </div>
     </div>
+    <div v-if="showPropertyInvite" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+      <div class="w-full max-w-md rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-4 text-sm shadow-2xl">
+        <div class="flex items-center justify-between">
+          <h2 class="font-bold text-white">签发物业入驻邀请码</h2>
+          <button type="button" @click="closePropertyInvite" class="text-slate-400 hover:text-white">关闭</button>
+        </div>
+        <p class="text-xs text-slate-400">先线下核验负责人身份。邀请码绑定手机号、身份证号及小区名称，七天内只能使用一次。</p>
+        <form v-if="!propertyInviteCode" @submit.prevent="handleIssuePropertyInvite" class="space-y-3">
+          <label class="block space-y-1">小区名称
+            <input v-model.trim="propertyInviteForm.community_name" required maxlength="100"
+              class="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white" />
+          </label>
+          <label class="block space-y-1">负责人手机号
+            <input v-model.trim="propertyInviteForm.phone" required inputmode="numeric" maxlength="11"
+              class="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white" />
+          </label>
+          <label class="block space-y-1">负责人身份证号
+            <input v-model.trim="propertyInviteForm.id_card" required maxlength="18"
+              class="w-full rounded-lg border border-slate-600 bg-slate-950 px-3 py-2 text-white" />
+          </label>
+          <p v-if="propertyInviteError" role="alert" class="text-rose-300 text-xs">{{ propertyInviteError }}</p>
+          <button type="submit" :disabled="propertyInviteLoading"
+            class="w-full rounded-lg bg-purple-600 px-4 py-2 font-bold text-white disabled:opacity-50">
+            {{ propertyInviteLoading ? '正在签发…' : '签发一次性邀请码' }}
+          </button>
+        </form>
+        <div v-else class="space-y-3">
+          <p class="text-emerald-300 text-xs">邀请码仅显示这一次。请通过线下方式交给对应负责人。</p>
+          <input :value="propertyInviteCode" readonly @click="$event.target.select()"
+            class="w-full rounded-lg border border-emerald-600 bg-slate-950 px-3 py-2 font-mono text-emerald-200" />
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -510,6 +549,37 @@ const currentApiItem = ref(null)
 
 const smsTriggering = ref(false)
 const smsScanResult = ref('')
+const showPropertyInvite = ref(false)
+const propertyInviteForm = ref({ community_name: '', phone: '', id_card: '' })
+const propertyInviteCode = ref('')
+const propertyInviteError = ref('')
+const propertyInviteLoading = ref(false)
+
+const openPropertyInvite = () => {
+  propertyInviteForm.value = { community_name: '', phone: '', id_card: '' }
+  propertyInviteCode.value = ''
+  propertyInviteError.value = ''
+  showPropertyInvite.value = true
+}
+
+const closePropertyInvite = () => {
+  showPropertyInvite.value = false
+  propertyInviteCode.value = ''
+  propertyInviteForm.value = { community_name: '', phone: '', id_card: '' }
+}
+
+const handleIssuePropertyInvite = async () => {
+  propertyInviteLoading.value = true
+  propertyInviteError.value = ''
+  try {
+    const res = await api.post('/admin/property-invites', propertyInviteForm.value)
+    propertyInviteCode.value = res.data.invite_code
+  } catch (err) {
+    propertyInviteError.value = err.message || '邀请码签发失败'
+  } finally {
+    propertyInviteLoading.value = false
+  }
+}
 
 const formatJson = (raw) => {
   if (!raw) return '{}'

@@ -12,6 +12,8 @@ spring:
     properties:
       hibernate.dialect: org.hibernate.dialect.H2Dialect
 app:
+  documents:
+    storage-path: target/test-documents
   demo:
     enabled: false
   bootstrap:

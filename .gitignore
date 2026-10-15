@@ -37,6 +37,7 @@ mysql-data/
 certs/
 artifacts/
 backups/
+application-documents/
 frontend/*.log
 frontend/*.err
 

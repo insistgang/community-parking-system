@@ -71,6 +71,11 @@ docker compose --env-file .env.production \
 ## 数据与回退
 
 - 生产 MySQL 数据保存在 `liugang_produce/mysql-data`；任何时候都不要复制测试端 `data/parking.db`。
+- 三证文件保存在 `liugang_produce/application-documents`，由后端容器挂载到 `/app/application-documents`；不得放入 Nginx 静态目录。上线前以部署账号创建该目录并设置 `chmod 700 application-documents`。
+- 三证功能升级前先备份，然后在生产库执行 `database/migrations/20261015_application_documents.sql`，只新增材料元数据表。已提交材料与申请绑定，业主只能读取自己的材料，物业只能读取本小区已提交材料。
+- 每份材料支持 JPG、PNG、PDF，最大 10MB；Nginx 请求上限为 11MB。上线配置必须保留 `DOCUMENT_STORAGE_PATH` 和文件目录挂载，否则容器重建后会找不到文件。
+- 业主按身份证明、房屋证明、车辆申报三步提交；配偶或同住家人车辆还需关系证明。上传成功只表示文件已保存，审核仍由物业核对原件并登记编号后完成。历史简表申请可以继续线下审核或撤销后重新申报。
 - 每次升级前执行 `bash backup-production.sh` 备份 MySQL，并保留当前部署包。脚本使用 `mysqldump --single-transaction` 导出到受限的 `backups/` 目录。
+- 备份脚本同时归档三证文件目录；恢复时需要配套恢复 SQL 和同一批次文件归档。三证功能的应用回退应同时回退前端与后端，保留新增材料表和文件，避免丢失已提交资料。
 - 回退应用时使用上一版本部署包重建生产容器；如果数据库结构已变化，先按备份恢复数据库。不要在测试目录执行生产端 Compose 命令。
 - 当前首次空库部署由 Hibernate 创建表结构。后续结构升级必须引入受控迁移并在验收环境验证，不能依赖线上自动变更。

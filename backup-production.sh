@@ -12,3 +12,8 @@ docker compose --env-file .env.production -f docker-compose.production.yml \
   > "$output"
 
 echo "MySQL backup: $output"
+if [ -d application-documents ]; then
+  document_output="backups/application_documents-${stamp}.tar.gz"
+  tar -czf "$document_output" application-documents
+  echo "Application documents backup: $document_output"
+fi

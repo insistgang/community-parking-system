@@ -19,11 +19,16 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.mock.web.MockMultipartFile;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -37,6 +42,8 @@ class ProductionFlowTest {
     @Autowired Repos.UserRepo users;
     @Autowired Repos.CommunityRepo communities;
     @Autowired Repos.SpaceRepo spaces;
+    @Autowired Repos.AppRepo applications;
+    @Autowired Repos.DocumentRepo documents;
     @Autowired Repos.ContractRepo contracts;
     @Autowired Repos.EvidenceRepo evidences;
     @Autowired Repos.InviteRepo ownerInvites;
@@ -208,13 +215,7 @@ class ProductionFlowTest {
         mvc.perform(get("/api/evidence/verify/" + foreignEvidence.evidenceId).header("Authorization", bearer(ownerToken)))
                 .andExpect(status().isNotFound());
 
-        String applyBody = mvc.perform(post("/api/parking/apply").header("Authorization", bearer(ownerToken))
-                .contentType("application/json")
-                .content("{\"property_no\":\"12号楼302室\",\"plate_no\":\"沪A12345\",\"audit_mode\":\"THREE_CERT_AUTO\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.status").value("PENDING_REVIEW"))
-                .andReturn().getResponse().getContentAsString();
-        int appId = json.readTree(applyBody).path("data").path("id").asInt();
+        int appId = submitApplication(ownerToken, "12号楼302室", "沪A12345");
 
         mvc.perform(post("/api/property/spaces").header("Authorization", bearer(managerToken))
                 .contentType("application/json")
@@ -231,6 +232,14 @@ class ProductionFlowTest {
         mvc.perform(get("/api/user/home").header("Authorization", bearer(ownerToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.view_state").value("ALLOCATED"));
+        mvc.perform(post("/api/parking/cancel-apply").header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isBadRequest());
+        assertThat(applications.findById(appId).orElseThrow().status).isEqualTo("ALLOCATED");
+        mvc.perform(post("/api/parking/accept-allocation").header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isOk());
+        mvc.perform(post("/api/parking/cancel-apply").header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isBadRequest());
+        assertThat(applications.findById(appId).orElseThrow().status).isEqualTo("OFFLINE_PENDING");
 
         int spaceId = spaces.findByCommunityIdOrderBySpaceNoAsc(home.id).get(0).id;
         mvc.perform(post("/api/property/confirm-delivery").header("Authorization", bearer(managerToken))
@@ -259,6 +268,199 @@ class ProductionFlowTest {
         evidences.save(record);
         mvc.perform(get("/api/evidence/verify/" + record.evidenceId).header("Authorization", bearer(ownerToken)))
                 .andExpect(jsonPath("$.data.is_valid").value(false));
+    }
+
+    @Test
+    void pendingReviewCanBeCancelledAndCannotBeApprovedAfterwards() throws Exception {
+        Community community = new Community();
+        community.name = "待审核撤销验收小区";
+        community.totalSpaces = 0;
+        community.auditMode = "FLEXIBLE_HYBRID";
+        community = communities.save(community);
+        UserAccount owner = account("13800000031", "OWNER", community.id);
+        account("13800000032", "OWNER", community.id);
+        account("13900000031", "PROPERTY_ADMIN", community.id);
+        String ownerToken = login("/api/auth/login", "{\"identifier\":\"13800000031\",\"password\":\"password123\"}");
+        String otherToken = login("/api/auth/login", "{\"identifier\":\"13800000032\",\"password\":\"password123\"}");
+        String managerToken = login("/api/auth/login", "{\"identifier\":\"13900000031\",\"password\":\"password123\"}");
+        int appId = submitApplication(ownerToken, "1号楼101室", "沪A12345");
+
+        mvc.perform(post("/api/parking/cancel-apply").header("Authorization", bearer(otherToken)))
+                .andExpect(status().isBadRequest());
+        assertThat(applications.findById(appId).orElseThrow().status).isEqualTo("PENDING_REVIEW");
+        mvc.perform(post("/api/parking/cancel-apply").header("Authorization", bearer(ownerToken))
+                .contentType("application/json").content("{\"reason\":\"补正材料后重新申请\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("待审核申请已成功撤销，可修改资料后重新申请"));
+        assertThat(applications.findById(appId).orElseThrow().status).isEqualTo("CANCELLED");
+        assertThat(applications.findById(appId).orElseThrow().currentRank).isZero();
+        mvc.perform(get("/api/user/home").header("Authorization", bearer(ownerToken)))
+                .andExpect(jsonPath("$.data.view_state").value("NO_APPLY"));
+        mvc.perform(get("/api/property/stats").header("Authorization", bearer(managerToken)))
+                .andExpect(jsonPath("$.data.pending_audit_count").value(0));
+        mvc.perform(post("/api/property/audit-application").header("Authorization", bearer(managerToken))
+                .contentType("application/json").content(json.writeValueAsString(java.util.Map.of(
+                        "app_id", appId, "action", "APPROVE", "documents_verified", true, "audit_reference", "CHECK-CANCELLED"))))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/parking/cancel-apply").header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isBadRequest());
+        assertThat(evidences.countByCommunityIdAndEventType(community.id, "CANCEL")).isEqualTo(1);
+        ChainEvidence cancellation = evidences.findFirstByCommunityIdOrderByIdDesc(community.id).orElseThrow();
+        assertThat(cancellation.userId).isEqualTo(owner.id);
+        assertThat(cancellation.eventSummary).contains("撤销待物业审核的车位申请").doesNotContain("第【0】位");
+        assertThat(json.readTree(cancellation.rawPayloadJson).path("previous_status").asText()).isEqualTo("PENDING_REVIEW");
+        assertThat(submitApplication(ownerToken, "1号楼102室", "沪A12345")).isGreaterThan(appId);
+    }
+
+    @Test
+    void cancellingWaitingApplicationAdvancesRemainingQueue() throws Exception {
+        Community community = new Community();
+        community.name = "排队撤销验收小区";
+        community.totalSpaces = 0;
+        community.auditMode = "FLEXIBLE_HYBRID";
+        community = communities.save(community);
+        account("13800000041", "OWNER", community.id);
+        account("13800000042", "OWNER", community.id);
+        account("13900000041", "PROPERTY_ADMIN", community.id);
+        String first = login("/api/auth/login", "{\"identifier\":\"13800000041\",\"password\":\"password123\"}");
+        String second = login("/api/auth/login", "{\"identifier\":\"13800000042\",\"password\":\"password123\"}");
+        String manager = login("/api/auth/login", "{\"identifier\":\"13900000041\",\"password\":\"password123\"}");
+        int firstApp = submitApplication(first, "1号楼101室", "沪A12345");
+        int secondApp = submitApplication(second, "2号楼101室", "沪B12345");
+        for (int appId : new int[]{firstApp, secondApp}) {
+            mvc.perform(post("/api/property/audit-application").header("Authorization", bearer(manager))
+                    .contentType("application/json").content(json.writeValueAsString(java.util.Map.of(
+                            "app_id", appId, "action", "APPROVE", "documents_verified", true, "audit_reference", "CHECK-" + appId))))
+                    .andExpect(status().isOk());
+        }
+        assertThat(applications.findById(secondApp).orElseThrow().currentRank).isEqualTo(2);
+        mvc.perform(post("/api/parking/cancel-apply").header("Authorization", bearer(first)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("排队申请已成功撤销，排位已释放"));
+        assertThat(applications.findById(firstApp).orElseThrow().status).isEqualTo("CANCELLED");
+        assertThat(applications.findById(firstApp).orElseThrow().currentRank).isZero();
+        assertThat(applications.findById(secondApp).orElseThrow().currentRank).isEqualTo(1);
+        assertThat(contracts.count()).isZero();
+    }
+
+    private int submitApplication(String token, String propertyNo, String plateNo) throws Exception {
+        var documentIds = uploadRequiredDocuments(token);
+        String response = mvc.perform(post("/api/parking/apply").header("Authorization", bearer(token))
+                .contentType("application/json").content(json.writeValueAsString(java.util.Map.of(
+                        "property_no", propertyNo, "plate_no", plateNo, "car_relationship", "SELF",
+                        "audit_mode", "THREE_CERT_AUTO", "document_ids", documentIds))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("PENDING_REVIEW"))
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(response).path("data").path("id").asInt();
+    }
+
+    @Test
+    void documentsArePrivateAndRequiredForProductionApplications() throws Exception {
+        Community community = new Community();
+        community.name = "三证上传验收小区";
+        community.totalSpaces = 0;
+        community = communities.save(community);
+        Community other = new Community();
+        other.name = "其他材料隔离小区";
+        other.totalSpaces = 0;
+        other = communities.save(other);
+        account("13800000051", "OWNER", community.id);
+        account("13800000052", "OWNER", community.id);
+        account("13900000051", "PROPERTY_ADMIN", community.id);
+        account("13900000052", "PROPERTY_ADMIN", other.id);
+        String owner = login("/api/auth/login", "{\"identifier\":\"13800000051\",\"password\":\"password123\"}");
+        String otherOwner = login("/api/auth/login", "{\"identifier\":\"13800000052\",\"password\":\"password123\"}");
+        String manager = login("/api/auth/login", "{\"identifier\":\"13900000051\",\"password\":\"password123\"}");
+        String foreignManager = login("/api/auth/login", "{\"identifier\":\"13900000052\",\"password\":\"password123\"}");
+        mvc.perform(multipart("/api/parking/application-documents")
+                .file(new MockMultipartFile("file", "证件.png", "image/png", png())).param("document_type", "ID_CARD"))
+                .andExpect(status().isUnauthorized());
+        mvc.perform(multipart("/api/parking/application-documents")
+                .file(new MockMultipartFile("file", "证件.png", "image/png", png())).param("document_type", "ID_CARD")
+                .header("Authorization", bearer(manager)))
+                .andExpect(status().isForbidden());
+        mvc.perform(multipart("/api/parking/application-documents")
+                .file(new MockMultipartFile("file", "fake.png", "image/png", "<script>bad</script>".getBytes()))
+                .param("document_type", "ID_CARD").header("Authorization", bearer(owner))).andExpect(status().isBadRequest());
+        mvc.perform(multipart("/api/parking/application-documents")
+                .file(new MockMultipartFile("file", "large.png", "image/png", new byte[10 * 1024 * 1024 + 1]))
+                .param("document_type", "ID_CARD").header("Authorization", bearer(owner))).andExpect(status().isPayloadTooLarge());
+
+        String draft = uploadDocument(owner, "ID_CARD");
+        String path = "/api/parking/application-documents/" + draft;
+        mvc.perform(get(path).header("Authorization", bearer(owner)))
+                .andExpect(status().isOk()).andExpect(content().bytes(png()))
+                .andExpect(header().string("Cache-Control", "no-store"));
+        for (String token : java.util.List.of(otherOwner, manager, foreignManager)) {
+            mvc.perform(get(path).header("Authorization", bearer(token))).andExpect(status().isNotFound());
+        }
+        mvc.perform(delete(path).header("Authorization", bearer(owner))).andExpect(status().isOk());
+        mvc.perform(get(path).header("Authorization", bearer(owner))).andExpect(status().isNotFound());
+
+        var ids = uploadRequiredDocuments(owner);
+        var body = new java.util.HashMap<String, Object>();
+        body.put("property_no", "1号楼101室");
+        body.put("plate_no", "沪A12345");
+        body.put("car_relationship", "SELF");
+        body.put("attachments", java.util.List.of(java.util.Map.of("type", "ID_CARD", "name", "伪造材料元数据")));
+        mvc.perform(post("/api/parking/apply").header("Authorization", bearer(owner)).contentType("application/json")
+                .content(json.writeValueAsString(body))).andExpect(status().isBadRequest());
+        body.put("document_ids", ids.subList(0, 1));
+        mvc.perform(post("/api/parking/apply").header("Authorization", bearer(owner)).contentType("application/json")
+                .content(json.writeValueAsString(body))).andExpect(status().isBadRequest());
+        body.put("document_ids", ids);
+        mvc.perform(post("/api/parking/apply").header("Authorization", bearer(otherOwner)).contentType("application/json")
+                .content(json.writeValueAsString(body))).andExpect(status().isBadRequest());
+        body.put("plate_no", "132");
+        mvc.perform(post("/api/parking/apply").header("Authorization", bearer(owner)).contentType("application/json")
+                .content(json.writeValueAsString(body))).andExpect(status().isBadRequest());
+        assertThat(documents.findById(ids.get(0)).orElseThrow().applicationId).isNull();
+
+        body.put("plate_no", "沪a·12345");
+        String result = mvc.perform(post("/api/parking/apply").header("Authorization", bearer(owner)).contentType("application/json")
+                .content(json.writeValueAsString(body))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("PENDING_REVIEW"))
+                .andReturn().getResponse().getContentAsString();
+        int appId = json.readTree(result).path("data").path("id").asInt();
+        assertThat(documents.findById(ids.get(0)).orElseThrow().applicationId).isEqualTo(appId);
+        assertThat(applications.findById(appId).orElseThrow().plateNo).isEqualTo("沪A12345");
+        path = "/api/parking/application-documents/" + ids.get(0);
+        mvc.perform(get(path).header("Authorization", bearer(manager))).andExpect(status().isOk());
+        mvc.perform(get(path).header("Authorization", bearer(foreignManager))).andExpect(status().isNotFound());
+        mvc.perform(delete(path).header("Authorization", bearer(owner))).andExpect(status().isConflict());
+        mvc.perform(post("/api/parking/cancel-apply").header("Authorization", bearer(owner))).andExpect(status().isOk());
+        mvc.perform(post("/api/parking/apply").header("Authorization", bearer(owner)).contentType("application/json")
+                .content(json.writeValueAsString(body))).andExpect(status().isBadRequest());
+
+        var spouseIds = new java.util.ArrayList<>(uploadRequiredDocuments(owner));
+        body.put("document_ids", spouseIds);
+        body.put("car_relationship", "SPOUSE");
+        mvc.perform(post("/api/parking/apply").header("Authorization", bearer(owner)).contentType("application/json")
+                .content(json.writeValueAsString(body))).andExpect(status().isBadRequest());
+        spouseIds.add(uploadDocument(owner, "RELATIONSHIP_PROOF"));
+        mvc.perform(post("/api/parking/apply").header("Authorization", bearer(owner)).contentType("application/json")
+                .content(json.writeValueAsString(body))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.status").value("PENDING_REVIEW"));
+    }
+
+    private java.util.List<String> uploadRequiredDocuments(String token) throws Exception {
+        var ids = new java.util.ArrayList<String>();
+        for (String type : java.util.List.of("ID_CARD", "PROPERTY_CERT", "VEHICLE_LICENSE")) ids.add(uploadDocument(token, type));
+        return ids;
+    }
+
+    private String uploadDocument(String token, String type) throws Exception {
+        String response = mvc.perform(multipart("/api/parking/application-documents")
+                .file(new MockMultipartFile("file", "验收材料.png", "image/png", png()))
+                .header("Authorization", bearer(token)).param("document_type", type))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+        return json.readTree(response).path("data").path("id").asText();
+    }
+
+    private byte[] png() {
+        return java.util.Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5E0AAAAASUVORK5CYII=");
     }
 
     private UserAccount account(String phone, String role, Integer communityId) {

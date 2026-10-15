@@ -11,6 +11,10 @@ import java.util.List;
 import java.util.Optional;
 
 public class Repos {
+    public interface DocumentRepo extends JpaRepository<ApplicationDocument, String> {
+        List<ApplicationDocument> findByOwnerIdAndApplicationIdIsNullOrderByCreatedAtDesc(Integer ownerId);
+        long countByOwnerIdAndApplicationIdIsNull(Integer ownerId);
+    }
     public interface CommunityRepo extends JpaRepository<Community, Integer> {
         Optional<Community> findByName(String name);
         @Lock(LockModeType.PESSIMISTIC_WRITE)

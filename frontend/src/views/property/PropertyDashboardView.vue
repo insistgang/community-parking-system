@@ -1579,9 +1579,9 @@
     </div>
 
     <div v-if="productionReviewVisible && productionReviewApp" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
-      <div class="w-full max-w-lg rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
+      <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-white">物业线下材料审核</h3>
+          <h3 class="font-bold text-white">三证材料人工审核</h3>
           <button type="button" @click="productionReviewVisible = false" class="text-slate-400 hover:text-white" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
         <div class="rounded-xl bg-slate-900 p-3 text-xs text-slate-300 space-y-1">
@@ -1590,7 +1590,9 @@
           <p>车牌：{{ productionReviewApp.plate_no }}</p>
           <p>状态：{{ productionReviewApp.status_label }}</p>
         </div>
-        <p class="text-xs text-amber-200 leading-relaxed">系统尚未接入证照联网核验。请线下核对身份证、房屋和车辆证明原件，并在物业登记簿中留存核验记录。</p>
+        <ApplicationDocumentList v-if="productionReviewApp.attachments?.length" :documents="productionReviewApp.attachments" dark />
+        <p v-else class="rounded-xl bg-amber-950/40 border border-amber-800/60 p-3 text-xs text-amber-200 leading-relaxed">此申请未上传线上材料。可按原线下流程核验，或请申请人撤销后重新提交三证材料。</p>
+        <p class="text-xs text-slate-300 leading-relaxed">请查看申请材料并核对身份证明、房屋及车辆证明原件，填写核验登记编号后再给出审核结果。材料上传成功不代表核验通过。</p>
         <template v-if="productionReviewApp.status === 'PENDING_REVIEW'">
           <div>
             <label class="block text-xs text-slate-300 mb-1">线下核验登记编号</label>
@@ -1637,6 +1639,7 @@
 
 <script setup>
 import AppIcon from '../../components/AppIcon.vue'
+import ApplicationDocumentList from '../../components/ApplicationDocumentList.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'

@@ -30,9 +30,11 @@ public class ParkingService {
     private final QueueEngine engine;
     private final EvidenceService evidence;
     private final ObjectMapper json;
+    private final ApplicationDocumentService documents;
 
     public ParkingService(Repos.UserRepo users, Repos.CommunityRepo communities, Repos.SpaceRepo spaces, Repos.AppRepo apps,
-                          Repos.ContractRepo contracts, Repos.NoticeRepo notices, QueueEngine engine, EvidenceService evidence, ObjectMapper json) {
+                          Repos.ContractRepo contracts, Repos.NoticeRepo notices, QueueEngine engine, EvidenceService evidence, ObjectMapper json,
+                          ApplicationDocumentService documents) {
         this.users = users;
         this.communities = communities;
         this.spaces = spaces;
@@ -42,6 +44,7 @@ public class ParkingService {
         this.engine = engine;
         this.evidence = evidence;
         this.json = json;
+        this.documents = documents;
     }
 
     public UserAccount requireUser(Integer id) {
@@ -111,10 +114,15 @@ public class ParkingService {
     public Map<String, Object> apply(UserAccount user, Map<String, Object> req) {
         communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
         if (!"OWNER".equals(user.role)) throw new ApiException(403, "仅业主账号可以申请车位");
-        String propertyNo = str(req.get("property_no"));
-        String plate = str(req.get("plate_no"));
+        String propertyNo = str(req.get("property_no")).trim();
+        String plate = str(req.get("plate_no")).trim();
         if (propertyNo.isBlank() || propertyNo.length() > 100 || plate.isBlank() || plate.length() > 32)
             throw new ApiException(400, "请填写有效的房屋和车牌信息");
+        if (!demoEnabled) {
+            plate = plate.toUpperCase(Locale.ROOT).replaceAll("[\\s·.\\-]", "");
+            if (!plate.matches("[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼使领][A-HJ-NP-Z][A-HJ-NP-Z0-9]{4,5}[A-HJ-NP-Z0-9挂学警港澳]"))
+                throw new ApiException(400, "请输入完整车牌号码，例如沪A12345或沪AD12345；特殊号牌请联系物业办理");
+        }
         if (propertyNo.contains("浦东") || propertyNo.contains("世纪大道") || propertyNo.contains("外区"))
             throw new ApiException(400, "仅限本小区产权房屋可申请车位，外区房产无法通过核验！");
         if (apps.findFirstByUserIdAndStatusIn(user.id, List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW")).isPresent())
@@ -127,6 +135,7 @@ public class ParkingService {
         boolean spouseFlag = Boolean.TRUE.equals(req.get("is_spouse_car"));
         String rel = str(req.get("car_relationship"));
         if (rel.isEmpty()) rel = spouseFlag ? "SPOUSE" : "SELF";
+        if (!demoEnabled && !List.of("SELF", "SPOUSE", "FAMILY").contains(rel)) throw new ApiException(400, "请选择有效的车辆关系");
         boolean spouse = "SPOUSE".equals(rel) || spouseFlag;
         String relLabel = "SPOUSE".equals(rel) ? "配偶车(结婚证核验)" : ("FAMILY".equals(rel) ? "家人车(户口本核验)" : "本人名下");
         Community comm = communities.findById(user.communityId).orElse(null);
@@ -134,7 +143,10 @@ public class ParkingService {
         String userMode = user.auditMode;
         String effective = ("THREE_CERT_AUTO".equals(userMode) || "FLEXIBLE_HYBRID".equals(userMode)) ? userMode : commMode;
         String mode = demoEnabled ? effective : "FLEXIBLE_HYBRID";
-        List<Map<String, Object>> attachments = attachments(req.get("attachments"));
+        List<ApplicationDocument> selectedDocuments = demoEnabled ? List.of()
+                : documents.requireDocuments(user, req.get("document_ids"), rel);
+        List<Map<String, Object>> attachments = demoEnabled ? attachments(req.get("attachments"))
+                : selectedDocuments.stream().map(documents::describe).toList();
         if (attachments.isEmpty() && demoEnabled) {
             attachments.add(map("name", "居民身份证原件扫描件", "type", "ID_CARD", "desc", "权利人: " + user.realName + " (实人人脸比对核验通过)"));
             attachments.add(map("name", "不动产权证书原件扫描件", "type", "PROPERTY_CERT", "desc", "房屋坐落: " + propertyNo + " (市不动产中心联网比对通过)"));
@@ -157,6 +169,7 @@ public class ParkingService {
         app.applyTime = Times.utcNow();
         try { app.attachmentsJson = json.writeValueAsString(attachments); } catch (Exception ignored) { app.attachmentsJson = "[]"; }
         app = apps.save(app);
+        if (!demoEnabled) documents.link(selectedDocuments, app.id);
         String pri = priority == 1 ? "家庭一车" : "家庭二车";
         if ("FLEXIBLE_HYBRID".equals(mode)) {
             evidence.create(user.communityId, user.id, "APPLY_SUBMIT",
@@ -175,14 +188,24 @@ public class ParkingService {
     @Transactional
     public String cancel(UserAccount user, String reason) {
         communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
-        QueueApplication app = apps.findFirstByUserIdAndStatus(user.id, "WAITING").orElseThrow(() -> new ApiException(400, "未查询到处于排队中的申请"));
+        QueueApplication app = apps.findByUserIdAndStatusInOrderByIdDesc(user.id, List.of("PENDING_REVIEW", "WAITING"))
+                .stream().filter(a -> Objects.equals(a.communityId, user.communityId)).findFirst()
+                .orElseThrow(() -> new ApiException(400, "未找到可撤销的待审核或排队申请，请刷新页面查看最新状态"));
+        String previousStatus = app.status;
+        boolean waiting = "WAITING".equals(previousStatus);
         int old = app.currentRank == null ? 0 : app.currentRank;
         app.status = "CANCELLED";
+        app.currentRank = 0;
         apps.save(app);
-        evidence.create(user.communityId, user.id, "CANCEL", "业主【" + user.realName + "】主动撤销第【" + old + "】位排队资格",
-                Map.of("reason", reason == null ? "个人原因自愿撤销" : reason, "cancelled_rank", old), null);
-        engine.recalculate(user.communityId);
-        return "排队申请已成功撤销，排位已释放";
+        String summary = waiting
+                ? "业主【" + user.realName + "】主动撤销第【" + old + "】位排队资格"
+                : "业主【" + user.realName + "】主动撤销待物业审核的车位申请";
+        evidence.create(user.communityId, user.id, "CANCEL", summary,
+                Map.of("app_id", app.id, "previous_status", previousStatus,
+                        "reason", reason == null || reason.isBlank() ? "个人原因自愿撤销" : reason,
+                        "cancelled_rank", old), null);
+        if (waiting) engine.recalculate(user.communityId);
+        return waiting ? "排队申请已成功撤销，排位已释放" : "待审核申请已成功撤销，可修改资料后重新申请";
     }
 
     @Transactional

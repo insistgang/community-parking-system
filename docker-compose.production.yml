@@ -34,6 +34,9 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:?MYSQL_PASSWORD is required}
       BOOTSTRAP_ADMIN_PHONE: ${BOOTSTRAP_ADMIN_PHONE:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      DOCUMENT_STORAGE_PATH: /app/application-documents
+    volumes:
+      - ./application-documents:/app/application-documents
     depends_on:
       mysql:
         condition: service_healthy

@@ -168,6 +168,8 @@
               </span>
             </div>
 
+            <ApplicationDocumentList v-if="myQueue?.attachments?.length" :documents="myQueue.attachments" />
+
             <!-- 审核流程进度条 -->
             <div class="bg-amber-50/80 rounded-xl p-3 border border-amber-200/80 space-y-2 text-xs">
               <div class="flex items-center justify-between">
@@ -415,6 +417,7 @@
 
 <script setup>
 import AppIcon from '../components/AppIcon.vue'
+import ApplicationDocumentList from '../components/ApplicationDocumentList.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '../store/user'
 import api from '../api'
@@ -475,15 +478,20 @@ onUnmounted(() => {
 })
 
 const handleCancelApply = async () => {
+  const pendingReview = viewState.value === 'PENDING_REVIEW'
   const ok = await showConfirm({
-    title: '撤销排队申请确认',
-    message: '撤销申请后，您当前的顺位将立即释放给后续业主。重新申请需重新核验并排至队尾。确认撤销吗？',
+    title: pendingReview ? '撤销待审核申请确认' : '撤销排队申请确认',
+    content: pendingReview
+      ? '撤销后，物业将停止审核本次申请。您可以修改资料后重新提交。确认撤销吗？'
+      : '撤销申请后，您当前的顺位将立即释放给后续业主。重新申请需重新核验并排至队尾。确认撤销吗？',
     confirmText: '确认撤销',
     type: 'danger'
   })
   if (!ok) return
   try {
-    const res = await api.post('/parking/cancel-apply', { reason: '自愿放弃申请' })
+    const res = await api.post('/parking/cancel-apply', {
+      reason: pendingReview ? '主动撤销待审核申请' : '自愿放弃排队申请'
+    })
     showToast(res.message || '申请已成功撤销', 'success')
     await loadData()
   } catch (err) {

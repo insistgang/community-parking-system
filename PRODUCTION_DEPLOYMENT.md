@@ -8,6 +8,7 @@
 - 后端：Java 17 / Spring Boot，容器内 `8080`，没有宿主机端口映射。
 - 数据库：MySQL 8.4，容器内 `3306`，没有宿主机端口映射。数据仅写入 `./mysql-data`。
 - 前后端和数据库使用独立的 `parking-produce` Compose 项目及网络。
+- `PROD_DOCKER_SUBNET` 为生产项目预留独立网段；部署前确认它不与服务器现有 Docker 网络及宿主机路由重叠。
 - 生产端从空库启动，不复制测试数据库，也不创建演示账号和演示车位。
 
 ## 本地构建与打包
@@ -38,7 +39,7 @@ cp .env.production.example .env.production
 chmod 600 .env.production
 ```
 
-编辑 `.env.production`：填写两个不同的 MySQL 随机密码、首次平台管理员手机号及至少 12 位随机密码；将 `PROD_BIND_IP` 改为服务器实际内网 IP。不要提交或发送该文件。
+编辑 `.env.production`：填写两个不同的 MySQL 随机密码、首次平台管理员手机号及至少 12 位随机密码；将 `PROD_BIND_IP` 改为服务器实际内网 IP，并核对 `PROD_DOCKER_SUBNET` 未被占用。不要提交或发送该文件。
 
 ```bash
 docker compose --env-file .env.production \

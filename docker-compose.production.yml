@@ -50,3 +50,6 @@ services:
 networks:
   production-net:
     driver: bridge
+    ipam:
+      config:
+        - subnet: ${PROD_DOCKER_SUBNET:?PROD_DOCKER_SUBNET is required}

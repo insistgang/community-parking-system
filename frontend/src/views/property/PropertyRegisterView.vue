@@ -133,7 +133,7 @@
           </div>
 
           <div v-if="errorMsg" class="p-2.5 bg-rose-900/50 border border-rose-600 rounded-xl text-rose-300 text-xs font-medium">
-            ⚠️ {{ errorMsg }}
+            <AppIcon name="warning" size="1em" /> {{ errorMsg }}
           </div>
 
           <button
@@ -142,7 +142,7 @@
             class="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-lg shadow-purple-500/30 transition active:scale-[0.98] disabled:opacity-50 mt-1"
           >
             <span v-if="loading">正在建档并初始化...</span>
-            <span v-else>立即注册并进入管理 ➔</span>
+            <span v-else>立即注册并进入管理 <AppIcon name="arrow" size="1em" /></span>
           </button>
         </form>
 
@@ -160,6 +160,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../../components/AppIcon.vue'
 import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'

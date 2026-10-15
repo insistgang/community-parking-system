@@ -7,7 +7,7 @@
       <!-- 物业管理员身份专属巡检横幅 (物业人员返回前台时显示) -->
       <div v-if="userStore.isPropertyAdmin" class="bg-gradient-to-r from-purple-900 via-indigo-900 to-slate-900 text-white rounded-2xl p-3.5 shadow-md border border-purple-500/30 flex items-center justify-between gap-3 animate-fade-in">
         <div class="flex items-center gap-2.5 min-w-0">
-          <span class="text-2xl">🏢</span>
+          <span class="text-2xl"><AppIcon name="building" size="1em" /></span>
           <div class="min-w-0">
             <span class="text-xs font-bold text-purple-200 block truncate">物业管理巡检视角 · {{ userStore.realName }}</span>
             <span class="text-[10px] text-slate-300 block">当前正在以管理员身份浏览前台大盘与公示</span>
@@ -17,7 +17,7 @@
           to="/property/dashboard"
           class="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shrink-0 shadow transition active:scale-95 flex items-center gap-1"
         >
-          <span>回物业端 ➔</span>
+          <span>回物业端 <AppIcon name="arrow" size="1em" /></span>
         </router-link>
       </div>
 
@@ -36,9 +36,7 @@
         <div class="flex items-center justify-between mb-4">
           <div class="flex items-center gap-2">
             <span class="p-2 rounded-xl bg-white/10 text-emerald-300">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.5 2.8C2.1 11 2 11.5 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/>
-              </svg>
+              <AppIcon name="car" class="w-5 h-5" />
             </span>
             <div>
               <span class="text-xs text-blue-200">您名下的承租车位</span>
@@ -121,7 +119,7 @@
 
           <!-- 候补首位特殊提示 -->
           <div v-if="myQueue.current_rank === 1" class="mt-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium flex items-center gap-2">
-            <span class="text-base">⭐</span>
+            <span class="text-base"><AppIcon name="star" size="1em" /></span>
             <span>您已升至候补首位！一旦有空闲车位释放，系统将第一时间为您锁定并推送 48h 确认通知！</span>
           </div>
 
@@ -143,9 +141,7 @@
             @click="handleCancelApply"
             class="w-full py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 font-semibold text-xs border border-rose-200 shadow-sm transition active:scale-[0.99] flex items-center justify-center gap-1.5"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
-            </svg>
+            <AppIcon name="error" class="w-4 h-4" />
             <span>撤销车位申请 (放弃当前排位)</span>
           </button>
         </div>
@@ -182,14 +178,14 @@
               </div>
               <div class="space-y-1.5 pt-1 text-[11px]">
                 <div class="flex items-center gap-2 text-emerald-700 font-semibold">
-                  <span>✓ 步骤 1：申请信息已提交</span>
+                  <span><AppIcon name="check" size="1em" /> 步骤 1：申请信息已提交</span>
                 </div>
                 <div class="flex items-center gap-2 text-amber-800 font-bold">
-                  <span class="animate-spin">⏳</span>
+                  <AppIcon name="clock" :size="14" />
                   <span>步骤 2：等待物业核对证明材料原件</span>
                 </div>
                 <div class="flex items-center gap-2 text-slate-400">
-                  <span>⚪ 步骤 3: 人工审核通过后系统自动并入车位 FIFO 轮候序列</span>
+                  <span><AppIcon name="circle" size="1em" /> 步骤 3: 人工审核通过后系统自动并入车位 FIFO 轮候序列</span>
                 </div>
               </div>
             </div>
@@ -206,9 +202,7 @@
               @click="handleCancelApply"
               class="w-full py-2.5 rounded-xl bg-white hover:bg-rose-50 text-rose-600 font-semibold text-xs border border-rose-200 shadow-sm transition active:scale-[0.99] flex items-center justify-center gap-1.5"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/><path d="m15 9-6 6"/><path d="m9 9 6 6"/>
-              </svg>
+              <AppIcon name="error" class="w-4 h-4" />
               <span>撤销本次申请</span>
             </button>
           </div>
@@ -230,7 +224,7 @@
 
           <div class="bg-rose-50 rounded-xl p-4 border border-rose-200 space-y-2 my-2">
             <div class="flex items-center gap-2 text-rose-800 font-bold text-xs">
-              <span>⚠️ 物业人工审核驳回意见：</span>
+              <span><AppIcon name="warning" size="1em" /> 物业人工审核驳回意见：</span>
             </div>
             <p class="text-xs text-rose-700 font-medium leading-relaxed bg-white/80 p-3 rounded-lg border border-rose-200">
               {{ myQueue?.reject_reason || '材料不齐或车辆权属凭证不符合规定要求，请核对后重新提交。' }}
@@ -245,7 +239,7 @@
               to="/apply"
               class="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs text-center shadow-md shadow-blue-500/20 transition active:scale-[0.98]"
             >
-              ✏️ 修改材料，重新发起申报 ➔
+              <AppIcon name="edit" size="1em" /> 修改材料，重新发起申报 <AppIcon name="arrow" size="1em" />
             </router-link>
           </div>
         </div>
@@ -254,10 +248,8 @@
       <!-- 视图 B: 新客无车位视图 / 物业管理员巡检视图 -->
       <div v-else class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 text-center space-y-4">
         <div class="w-16 h-16 rounded-full flex items-center justify-center mx-auto shadow-inner" :class="userStore.isPropertyAdmin ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'">
-          <span v-if="userStore.isPropertyAdmin" class="text-3xl">🏢</span>
-          <svg v-else xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/>
-          </svg>
+          <span v-if="userStore.isPropertyAdmin" class="text-3xl"><AppIcon name="building" size="1em" /></span>
+          <AppIcon name="parking" v-else class="w-8 h-8" />
         </div>
         <div v-if="userStore.isPropertyAdmin">
           <h3 class="text-base font-black text-slate-800">物业管理员前台巡检模式</h3>
@@ -277,20 +269,16 @@
           to="/property/dashboard"
           class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-md shadow-purple-500/20 active:scale-[0.98] transition"
         >
-          <span>🏢 进入物业管理后台</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
+          <span><AppIcon name="building" size="1em" /> 进入物业管理后台</span>
+          <AppIcon name="chevron" class="w-4 h-4" />
         </router-link>
         <router-link
           v-else
           to="/apply"
           class="inline-flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm shadow-md shadow-blue-500/20 active:scale-[0.98] transition"
         >
-          <span>立即申请车位排位 ➔</span>
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="m9 18 6-6-6-6"/>
-          </svg>
+          <span>立即申请车位排位</span>
+          <AppIcon name="arrow" class="w-4 h-4" />
         </router-link>
       </div>
 
@@ -307,27 +295,31 @@
 
         <div class="grid grid-cols-4 gap-2 text-center text-xs">
           <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+            <AppIcon name="car" :size="17" class="mb-1 text-slate-500" />
             <span class="text-slate-400 text-[10px] block">已租车位</span>
             <span class="text-base font-extrabold text-slate-800 mt-0.5 block">{{ overview?.rented_spaces ?? 0 }}</span>
           </div>
           <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
+            <AppIcon name="parking" :size="17" class="mb-1 text-emerald-500" />
             <span class="text-emerald-600 text-[10px] block font-medium">空闲可用</span>
             <span class="text-base font-extrabold text-emerald-700 mt-0.5 block">{{ overview?.vacant_spaces ?? 0 }}</span>
           </div>
           <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-100">
+            <AppIcon name="file-check" :size="17" class="mb-1 text-amber-500" />
             <span class="text-amber-600 text-[10px] block font-medium">中签待签</span>
             <span class="text-base font-extrabold text-amber-700 mt-0.5 block">{{ overview?.allocated_spaces ?? 0 }}</span>
           </div>
           <div class="bg-orange-50 p-2.5 rounded-xl border border-orange-100">
+            <AppIcon name="wrench" :size="17" class="mb-1 text-orange-500" />
             <span class="text-orange-600 text-[10px] block font-medium">维修停用</span>
             <span class="text-base font-extrabold text-orange-700 mt-0.5 block">{{ overview?.maintenance_spaces ?? 0 }}</span>
           </div>
         </div>
 
         <div class="mt-3 pt-2.5 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
-          <span>🔒 业主隐私安全：个人车辆信息互不可见</span>
+          <span><AppIcon name="lock" size="1em" /> 业主隐私安全：个人车辆信息互不可见</span>
           <router-link to="/queue" class="text-blue-600 font-semibold hover:underline">
-            查看排队情况 ➔
+            查看排队情况 <AppIcon name="arrow" size="1em" />
           </router-link>
         </div>
       </div>
@@ -341,14 +333,14 @@
         <div class="flex items-center justify-between border-b border-slate-100 pb-3">
           <div class="flex items-center gap-2">
             <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">
-              ⏳
+              <AppIcon name="clock" size="1em" />
             </span>
             <div>
               <h3 class="text-sm font-bold text-slate-800">车位续租申请</h3>
               <p class="text-xs text-slate-400">车位：{{ mySpace.space_no }} ({{ mySpace.plate_no }})</p>
             </div>
           </div>
-          <button @click="showRenewModal = false" class="text-slate-400 hover:text-slate-600 p-1 text-base">✕</button>
+          <button @click="showRenewModal = false" class="text-slate-400 hover:text-slate-600 p-1 text-base" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
 
         <div class="space-y-3 text-xs">
@@ -395,7 +387,7 @@
           </div>
 
           <p class="text-[11px] text-slate-400 leading-relaxed">
-            💡 提示：续租和缴费请先到物业服务中心办理，系统会记录经确认的租约变更。
+            <AppIcon name="info" size="1em" /> 提示：续租和缴费请先到物业服务中心办理，系统会记录经确认的租约变更。
           </p>
         </div>
 
@@ -422,6 +414,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../components/AppIcon.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '../store/user'
 import api from '../api'

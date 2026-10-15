@@ -3,10 +3,7 @@
     <div class="max-w-md w-full bg-slate-900/90 rounded-3xl p-6 sm:p-8 shadow-2xl border border-slate-800 backdrop-blur">
       <div class="text-center mb-6">
         <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-indigo-600 text-white mb-3 shadow-lg shadow-indigo-600/30">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
-            <path d="m9 12 2 2 4-4"/>
-          </svg>
+          <AppIcon name="shield" :size="30" />
         </div>
         <h2 class="text-xl font-black text-white tracking-wide">慧停管家 · 管理员登录</h2>
         <p class="text-xs text-slate-400 mt-1">系统监控 · 用户管理 · 操作日志 · 接口日志</p>
@@ -14,7 +11,7 @@
 
       <div class="p-3 bg-indigo-950/60 border border-indigo-500/30 rounded-xl text-xs text-indigo-300 mb-6 flex items-center justify-between">
         <span class="flex items-center gap-1.5">
-          <span>🛡️</span>
+          <span><AppIcon name="shield" size="1em" /></span>
           <span>系统管理员登录</span>
         </span>
         <button v-if="!isProduction"
@@ -50,7 +47,7 @@
         </div>
 
         <div v-if="errorMsg" class="p-2.5 bg-rose-950/80 border border-rose-500/40 rounded-xl text-rose-300 text-xs font-medium">
-          ⚠️ {{ errorMsg }}
+          <AppIcon name="warning" size="1em" /> {{ errorMsg }}
         </div>
 
         <button
@@ -65,10 +62,10 @@
 
       <div class="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-500">
         <router-link to="/login" class="text-blue-400 hover:underline">
-          ➔ 返回业主端
+          <AppIcon name="arrow" size="1em" /> 返回业主端
         </router-link>
         <router-link to="/property/login" class="text-purple-400 hover:underline">
-          ➔ 前往物业工作台
+          <AppIcon name="arrow" size="1em" /> 前往物业工作台
         </router-link>
       </div>
     </div>
@@ -76,6 +73,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../../components/AppIcon.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'

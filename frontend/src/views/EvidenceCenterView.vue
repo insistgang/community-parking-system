@@ -6,7 +6,7 @@
       <div class="bg-gradient-to-r from-blue-900 to-indigo-900 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
         <div class="flex items-center gap-3">
           <div class="w-10 h-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center text-xl shadow-inner">
-            ⛓️
+            <AppIcon name="shield" size="1em" />
           </div>
           <div>
             <h2 class="text-base font-extrabold tracking-wide">个人审计记录中心</h2>
@@ -44,7 +44,7 @@
 
             <div class="bg-slate-50 p-2 rounded-xl text-[11px] font-mono text-slate-500 break-all mb-2 flex items-center justify-between">
               <span>{{ item.tx_hash.slice(0, 20) }}...{{ item.tx_hash.slice(-16) }}</span>
-              <span class="text-blue-600 font-sans font-semibold text-[10px]">查看记录 ➔</span>
+              <span class="text-blue-600 font-sans font-semibold text-[10px]">查看记录 <AppIcon name="arrow" size="1em" /></span>
             </div>
 
             <div class="flex items-center justify-between text-[10px] text-slate-400">
@@ -73,6 +73,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../components/AppIcon.vue'
 import { ref, onMounted } from 'vue'
 import api from '../api'
 import NavBar from '../components/NavBar.vue'

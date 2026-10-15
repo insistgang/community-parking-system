@@ -1,35 +1,31 @@
 <template>
-  <!-- 底部固定导航栏 (业主 H5 全局 TabBar) -->
-  <nav class="fixed bottom-0 inset-x-0 bg-white/95 backdrop-blur border-t border-slate-200 py-2 px-6 flex items-center justify-around text-xs z-40 max-w-md mx-auto shadow-lg">
-    <router-link to="/" class="flex flex-col items-center gap-0.5 font-bold transition" :class="$route.path === '/' ? 'text-blue-600' : 'text-slate-400 hover:text-blue-600 font-medium'">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-      </svg>
-      <span class="text-[10px]">我的车辆</span>
-    </router-link>
-
-    <router-link to="/queue" class="flex flex-col items-center gap-0.5 transition" :class="$route.path === '/queue' ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-blue-600 font-medium'">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
-      </svg>
-      <span class="text-[10px]">顺位公示</span>
-    </router-link>
-
-    <router-link to="/evidence" class="flex flex-col items-center gap-0.5 transition" :class="$route.path === '/evidence' ? 'text-blue-600 font-bold' : 'text-slate-400 hover:text-blue-600 font-medium'">
-      <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/>
-      </svg>
-      <span class="text-[10px]">审计记录</span>
-    </router-link>
-
-    <router-link v-if="userStore.isPropertyAdmin" to="/property/dashboard" class="flex flex-col items-center gap-0.5 text-purple-600 hover:text-purple-700 font-bold transition">
-      <span class="text-base leading-none">🏢</span>
-      <span class="text-[10px]">物业管理</span>
+  <nav aria-label="主导航" class="fixed bottom-0 inset-x-0 z-40 mx-auto flex max-w-md items-center justify-around border-t border-slate-200 bg-white/95 px-3 pt-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] backdrop-blur shadow-lg">
+    <router-link v-for="item in items" :key="item.to" :to="item.to"
+      :aria-current="isActive(item) ? 'page' : undefined"
+      class="flex min-h-[54px] min-w-[72px] flex-col items-center justify-center gap-1 rounded-xl px-2 text-[11px] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+      :class="isActive(item) ? 'text-blue-600 font-bold' : 'text-slate-500 font-medium hover:text-blue-600'">
+      <span class="flex h-7 w-12 items-center justify-center rounded-full transition-colors"
+        :class="isActive(item) ? 'bg-blue-50' : ''">
+        <AppIcon :name="item.icon" :size="21" :stroke-width="isActive(item) ? 2 : 1.8" />
+      </span>
+      <span>{{ item.label }}</span>
     </router-link>
   </nav>
 </template>
 
 <script setup>
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useUserStore } from '../store/user'
+import AppIcon from './AppIcon.vue'
+
+const route = useRoute()
 const userStore = useUserStore()
+const items = computed(() => [
+  { to: '/', label: '我的车辆', icon: 'car' },
+  { to: '/queue', label: '顺位公示', icon: 'queue' },
+  { to: '/evidence', label: '审计记录', icon: 'shield' },
+  ...(userStore.isPropertyAdmin ? [{ to: '/property/dashboard', label: '物业管理', icon: 'building' }] : []),
+])
+const isActive = (item) => route.path === item.to || (item.to === '/' && route.path === '/apply')
 </script>

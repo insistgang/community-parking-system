@@ -8,14 +8,12 @@
           class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-700/80 hover:bg-slate-600 active:scale-95 text-slate-200 text-xs font-semibold transition border border-slate-600 shrink-0 cursor-pointer"
           title="以当前管理员身份返回前台首页"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
+          <AppIcon name="back" class="w-4 h-4" />
           <span>返回业主端</span>
         </router-link>
 
         <div class="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white font-bold shadow-md shadow-purple-600/30 shrink-0">
-          🏢
+          <AppIcon name="building" :size="22" />
         </div>
         <div class="min-w-0">
           <div class="flex items-center gap-2 flex-wrap">
@@ -31,18 +29,18 @@
       <div class="flex items-center gap-2 flex-wrap text-xs">
         <button v-if="isProduction" @click="openOwnerInvite"
           class="px-3 py-1.5 rounded-xl bg-indigo-700 hover:bg-indigo-600 text-white font-semibold transition shadow-sm">
-          ＋ 签发业主邀请码
+          <AppIcon name="plus" size="1em" /> 签发业主邀请码
         </button>
         <button v-if="isProduction" @click="showAddSpace = true"
           class="px-3 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-semibold transition shadow-sm">
-          ＋ 录入真实车位
+          <AppIcon name="plus" size="1em" /> 录入真实车位
         </button>
         <button v-if="!isProduction"
           @click="handleResetDemo"
           class="px-3 py-1.5 rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-semibold transition active:scale-95 flex items-center gap-1.5 shadow-sm"
           title="防翻车：一键将所有车位和账号重置为初始演示状态"
         >
-          <span>🔄 一键重置演示</span>
+          <span><AppIcon name="refresh" size="1em" /> 一键重置演示</span>
         </button>
 
         <button
@@ -50,14 +48,14 @@
           class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white font-semibold transition active:scale-95 flex items-center gap-1.5 shadow-sm"
           title="快速选择车位设为维修停用或录入报修"
         >
-          <span>🛠️ 登记车位维修</span>
+          <span><AppIcon name="wrench" size="1em" /> 登记车位维修</span>
         </button>
 
         <button
           @click="handleExcelTemplate"
           class="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold transition flex items-center gap-1.5"
         >
-          <span>📥 导出台账 Excel</span>
+          <span><AppIcon name="export" size="1em" /> 导出台账 Excel</span>
         </button>
 
         <button
@@ -65,7 +63,7 @@
           class="px-3 py-1.5 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-semibold transition flex items-center gap-1.5"
           :title="userStore.propertyTheme === 'dark' ? '切换为浅色模式' : '切换为深色大屏模式'"
         >
-          <span>{{ userStore.propertyTheme === 'dark' ? '☀️ 浅色' : '🌙 深色' }}</span>
+          <AppIcon :name="userStore.propertyTheme === 'dark' ? 'sun' : 'moon'" :size="16" /><span>{{ userStore.propertyTheme === 'dark' ? '浅色' : '深色' }}</span>
         </button>
 
         <button
@@ -89,7 +87,7 @@
             ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
             : 'text-slate-400 hover:text-white hover:bg-slate-700'"
         >
-          <span class="block text-base leading-none mb-0.5">{{ tab.icon }}</span>
+          <span class="flex justify-center mb-1"><AppIcon :name="tab.icon" :size="20" /></span>
           <span>{{ tab.label }}</span>
           <span
             v-if="tab.id === 'audit' && stats.pending_audit_count > 0"
@@ -142,7 +140,7 @@
       <!-- 第 2 栏: 排队周转统计报表 -->
       <div v-show="activePanel === 'report'" class="bg-slate-800 rounded-2xl p-5 border border-slate-700">
         <div class="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <h3 class="text-xs font-bold text-white flex items-center gap-1.5">📊 排队周转统计报表</h3>
+          <h3 class="text-xs font-bold text-white flex items-center gap-1.5"><AppIcon name="chart" size="1em" /> 排队周转统计报表</h3>
           <span class="text-[10px] text-slate-400">基于存证流水与租约台账实时测算</span>
         </div>
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
@@ -214,7 +212,7 @@
               :class="statusFilter === 'MAINTENANCE' ? 'bg-rose-600 text-white border-rose-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
             >
               <span class="w-2 h-2 rounded-full bg-rose-400"></span>
-              <span>🛠️ 维修停用 ({{ stats.maintenance_spaces ?? 0 }})</span>
+              <span><AppIcon name="wrench" size="1em" /> 维修停用 ({{ stats.maintenance_spaces ?? 0 }})</span>
             </button>
           </div>
         </div>
@@ -256,7 +254,7 @@
               class="px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
               :class="auditSubTab === 'applications' ? 'bg-purple-600 text-white shadow-md' : 'bg-slate-900/70 text-slate-300 hover:text-white border border-slate-700/80'"
             >
-              <span>📋 车位排队申请审核台账</span>
+              <span><AppIcon name="clipboard" size="1em" /> 车位排队申请审核台账</span>
               <span v-if="pendingAuditCount > 0" class="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-mono font-bold">
                 {{ pendingAuditCount }} 待审
               </span>
@@ -266,7 +264,7 @@
               class="px-3.5 sm:px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2"
               :class="auditSubTab === 'strategy' ? 'bg-purple-600 text-white shadow-md' : 'bg-slate-900/70 text-slate-300 hover:text-white border border-slate-700/80'"
             >
-              <span>⚙️ 申报机制与特定业主特例通道</span>
+              <span><AppIcon name="settings" size="1em" /> 申报机制与特定业主特例通道</span>
               <span v-if="customizedUserCount > 0" class="px-1.5 py-0.2 rounded-full bg-indigo-500/40 text-indigo-300 text-[10px] font-mono border border-indigo-500/40">
                 {{ customizedUserCount }} 特例
               </span>
@@ -282,7 +280,7 @@
           <div class="flex items-center justify-between flex-wrap gap-3">
             <div>
               <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                <span>📋 车位排队申请审核台账</span>
+                <span><AppIcon name="clipboard" size="1em" /> 车位排队申请审核台账</span>
                 <span v-if="pendingAuditCount > 0" class="text-xs text-amber-400 font-normal">
                   (待人工审核: {{ pendingAuditCount }} 单)
                 </span>
@@ -377,7 +375,7 @@
                       @click="openViewAttachmentsModal(app)"
                       class="text-blue-400 hover:text-blue-300 px-2.5 py-1 rounded-lg bg-blue-950/40 hover:bg-blue-900/40 border border-blue-800/50 transition text-xs flex items-center gap-1 font-medium"
                     >
-                      <span>{{ isProduction ? '📋 打开审核' : `📎 查验原件资料 (${app.attachments?.length || 3}份)` }}</span>
+                      <span><AppIcon name="review" :size="14" /> {{ isProduction ? '打开审核' : `查验原件资料 (${app.attachments?.length || 3}份)` }}</span>
                     </button>
                   </td>
                   <td class="p-3">
@@ -399,14 +397,14 @@
                         :disabled="actionLoading"
                         class="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow active:scale-95"
                       >
-                        ✓ 通过
+                        <AppIcon name="check" size="1em" /> 通过
                       </button>
                       <button
                         @click="openRejectModal(app)"
                         :disabled="actionLoading"
                         class="px-2.5 py-1 rounded-lg bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs transition shadow active:scale-95"
                       >
-                        ✕ 驳回
+                        <AppIcon name="close" size="1em" /> 驳回
                       </button>
                     </div>
                     <span v-else class="text-slate-500 text-[11px]">{{ isProduction && app.status === 'PENDING_REVIEW' ? '请打开审核' : '无需操作' }}</span>
@@ -424,7 +422,7 @@
             <div class="flex items-center justify-between flex-wrap gap-2 border-b border-slate-700 pb-3">
               <div>
                 <h3 class="text-sm font-bold text-white flex items-center gap-2">
-                  <span>⚙️ 小区车位申请审核方式配置 (全局基础策略)</span>
+                  <span><AppIcon name="settings" size="1em" /> 小区车位申请审核方式配置 (全局基础策略)</span>
                   <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold border"
                     :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'bg-purple-900/60 text-purple-300 border-purple-500/40' : 'bg-emerald-900/60 text-emerald-300 border-emerald-500/40'"
                   >
@@ -450,13 +448,13 @@
                 <div class="space-y-2">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <span class="text-xl">⚡</span>
+                      <span class="text-xl"><AppIcon name="zap" size="1em" /></span>
                       <h4 class="font-bold text-white text-sm">三证合一（AI 自动化审核）</h4>
                     </div>
                     <span
                       class="w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
                       :class="currentAuditMode === 'THREE_CERT_AUTO' ? 'border-emerald-400 bg-emerald-500 text-white' : 'border-slate-600 text-transparent'"
-                    >✓</span>
+                    ><AppIcon name="check" size="1em" /></span>
                   </div>
                   <p class="text-xs text-slate-300 leading-relaxed">
                     业主提交申请沿用原有流程。系统自动通过政务跨库（公安/不动产/交管）完成三证合一智能核验，通过后<strong>单据直接进入 FIFO 阳光排位序列</strong>，无需人工介入。
@@ -465,7 +463,7 @@
                 <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
                   <span class="text-emerald-400 font-medium">适合：产权清晰规范、追求高自动化小区</span>
                   <span v-if="currentAuditMode === 'THREE_CERT_AUTO'" class="text-emerald-300 font-bold">● 当前生效使用中</span>
-                  <span v-else class="text-slate-400 hover:text-white">点击切换启用 ➔</span>
+                  <span v-else class="text-slate-400 hover:text-white">点击切换启用 <AppIcon name="arrow" size="1em" /></span>
                 </div>
               </div>
 
@@ -480,13 +478,13 @@
                 <div class="space-y-2">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <span class="text-xl">🛡️</span>
+                      <span class="text-xl"><AppIcon name="shield" size="1em" /></span>
                       <h4 class="font-bold text-white text-sm">灵活配置（AI 自动化 + 人工审核）</h4>
                     </div>
                     <span
                       class="w-5 h-5 rounded-full border-2 flex items-center justify-center text-[10px] font-bold"
                       :class="currentAuditMode === 'FLEXIBLE_HYBRID' ? 'border-purple-400 bg-purple-500 text-white' : 'border-slate-600 text-transparent'"
-                    >✓</span>
+                    ><AppIcon name="check" size="1em" /></span>
                   </div>
                   <p class="text-xs text-slate-300 leading-relaxed">
                     业主提交申请需上传<strong>多张必填材料附件</strong>，先经 AI 基础校验，通过后<strong>流转至物业人工审核池</strong>。物业审核通过则单据进入排位序列；审核驳回时需填写驳回理由并通过站内消息通知业主修改重提。
@@ -495,7 +493,7 @@
                 <div class="pt-2 border-t border-slate-700/60 flex items-center justify-between text-[11px]">
                   <span class="text-purple-400 font-medium">适合：老旧小区历史遗留多、需物业人工复核</span>
                   <span v-if="currentAuditMode === 'FLEXIBLE_HYBRID'" class="text-purple-300 font-bold">● 当前生效使用中</span>
-                  <span v-else class="text-slate-400 hover:text-white">点击切换启用 ➔</span>
+                  <span v-else class="text-slate-400 hover:text-white">点击切换启用 <AppIcon name="arrow" size="1em" /></span>
                 </div>
               </div>
             </div>
@@ -505,7 +503,7 @@
           <div class="bg-slate-800 rounded-3xl p-4 sm:p-6 border border-slate-700 space-y-4">
             <div class="flex items-center justify-between flex-wrap gap-2 border-b border-slate-700 pb-3">
               <div class="flex items-center gap-2">
-                <span class="text-base">🎯</span>
+                <span class="text-base"><AppIcon name="target" size="1em" /></span>
                 <div>
                   <h4 class="text-sm font-bold text-white flex items-center gap-1.5">
                     <span>特定业主特例申报通道 (个性化特批名单)</span>
@@ -523,7 +521,7 @@
                 @click="loadCommunityUsers"
                 class="text-xs text-slate-300 hover:text-white px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-slate-600 flex items-center gap-1.5 transition shadow"
               >
-                <span>🔄 刷新业主名单</span>
+                <span><AppIcon name="refresh" size="1em" /> 刷新业主名单</span>
               </button>
             </div>
 
@@ -531,7 +529,7 @@
             <div class="flex items-center justify-between flex-wrap gap-2 bg-slate-900/80 p-2.5 rounded-2xl border border-slate-700/80">
               <!-- 实时搜索输入框 -->
               <div class="relative flex-1 min-w-[220px]">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs">🔍</span>
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"><AppIcon name="search" size="1em" /></span>
                 <input
                   v-model="userSearchKeyword"
                   type="text"
@@ -542,7 +540,7 @@
                   v-if="userSearchKeyword"
                   @click="userSearchKeyword = ''"
                   class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
-                >✕</button>
+                 aria-label="关闭"><AppIcon name="close" size="1em" /></button>
               </div>
 
               <!-- 状态筛选胶囊 -->
@@ -638,7 +636,7 @@
                     @click="handleSetUserAuditMode(u.id, 'FLEXIBLE_HYBRID')"
                     class="px-2.5 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-500/40 font-bold text-[10px] transition flex items-center gap-1"
                   >
-                    <span>⚡ 特批灵活申报</span>
+                    <span><AppIcon name="zap" size="1em" /> 特批灵活申报</span>
                   </button>
                   <button
                     v-if="u.effective_audit_mode !== 'THREE_CERT_AUTO'"
@@ -646,7 +644,7 @@
                     @click="handleSetUserAuditMode(u.id, 'THREE_CERT_AUTO')"
                     class="px-2.5 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/50 text-blue-200 border border-blue-500/40 font-bold text-[10px] transition flex items-center gap-1"
                   >
-                    <span>🛡️ 指定标准申报</span>
+                    <span><AppIcon name="shield" size="1em" /> 指定标准申报</span>
                   </button>
                   <button
                     v-if="u.is_customized"
@@ -678,7 +676,7 @@
               <p class="text-xs text-slate-400">当前状态: {{ getStatusLabel(currentSpace.status) }}</p>
             </div>
           </div>
-          <button @click="selectedSpaceModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="selectedSpaceModal = false" class="text-slate-400 hover:text-white p-1" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
 
         <!-- 详细信息 | 车位档案 | 管理操作：手机单列，宽屏三列 -->
@@ -712,7 +710,7 @@
         <!-- 车位档案: 历史承租记录与流转事件 -->
         <div class="bg-slate-900/80 p-3.5 rounded-xl border border-slate-700 text-xs space-y-2">
           <div class="flex items-center justify-between">
-            <h4 class="font-bold text-white">📁 车位档案 · 历史承租记录</h4>
+            <h4 class="font-bold text-white"><AppIcon name="folder" size="1em" /> 车位档案 · 历史承租记录</h4>
             <span class="text-[10px] text-slate-400">{{ spaceArchive ? spaceArchive.history.length + ' 条记录' : '加载中...' }}</span>
           </div>
           <div v-if="spaceArchive && spaceArchive.history.length === 0" class="text-slate-400 py-1">暂无承租记录</div>
@@ -778,7 +776,7 @@
           <div v-if="currentSpace.status === 'ALLOCATED' || currentSpace.status === 'OFFLINE_PENDING'" class="p-3 bg-amber-950/40 border border-amber-800/60 rounded-xl space-y-2.5">
             <div class="flex items-center justify-between">
               <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                <span>📝 线下履约交付确认</span>
+                <span><AppIcon name="edit" size="1em" /> 线下履约交付确认</span>
               </h4>
               <span class="text-[10px] text-amber-400 bg-amber-900/60 px-2 py-0.5 rounded border border-amber-500/30">
                 待签约交付
@@ -842,7 +840,7 @@
               :disabled="actionLoading"
               class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98]"
             >
-              ✓ 线下签约已完成，确认正式交付
+              <AppIcon name="check" size="1em" /> 线下签约已完成，确认正式交付
             </button>
           </div>
 
@@ -850,7 +848,7 @@
           <div v-if="currentSpace.status !== 'MAINTENANCE'" class="p-3 bg-slate-900/90 border border-amber-500/40 rounded-xl space-y-2.5">
             <div class="flex items-center justify-between">
               <h4 class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                <span>🛠️ 车位报修维护 · 直接进入维修状态</span>
+                <span><AppIcon name="wrench" size="1em" /> 车位报修维护 · 直接进入维修状态</span>
               </h4>
               <span class="text-[10px] text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/30">
                 当前: {{ getStatusLabel(currentSpace.status) }}
@@ -884,7 +882,7 @@
                 :disabled="actionLoading"
                 class="w-full py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5"
               >
-                <span>🛠️ 确认：直接将该车位设为维修状态</span>
+                <span><AppIcon name="wrench" size="1em" /> 确认：直接将该车位设为维修状态</span>
               </button>
             </div>
           </div>
@@ -893,7 +891,7 @@
           <div v-else class="p-3 bg-emerald-950/40 border border-emerald-800/60 rounded-xl space-y-2.5">
             <div class="flex items-center justify-between">
               <h4 class="text-xs font-bold text-emerald-300 flex items-center gap-1.5">
-                <span>✅ 维修验收完毕 · 恢复上线投入使用</span>
+                <span><AppIcon name="success" size="1em" /> 维修验收完毕 · 恢复上线投入使用</span>
               </h4>
               <span class="text-[10px] text-rose-400 bg-rose-950/80 px-2 py-0.5 rounded border border-rose-500/30">维修停用中</span>
             </div>
@@ -905,7 +903,7 @@
               :disabled="actionLoading"
               class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition active:scale-[0.98] flex items-center justify-center gap-1.5"
             >
-              <span>⚡ 检修完成，恢复可用 (触发顺位自动分配)</span>
+              <span><AppIcon name="zap" size="1em" /> 检修完成，恢复可用 (触发顺位自动分配)</span>
             </button>
           </div>
 
@@ -928,13 +926,13 @@
       <div class="bg-slate-800 rounded-3xl max-w-md w-full p-6 text-slate-100 shadow-2xl border border-slate-700 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-700 pb-3">
           <div class="flex items-center gap-2">
-            <span class="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-base">🛠️</span>
+            <span class="w-8 h-8 rounded-lg bg-amber-600 text-white flex items-center justify-center font-bold text-base"><AppIcon name="wrench" size="1em" /></span>
             <div>
               <h3 class="text-sm font-bold text-white">选择车位直接进入维修状态</h3>
               <p class="text-xs text-slate-400">支持将小区任意车位一键置为维修停用</p>
             </div>
           </div>
-          <button @click="quickMaintenanceModal = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="quickMaintenanceModal = false" class="text-slate-400 hover:text-white p-1" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
 
         <div class="space-y-3 text-xs">
@@ -961,7 +959,7 @@
           </div>
 
           <div class="p-3 bg-amber-950/40 border border-amber-800/40 rounded-xl space-y-1">
-            <span class="text-[11px] font-bold text-amber-300 block">💡 物业运维说明</span>
+            <span class="text-[11px] font-bold text-amber-300 block"><AppIcon name="info" size="1em" /> 物业运维说明</span>
             <p class="text-[10px] text-slate-400 leading-relaxed">
               车位设为维修停用后，系统排位引擎将暂停向该车位分配；修缮完毕后点击“恢复可用”，调度引擎将严格依据 FIFO 公正自动分发给轮候首位业主。
             </p>
@@ -992,13 +990,13 @@
       <div class="bg-slate-800 rounded-3xl max-w-md w-full p-6 text-slate-100 shadow-2xl border border-slate-700 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-700 pb-3">
           <div class="flex items-center gap-2">
-            <span class="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center font-bold text-sm">✕</span>
+            <span class="w-8 h-8 rounded-lg bg-rose-600 text-white flex items-center justify-center font-bold text-sm"><AppIcon name="close" size="1em" /></span>
             <div>
               <h3 class="text-sm font-bold text-white">审核驳回确认</h3>
               <p class="text-xs text-slate-400">驳回理由将以系统消息实时通知业主</p>
             </div>
           </div>
-          <button @click="rejectModalVisible = false" class="text-slate-400 hover:text-white p-1">✕</button>
+          <button @click="rejectModalVisible = false" class="text-slate-400 hover:text-white p-1" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
 
         <div v-if="rejectTargetApp" class="bg-slate-900/80 p-3 rounded-xl border border-slate-700 text-xs space-y-1.5">
@@ -1062,7 +1060,7 @@
         <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-700/80 bg-slate-850">
           <div class="flex items-center gap-3">
             <span class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 text-white flex items-center justify-center font-bold text-lg shadow-md">
-              📁
+              <AppIcon name="folder" size="1em" />
             </span>
             <div>
               <div class="flex items-center gap-2 flex-wrap">
@@ -1088,8 +1086,8 @@
           <button
             @click="viewAttachmentsModalVisible = false"
             class="w-8 h-8 rounded-full hover:bg-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition"
-          >
-            ✕
+           aria-label="关闭">
+            <AppIcon name="close" size="1em" />
           </button>
         </div>
 
@@ -1119,7 +1117,7 @@
                   </span>
                 </div>
                 <span class="text-[9px] px-1.5 py-0.2 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/40 shrink-0">
-                  ✓ 已验真
+                  <AppIcon name="check" size="1em" /> 已验真
                 </span>
               </div>
               <div class="text-[10px] text-slate-400 flex items-center justify-between font-mono pl-6">
@@ -1130,7 +1128,7 @@
 
             <div class="mt-4 p-3 rounded-xl bg-blue-950/30 border border-blue-900/40 text-[10px] text-slate-400 space-y-1">
               <div class="text-blue-300 font-bold flex items-center gap-1">
-                <span>🛡️ 政务与隐私合规保障</span>
+                <span><AppIcon name="shield" size="1em" /> 政务与隐私合规保障</span>
               </div>
               <p class="leading-relaxed">
                 依据政务最小化原则，所有证件照片在端侧 1 秒完成拟真特征提取并生成防伪数字指纹，服务器存储加密结构化印鉴凭证，确保个人隐私合规。
@@ -1165,7 +1163,7 @@
             >
               <div class="flex items-center justify-between border-b border-slate-700/60 pb-2.5">
                 <div class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-full bg-blue-600/30 border border-blue-500/50 flex items-center justify-center text-xs">🚗</span>
+                  <span class="w-6 h-6 rounded-full bg-blue-600/30 border border-blue-500/50 flex items-center justify-center text-xs"><AppIcon name="car" size="1em" /></span>
                   <h4 class="font-bold text-white text-xs tracking-wider">中华人民共和国机动车行驶证</h4>
                 </div>
                 <span class="text-[10px] font-mono text-slate-400">交管电子印鉴证照 · 正副双页</span>
@@ -1230,7 +1228,7 @@
               <!-- 权威核验底栏 -->
               <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
                 <span class="flex items-center gap-1.5">
-                  <span>✓</span>
+                  <span><AppIcon name="check" size="1em" /></span>
                   <span>全国公安交管车辆综合服务系统查验：号牌与车辆所有人完全一致，状态【正常】</span>
                 </span>
                 <span class="font-mono text-[10px] text-emerald-400">核验置信度: 99.8%</span>
@@ -1244,7 +1242,7 @@
             >
               <div class="flex items-center justify-between border-b border-amber-900/40 pb-2.5">
                 <div class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-full bg-amber-600/30 border border-amber-500/50 flex items-center justify-center text-xs">🏛️</span>
+                  <span class="w-6 h-6 rounded-full bg-amber-600/30 border border-amber-500/50 flex items-center justify-center text-xs"><AppIcon name="building" size="1em" /></span>
                   <h4 class="font-bold text-amber-200 text-xs tracking-wider">中华人民共和国不动产权证书 (电子不动产证原件)</h4>
                 </div>
                 <span class="text-[10px] font-mono text-amber-400/80">徐汇不动产第 019823 号</span>
@@ -1313,7 +1311,7 @@
               <!-- 权威核验底栏 -->
               <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
                 <span class="flex items-center gap-1.5">
-                  <span>✓</span>
+                  <span><AppIcon name="check" size="1em" /></span>
                   <span>上海市自然资源与不动产登记数据库查验一致：房屋确属本小区产权住宅</span>
                 </span>
                 <span class="font-mono text-[10px] text-emerald-400">核验状态: 权属正常</span>
@@ -1327,7 +1325,7 @@
             >
               <div class="flex items-center justify-between border-b border-slate-700 pb-2.5">
                 <div class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-full bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-xs">🪪</span>
+                  <span class="w-6 h-6 rounded-full bg-indigo-600/30 border border-indigo-500/50 flex items-center justify-center text-xs"><AppIcon name="identity" size="1em" /></span>
                   <h4 class="font-bold text-white text-xs tracking-wider">中华人民共和国居民身份证 (正反原件扫描件)</h4>
                 </div>
                 <span class="text-[10px] font-mono text-indigo-300">公安部 CTID 实人人脸比对认证</span>
@@ -1346,8 +1344,8 @@
                   </div>
                   <!-- 证件照片模拟 -->
                   <div class="w-20 h-24 rounded-lg bg-slate-800 border border-slate-700 flex flex-col items-center justify-center p-1 shrink-0 self-center">
-                    <span class="text-3xl">👤</span>
-                    <span class="text-[9px] text-emerald-400 mt-1 font-bold">✓ 实人已核验</span>
+                    <span class="text-3xl"><AppIcon name="user" size="1em" /></span>
+                    <span class="text-[9px] text-emerald-400 mt-1 font-bold"><AppIcon name="check" size="1em" /> 实人已核验</span>
                   </div>
                 </div>
 
@@ -1376,7 +1374,7 @@
               <!-- 权威核验底栏 -->
               <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
                 <span class="flex items-center gap-1.5">
-                  <span>✓</span>
+                  <span><AppIcon name="check" size="1em" /></span>
                   <span>全国公民身份信息系统 (CTID) 真实性校验核验一致，证件处于法定有效期内</span>
                 </span>
                 <span class="font-mono text-[10px] text-emerald-400">状态: 有效证件</span>
@@ -1390,7 +1388,7 @@
             >
               <div class="flex items-center justify-between border-b border-rose-900/40 pb-2.5">
                 <div class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-full bg-rose-600/30 border border-rose-500/50 flex items-center justify-center text-xs">💍</span>
+                  <span class="w-6 h-6 rounded-full bg-rose-600/30 border border-rose-500/50 flex items-center justify-center text-xs"><AppIcon name="relationship" size="1em" /></span>
                   <h4 class="font-bold text-rose-200 text-xs tracking-wider">中华人民共和国结婚证 (电子婚姻登记证明)</h4>
                 </div>
                 <span class="text-[10px] font-mono text-rose-400">字号: J310104-2020-006782</span>
@@ -1417,7 +1415,7 @@
               </div>
 
               <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
-                <span>✓ 全国婚姻登记系统比对属实：夫妻共有车辆准入条件成立，享有配偶优先排位权利</span>
+                <span><AppIcon name="check" size="1em" /> 全国婚姻登记系统比对属实：夫妻共有车辆准入条件成立，享有配偶优先排位权利</span>
                 <span class="font-mono text-[10px] text-emerald-400">配偶核验合格</span>
               </div>
             </div>
@@ -1429,7 +1427,7 @@
             >
               <div class="flex items-center justify-between border-b border-slate-700 pb-2.5">
                 <div class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-full bg-blue-600/30 border border-blue-500/50 flex items-center justify-center text-xs">📑</span>
+                  <span class="w-6 h-6 rounded-full bg-blue-600/30 border border-blue-500/50 flex items-center justify-center text-xs"><AppIcon name="file-check" size="1em" /></span>
                   <h4 class="font-bold text-white text-xs tracking-wider">上海市住房租赁合同网签备案通知书</h4>
                 </div>
                 <span class="text-[10px] font-mono text-blue-300">备案编号: SH-RENT-2025-091823</span>
@@ -1452,7 +1450,7 @@
               </div>
 
               <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
-                <span>✓ 上海市住房租赁公共服务平台电子备案验证一致：租约有效，具备申报资格</span>
+                <span><AppIcon name="check" size="1em" /> 上海市住房租赁公共服务平台电子备案验证一致：租约有效，具备申报资格</span>
                 <span class="font-mono text-[10px] text-emerald-400">租约验真有效</span>
               </div>
             </div>
@@ -1464,7 +1462,7 @@
             >
               <div class="flex items-center justify-between border-b border-slate-700 pb-2.5">
                 <div class="flex items-center gap-2">
-                  <span class="w-6 h-6 rounded-full bg-purple-600/30 border border-purple-500/50 flex items-center justify-center text-xs">📄</span>
+                  <span class="w-6 h-6 rounded-full bg-purple-600/30 border border-purple-500/50 flex items-center justify-center text-xs"><AppIcon name="file" size="1em" /></span>
                   <h4 class="font-bold text-white text-xs tracking-wider">{{ activeAttachment?.title || activeAttachment?.name || '申报证明材料原件' }}</h4>
                 </div>
                 <span class="text-[10px] font-mono text-purple-300">电子公文扫描件</span>
@@ -1507,7 +1505,7 @@
 
               <!-- 权威核验底栏 -->
               <div class="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-800/40 text-emerald-300 text-xs flex items-center justify-between">
-                <span>✓ 申请材料格式规范、承诺人签名及电子防伪捺印比对完备，符合受理要求</span>
+                <span><AppIcon name="check" size="1em" /> 申请材料格式规范、承诺人签名及电子防伪捺印比对完备，符合受理要求</span>
                 <span class="font-mono text-[10px] text-emerald-400">待材料核验</span>
               </div>
             </div>
@@ -1531,14 +1529,14 @@
                 :disabled="actionLoading"
                 class="px-4 py-2 rounded-xl bg-rose-700 hover:bg-rose-600 text-white font-bold text-xs transition shadow active:scale-95 flex items-center gap-1"
               >
-                <span>✕ 审核驳回并通知</span>
+                <span><AppIcon name="close" size="1em" /> 审核驳回并通知</span>
               </button>
               <button
                 @click="handleInlineApprove(viewAttachmentsApp)"
                 :disabled="actionLoading"
                 class="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow active:scale-95 flex items-center gap-1"
               >
-                <span>✓ 查验通过 · 准予入队</span>
+                <span><AppIcon name="check" size="1em" /> 查验通过 · 准予入队</span>
               </button>
             </template>
             <!-- 否则仅展示关闭按钮 -->
@@ -1556,7 +1554,7 @@
       <form @submit.prevent="handleIssueOwnerInvite" class="w-full max-w-md rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
         <div class="flex items-center justify-between">
           <h3 class="font-bold text-white">签发业主注册邀请码</h3>
-          <button type="button" @click="closeOwnerInvite" class="text-slate-400 hover:text-white">✕</button>
+          <button type="button" @click="closeOwnerInvite" class="text-slate-400 hover:text-white" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
         <p class="text-xs text-slate-300 leading-relaxed">请先在线下核对业主身份证明和所属小区，再填写与证件一致的信息。邀请码仅显示一次，有效期 7 天。</p>
         <template v-if="!issuedOwnerInvite">
@@ -1584,7 +1582,7 @@
       <div class="w-full max-w-lg rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
         <div class="flex items-center justify-between">
           <h3 class="font-bold text-white">物业线下材料审核</h3>
-          <button type="button" @click="productionReviewVisible = false" class="text-slate-400 hover:text-white">✕</button>
+          <button type="button" @click="productionReviewVisible = false" class="text-slate-400 hover:text-white" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
         <div class="rounded-xl bg-slate-900 p-3 text-xs text-slate-300 space-y-1">
           <p>申请人：{{ productionReviewApp.applicant_name }}（{{ productionReviewApp.applicant_phone }}）</p>
@@ -1616,7 +1614,7 @@
       <form @submit.prevent="handleAddSpace" class="w-full max-w-sm rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
         <div class="flex items-center justify-between">
           <h3 class="font-bold text-white">录入真实车位</h3>
-          <button type="button" @click="showAddSpace = false" class="text-slate-400 hover:text-white">✕</button>
+          <button type="button" @click="showAddSpace = false" class="text-slate-400 hover:text-white" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
         <div>
           <label class="block text-xs text-slate-300 mb-1">车位编号</label>
@@ -1638,6 +1636,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../../components/AppIcon.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
@@ -1731,10 +1730,10 @@ const handleAddSpace = async () => {
 
 const activePanel = ref('spaces')
 const panels = [
-  { id: 'kpi', icon: '📈', label: '看板指标' },
-  { id: 'report', icon: '📊', label: '周转报表' },
-  { id: 'spaces', icon: '🅿️', label: '车位矩阵' },
-  { id: 'audit', icon: '📝', label: '审核管理' }
+  { id: 'kpi', icon: 'trend', label: '看板指标' },
+  { id: 'report', icon: 'chart', label: '周转报表' },
+  { id: 'spaces', icon: 'parking', label: '车位矩阵' },
+  { id: 'audit', icon: 'clipboard-check', label: '审核管理' }
 ]
 
 // 审核管理子 Tab: 'applications' (台账) | 'strategy' (机制与特定业主特例通道)

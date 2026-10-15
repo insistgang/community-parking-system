@@ -32,7 +32,7 @@
     <!-- 展开详情 -->
     <div v-if="expanded" class="mt-3 pt-3 border-t border-indigo-100 text-xs text-slate-600 space-y-1.5 animate-fade-in">
       <p class="leading-relaxed text-[11px] text-slate-700 font-medium bg-white/70 p-2.5 rounded-xl border border-indigo-100">
-        📊 <strong>说明：</strong>{{ basisText }}
+        <AppIcon name="chart" size="1em" /> <strong>说明：</strong>{{ basisText }}
       </p>
       <p class="text-[10px] text-slate-400 italic">
         * 实际分配以小区车位释放和系统消息通知为准。
@@ -42,6 +42,7 @@
 </template>
 
 <script setup>
+import AppIcon from './AppIcon.vue'
 import { ref } from 'vue'
 
 defineProps({

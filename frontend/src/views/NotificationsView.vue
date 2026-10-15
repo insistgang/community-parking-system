@@ -3,10 +3,8 @@
     <!-- 顶部导航 -->
     <header class="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
       <div class="flex items-center gap-2">
-        <button @click="$router.push('/')" class="text-slate-500 hover:text-slate-800 p-1">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
+        <button @click="$router.push('/')" class="icon-button text-slate-500 hover:text-slate-800" aria-label="返回首页">
+          <AppIcon name="back" class="w-5 h-5" />
         </button>
         <h1 class="text-sm font-bold text-slate-900">消息通知中心</h1>
       </div>
@@ -22,10 +20,10 @@
       >
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-1.5 font-bold text-xs">
-            <span v-if="item.type === 'ALLOCATION'" class="text-amber-600">🎉</span>
-            <span v-else-if="item.type === 'RANK_CHANGE'" class="text-blue-600">🚀</span>
-            <span v-else-if="item.type === 'EXPIRATION'" class="text-rose-600">⏰</span>
-            <span v-else class="text-slate-600">📢</span>
+            <span v-if="item.type === 'ALLOCATION'" class="text-amber-600"><AppIcon name="success" size="1em" /></span>
+            <span v-else-if="item.type === 'RANK_CHANGE'" class="text-blue-600"><AppIcon name="trend" size="1em" /></span>
+            <span v-else-if="item.type === 'EXPIRATION'" class="text-rose-600"><AppIcon name="clock" size="1em" /></span>
+            <span v-else class="text-slate-600"><AppIcon name="announcement" size="1em" /></span>
             <span class="text-slate-900">{{ displayTitle(item) }}</span>
           </div>
 
@@ -43,14 +41,14 @@
             @click="$router.push('/')"
             class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm transition active:scale-95 flex items-center gap-1"
           >
-            <span>立即办理 / 查看倒计时 ➔</span>
+            <span>立即办理 / 查看倒计时 <AppIcon name="arrow" size="1em" /></span>
           </button>
           <button
             v-else-if="item.action_type === 'GO_QUEUE'"
             @click="$router.push('/queue')"
             class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-sm transition active:scale-95 flex items-center gap-1"
           >
-            <span>查看顺位 ➔</span>
+            <span>查看顺位 <AppIcon name="arrow" size="1em" /></span>
           </button>
         </div>
       </div>
@@ -63,6 +61,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../components/AppIcon.vue'
 import { ref, onMounted } from 'vue'
 import api from '../api'
 

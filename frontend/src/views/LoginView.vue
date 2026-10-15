@@ -3,9 +3,7 @@
     <div class="max-w-md w-full bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-200">
       <div class="text-center mb-7">
         <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-blue-600 text-white mb-3 shadow-lg shadow-blue-500/30">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 17V7h4a3 3 0 0 1 0 6H9"/>
-          </svg>
+          <AppIcon name="parking" class="w-8 h-8" />
         </div>
         <h1 class="text-xl font-black text-slate-900 tracking-tight">慧停管家 · 老旧小区停车位管理系统</h1>
         <p class="text-xs text-slate-500 mt-1">正式版 · 公平排位 · 物业人工审核</p>
@@ -33,7 +31,7 @@
 
       <p class="text-[11px] text-slate-500 mt-4 leading-relaxed">短信找回密码尚未开通。如忘记密码，请联系物业或平台管理员核实身份后处理。</p>
       <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-xs">
-        <router-link to="/register" class="text-blue-600 hover:underline font-semibold">新业主注册 ➔</router-link>
+        <router-link to="/register" class="text-blue-600 hover:underline font-semibold">新业主注册 <AppIcon name="arrow" size="1em" /></router-link>
         <div class="flex gap-3">
           <router-link to="/property/login" class="text-purple-600 hover:underline font-semibold">物业登录</router-link>
           <router-link to="/admin/login" class="text-slate-600 hover:underline font-semibold">平台登录</router-link>
@@ -44,6 +42,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../components/AppIcon.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../store/user'

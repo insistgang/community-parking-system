@@ -2,9 +2,7 @@
   <div class="min-h-screen bg-slate-900 text-slate-100 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
     <div class="sm:mx-auto sm:w-full sm:max-w-md text-center">
       <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-purple-600 text-white shadow-lg shadow-purple-500/30 mb-3">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 21h18"/><path d="M5 21V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16"/><path d="M9 9h1"/><path d="M9 13h1"/><path d="M9 17h1"/><path d="M14 9h1"/><path d="M14 13h1"/><path d="M14 17h1"/>
-        </svg>
+        <AppIcon name="building" :size="30" />
       </div>
       <h2 class="text-xl font-black tracking-tight text-white">慧停管家 · 物业登录</h2>
       <p class="mt-1 text-xs text-slate-400">车位管理 · 申请审核 · 租约管理</p>
@@ -15,7 +13,7 @@
         <!-- 一键快捷填入条 -->
         <div v-if="!isProduction" class="p-3 bg-purple-950/60 border border-purple-800/60 rounded-2xl flex items-center justify-between text-xs">
           <div class="flex items-center gap-2 text-purple-200">
-            <span>👤 管理员: 王建国</span>
+            <span><AppIcon name="user" size="1em" /> 管理员: 王建国</span>
             <span class="text-[10px] text-purple-400 font-mono">13900000001</span>
           </div>
           <button
@@ -24,7 +22,7 @@
             :disabled="loading"
             class="px-2.5 py-1 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow transition active:scale-95 disabled:opacity-50"
           >
-            ⚡ 一键免密进入
+            <AppIcon name="zap" size="1em" /> 一键免密进入
           </button>
         </div>
 
@@ -53,7 +51,7 @@
           </div>
 
           <div v-if="errorMsg" class="p-2.5 bg-rose-900/50 border border-rose-600 rounded-xl text-rose-300 text-xs font-medium">
-            ⚠️ {{ errorMsg }}
+            <AppIcon name="warning" size="1em" /> {{ errorMsg }}
           </div>
 
           <button
@@ -62,7 +60,7 @@
             class="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-lg shadow-purple-500/30 transition active:scale-[0.98] disabled:opacity-50"
           >
             <span v-if="loading">正在验证登录...</span>
-            <span v-else>立即登录 ➔</span>
+            <span v-else>立即登录 <AppIcon name="arrow" size="1em" /></span>
           </button>
         </form>
 
@@ -73,7 +71,7 @@
             @click="showLicenseDetails = !showLicenseDetails"
             class="text-[11px] text-slate-400 hover:text-slate-200 flex items-center justify-between w-full"
           >
-            <span>📜 企业资质与法人备案信息 (已通过工商核验)</span>
+            <span><AppIcon name="file" size="1em" /> 企业资质与法人备案信息 (已通过工商核验)</span>
             <span>{{ showLicenseDetails ? '▲ 收起' : '▼ 展开' }}</span>
           </button>
 
@@ -81,13 +79,13 @@
             <div class="flex justify-between"><span class="text-slate-500">企业名称:</span><span class="font-bold text-white">{{ company.name }}</span></div>
             <div class="flex justify-between"><span class="text-slate-500">统一代码:</span><span class="font-mono">{{ company.creditCode }}</span></div>
             <div class="flex justify-between"><span class="text-slate-500">法定代表:</span><span class="text-purple-300 font-bold">{{ company.legalName }} (王建国)</span></div>
-            <div class="flex justify-between"><span class="text-slate-500">核验状态:</span><span class="text-emerald-400 font-bold">✓ 市住建委与工商信息库比对属实</span></div>
+            <div class="flex justify-between"><span class="text-slate-500">核验状态:</span><span class="text-emerald-400 font-bold"><AppIcon name="check" size="1em" /> 市住建委与工商信息库比对属实</span></div>
           </div>
         </div>
 
         <div class="pt-3 border-t border-slate-700/60 flex items-center justify-between text-xs">
           <router-link to="/property/register" class="text-purple-400 hover:text-purple-300 font-semibold underline flex items-center gap-1">
-            <span>✨ 注册新物业账号 / 入驻新小区</span>
+            <span><AppIcon name="sparkles" size="1em" /> 注册新物业账号 / 入驻新小区</span>
           </router-link>
           <router-link to="/login" class="text-slate-400 hover:text-white underline">
             切换为业主端 H5 登录
@@ -99,6 +97,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../../components/AppIcon.vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'

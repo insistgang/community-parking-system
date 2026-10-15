@@ -6,7 +6,7 @@
     <div class="flex items-start justify-between relative z-10">
       <div class="flex items-center gap-2">
         <span class="inline-flex items-center justify-center w-8 h-8 rounded-full bg-white/20 backdrop-blur text-lg">
-          🎉
+          <AppIcon name="success" size="1em" />
         </span>
         <div>
           <h2 class="text-base font-extrabold tracking-wide">恭喜！车位已中签锁定</h2>
@@ -65,6 +65,7 @@
 </template>
 
 <script setup>
+import AppIcon from './AppIcon.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import api from '../api'
 import { showConfirm, showToast } from '../utils/dialog'

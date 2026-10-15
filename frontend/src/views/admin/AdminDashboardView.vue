@@ -4,7 +4,7 @@
     <header class="bg-slate-900/90 border-b border-slate-800 px-6 py-3.5 sticky top-0 z-30 flex flex-wrap items-center justify-between gap-4 backdrop-blur shadow-lg">
       <div class="flex items-center gap-3">
         <div class="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white font-bold shadow-md shadow-indigo-600/30">
-          🛡️
+          <AppIcon name="shield" :size="22" />
         </div>
         <div>
           <div class="flex items-center gap-2">
@@ -31,7 +31,7 @@
           class="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 active:scale-95 text-white font-bold transition flex items-center gap-1.5 shadow-sm disabled:opacity-50"
           title="手动触发未读通知短信升级扫描（测试验证）"
         >
-          <span>📱</span>
+          <span><AppIcon name="phone" size="1em" /></span>
           <span v-if="smsTriggering">正在扫描下发...</span>
           <span v-else>测试 24h 未读短信升级</span>
         </button>
@@ -40,21 +40,21 @@
           @click="loadAllData"
           class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold transition flex items-center gap-1 border border-slate-700"
         >
-          <span>🔄 刷新数据</span>
+          <span><AppIcon name="refresh" size="1em" /> 刷新数据</span>
         </button>
 
         <router-link
           to="/"
           class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-blue-400 font-semibold transition border border-slate-700"
         >
-          前台业主端 ➔
+          前台业主端 <AppIcon name="arrow" size="1em" />
         </router-link>
 
         <router-link
           to="/property/dashboard"
           class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-purple-400 font-semibold transition border border-slate-700"
         >
-          物业工作台 ➔
+          物业工作台 <AppIcon name="arrow" size="1em" />
         </router-link>
 
         <button
@@ -111,7 +111,7 @@
           class="px-4 py-2.5 rounded-xl transition flex items-center gap-2"
           :class="activeTab === t.id ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' : 'text-slate-400 hover:text-white hover:bg-slate-800'"
         >
-          <span>{{ t.icon }}</span>
+          <AppIcon :name="t.icon" :size="17" />
           <span>{{ t.label }}</span>
           <span v-if="t.count !== undefined" class="px-1.5 py-0.2 rounded-full bg-slate-800 text-[10px] font-mono">
             {{ t.count }}
@@ -124,7 +124,7 @@
         <div class="flex items-center justify-between flex-wrap gap-2 text-xs">
           <div class="flex items-center gap-2">
             <h2 class="text-sm font-bold text-white flex items-center gap-2">
-              <span>👥 用户档案与登录状态汇总</span>
+              <span><AppIcon name="users" size="1em" /> 用户档案与登录状态汇总</span>
             </h2>
             <span class="text-[11px] text-slate-400">包含业主注册信息、物业注册信息及最后活跃登录记录</span>
           </div>
@@ -188,7 +188,7 @@
         <div class="flex items-center justify-between flex-wrap gap-2 text-xs">
           <div>
             <h2 class="text-sm font-bold text-white flex items-center gap-2">
-              <span>🔐 用户与物业登录记录流水</span>
+              <span><AppIcon name="key" size="1em" /> 用户与物业登录记录流水</span>
             </h2>
             <span class="text-[11px] text-slate-400">实时记录全平台业主、物业及管理员的登录时间、IP与客户端环境</span>
           </div>
@@ -245,7 +245,7 @@
         <div class="flex items-center justify-between flex-wrap gap-2 text-xs">
           <div>
             <h2 class="text-sm font-bold text-white flex items-center gap-2">
-              <span>📋 用户与管理员关键操作安全日志</span>
+              <span><AppIcon name="clipboard" size="1em" /> 用户与管理员关键操作安全日志</span>
             </h2>
             <span class="text-[11px] text-slate-400">覆盖申请申报、资格审核、车位清退、密码修改、撤销排位等所有敏感操作流水</span>
           </div>
@@ -301,7 +301,7 @@
         <div class="flex items-center justify-between flex-wrap gap-2 text-xs">
           <div>
             <h2 class="text-sm font-bold text-white flex items-center gap-2">
-              <span>🌐 外部第三方接口调用追踪日志</span>
+              <span><AppIcon name="globe" size="1em" /> 外部第三方接口调用追踪日志</span>
             </h2>
             <span class="text-[11px] text-slate-400">当前尚未接入外部核验服务；接入后将在这里查看实际调用记录。</span>
           </div>
@@ -345,7 +345,7 @@
                     @click="viewApiDetail(apiItem)"
                     class="px-2.5 py-0.5 rounded bg-indigo-950 hover:bg-indigo-900 text-indigo-300 text-[11px] font-mono border border-indigo-800 transition"
                   >
-                    报文详情 ➔
+                    报文详情 <AppIcon name="arrow" size="1em" />
                   </button>
                 </td>
               </tr>
@@ -358,7 +358,7 @@
       <div v-if="!isProduction" v-show="activeTab === 'sms_remind'" class="bg-slate-900 rounded-3xl p-6 border border-slate-800 space-y-6">
         <div>
           <h2 class="text-sm font-bold text-white flex items-center gap-2">
-            <span>📱 24 小时未读消息短信催办调度服务</span>
+            <span><AppIcon name="phone" size="1em" /> 24 小时未读消息短信催办调度服务</span>
           </h2>
           <p class="text-xs text-slate-400 mt-1 leading-relaxed">
             方案规则约束：当车位中签通知（48小时倒计时）、审核结果等关键站内信超过 24 小时仍未被业主点击查阅时，后台定时调度引擎将自动触发移动政务云短信网关下发备用短信通知，确保业主不错过签约时限。
@@ -367,19 +367,19 @@
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
           <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-2">
-            <span class="text-slate-400 block font-bold">⏱️ 调度执行周期</span>
+            <span class="text-slate-400 block font-bold"><AppIcon name="clock" size="1em" /> 调度执行周期</span>
             <p class="text-emerald-400 font-mono font-bold text-sm">每 60 秒轮询扫描一次</p>
             <p class="text-slate-500 text-[11px]">后台由 Spring Scheduled 自动轮询执行，无需人工干预。</p>
           </div>
 
           <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-2">
-            <span class="text-slate-400 block font-bold">🎯 覆盖核心业务类型</span>
+            <span class="text-slate-400 block font-bold"><AppIcon name="target" size="1em" /> 覆盖核心业务类型</span>
             <p class="text-amber-400 font-bold text-sm">中签锁定(48h) / 审核通过 / 顺位变动</p>
             <p class="text-slate-500 text-[11px]">对中签通知特别设置多渠道保障，防止因业主未上线导致中签超时收回。</p>
           </div>
 
           <div class="bg-slate-950/70 p-4 rounded-2xl border border-slate-800 space-y-2">
-            <span class="text-slate-400 block font-bold">📊 累计已升级短信条数</span>
+            <span class="text-slate-400 block font-bold"><AppIcon name="chart" size="1em" /> 累计已升级短信条数</span>
             <p class="text-2xl font-black text-indigo-400 font-mono">{{ stats.sms_upgraded_count ?? 0 }} <span class="text-xs font-normal text-slate-500">条</span></p>
             <p class="text-slate-500 text-[11px]">全部短信下发均已自动记录进“外部接口日志”与“操作审计日志”。</p>
           </div>
@@ -388,7 +388,7 @@
         <!-- 手动触发与测试工具区 -->
         <div v-if="!isProduction" class="p-5 rounded-2xl bg-indigo-950/40 border border-indigo-500/30 flex items-center justify-between flex-wrap gap-4 text-xs">
           <div>
-            <h3 class="font-bold text-white text-sm">🧪 验收与演示快捷测试</h3>
+            <h3 class="font-bold text-white text-sm"><AppIcon name="review" size="1em" /> 验收与演示快捷测试</h3>
             <p class="text-slate-400 mt-0.5">系统已预置 1 条超过 24 小时未读的中签通知（李雷）。点击右侧按钮可立即强制扫描并下发催办短信。</p>
           </div>
           <button
@@ -396,12 +396,12 @@
             :disabled="smsTriggering"
             class="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 active:scale-95 text-white font-bold transition shadow-lg shadow-indigo-600/30 flex items-center gap-2"
           >
-            <span>🚀 立即执行短信催办扫描</span>
+            <span><AppIcon name="trend" size="1em" /> 立即执行短信催办扫描</span>
           </button>
         </div>
 
         <div v-if="smsScanResult" class="p-4 rounded-2xl bg-emerald-950/60 border border-emerald-500/40 text-xs text-emerald-300 space-y-1 animate-fade-in">
-          <p class="font-bold">✓ {{ smsScanResult }}</p>
+          <p class="font-bold"><AppIcon name="check" size="1em" /> {{ smsScanResult }}</p>
           <p class="text-[11px] text-slate-400">已自动向目标业主手机下发模拟政务短信，并在“外部接口调用监控”中生成调用流水记录。</p>
         </div>
       </div>
@@ -412,7 +412,7 @@
       <div class="bg-slate-900 rounded-3xl max-w-2xl w-full p-6 text-slate-200 shadow-2xl border border-slate-700 space-y-4">
         <div class="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 class="text-sm font-bold text-white">{{ jsonModalTitle }}</h3>
-          <button @click="showJsonModal = false" class="text-slate-400 hover:text-white p-1 text-base">✕</button>
+          <button @click="showJsonModal = false" class="text-slate-400 hover:text-white p-1 text-base" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
         <div class="max-h-[60vh] overflow-auto bg-slate-950 p-4 rounded-xl border border-slate-800">
           <pre class="font-mono text-emerald-400 text-xs leading-relaxed whitespace-pre-wrap">{{ jsonModalContent }}</pre>
@@ -441,19 +441,19 @@
             </h3>
             <p class="text-[11px] text-slate-400 mt-0.5">对接服务商：{{ currentApiItem.provider }} | URL: {{ currentApiItem.url }}</p>
           </div>
-          <button @click="showApiModal = false" class="text-slate-400 hover:text-white p-1 text-base">✕</button>
+          <button @click="showApiModal = false" class="text-slate-400 hover:text-white p-1 text-base" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block font-bold text-slate-400 mb-1">📤 请求入参报文 (Request Payload)</label>
+            <label class="block font-bold text-slate-400 mb-1"><AppIcon name="upload" size="1em" /> 请求入参报文 (Request Payload)</label>
             <div class="max-h-64 overflow-auto bg-slate-950 p-3 rounded-xl border border-slate-800">
               <pre class="font-mono text-indigo-300 text-xs whitespace-pre-wrap">{{ formatJson(currentApiItem.request_json) }}</pre>
             </div>
           </div>
 
           <div>
-            <label class="block font-bold text-slate-400 mb-1">📥 响应结果报文 (Response Data)</label>
+            <label class="block font-bold text-slate-400 mb-1"><AppIcon name="export" size="1em" /> 响应结果报文 (Response Data)</label>
             <div class="max-h-64 overflow-auto bg-slate-950 p-3 rounded-xl border border-slate-800">
               <pre class="font-mono text-emerald-400 text-xs whitespace-pre-wrap">{{ formatJson(currentApiItem.response_json) }}</pre>
             </div>
@@ -508,6 +508,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../../components/AppIcon.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
@@ -527,11 +528,11 @@ const activeTab = ref('users')
 const userRoleFilter = ref('ALL')
 
 const tabs = computed(() => [
-  { id: 'users', label: '用户档案管理', icon: '👥', count: userList.value.length },
-  { id: 'login_logs', label: '登录流水审计', icon: '🔐', count: loginLogs.value.length },
-  { id: 'operation_logs', label: '操作审计日志', icon: '📋', count: operationLogs.value.length },
-  { id: 'external_api_logs', label: '外部接口监控', icon: '🌐', count: externalApiLogs.value.length },
-  ...(!isProduction ? [{ id: 'sms_remind', label: '24h 未读短信催办', icon: '📱' }] : [])
+  { id: 'users', label: '用户档案管理', icon: 'users', count: userList.value.length },
+  { id: 'login_logs', label: '登录流水审计', icon: 'key', count: loginLogs.value.length },
+  { id: 'operation_logs', label: '操作审计日志', icon: 'clipboard', count: operationLogs.value.length },
+  { id: 'external_api_logs', label: '外部接口监控', icon: 'globe', count: externalApiLogs.value.length },
+  ...(!isProduction ? [{ id: 'sms_remind', label: '24h 未读短信催办', icon: 'phone' }] : [])
 ])
 
 const filteredUsers = computed(() => {

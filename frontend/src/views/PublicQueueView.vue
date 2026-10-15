@@ -3,10 +3,8 @@
     <!-- 顶部导航 -->
     <header class="sticky top-0 z-40 bg-white border-b border-slate-200 px-4 py-3.5 flex items-center justify-between shadow-sm">
       <div class="flex items-center gap-2">
-        <button @click="$router.push('/')" class="text-slate-500 hover:text-slate-800 p-1">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="m15 18-6-6 6-6"/>
-          </svg>
+        <button @click="$router.push('/')" class="icon-button text-slate-500 hover:text-slate-800" aria-label="返回首页">
+          <AppIcon name="back" class="w-5 h-5" />
         </button>
         <h1 class="text-sm font-bold text-slate-900">排队顺位阳光脱敏公示</h1>
       </div>
@@ -48,7 +46,7 @@
         <div v-if="allocatedList.length > 0" class="bg-gradient-to-br from-amber-50 to-yellow-50 rounded-2xl shadow-sm border border-amber-200 overflow-hidden">
           <div class="px-3.5 pt-3 pb-2 flex items-center justify-between">
             <span class="text-xs font-bold text-amber-800 flex items-center gap-1">
-              <span>🎉</span>
+              <span><AppIcon name="success" size="1em" /></span>
               <span>中签待签公示</span>
             </span>
             <span class="text-[10px] text-amber-600 font-medium">超时未办将自动收回顺延</span>
@@ -152,6 +150,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../components/AppIcon.vue'
 import { ref, onMounted } from 'vue'
 import api from '../api'
 import BottomNav from '../components/BottomNav.vue'

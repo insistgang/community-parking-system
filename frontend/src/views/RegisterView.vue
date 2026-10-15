@@ -117,7 +117,7 @@
         </div>
 
         <div v-if="errorMsg" class="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-600 text-xs font-medium">
-          ⚠️ {{ errorMsg }}
+          <AppIcon name="warning" size="1em" /> {{ errorMsg }}
         </div>
 
         <button
@@ -134,6 +134,7 @@
 </template>
 
 <script setup>
+import AppIcon from '../components/AppIcon.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import api from '../api'

@@ -12,14 +12,14 @@
         :class="getToastClass(t.type)"
       >
         <div class="flex items-center gap-2.5 min-w-0">
-          <span class="text-base leading-none shrink-0">{{ getToastIcon(t.type) }}</span>
+          <AppIcon :name="getToastIcon(t.type)" :size="19" />
           <span class="truncate leading-relaxed">{{ t.message }}</span>
         </div>
         <button
           @click="removeToast(t.id)"
           class="shrink-0 opacity-70 hover:opacity-100 transition p-1 text-sm leading-none"
-        >
-          ✕
+         aria-label="关闭">
+          <AppIcon name="close" size="1em" />
         </button>
       </div>
     </div>
@@ -40,7 +40,7 @@
               class="w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 shadow-inner"
               :class="getBadgeClass(dialogState.type)"
             >
-              {{ getBadgeIcon(dialogState.type) }}
+              <AppIcon :name="getBadgeIcon(dialogState.type)" :size="25" />
             </div>
             <div>
               <h3 class="text-base font-black text-slate-900 dark:text-white">
@@ -81,6 +81,7 @@
 </template>
 
 <script setup>
+import AppIcon from './AppIcon.vue'
 import {
   dialogState,
   toastState,
@@ -104,10 +105,10 @@ const getToastClass = (type) => {
 
 const getToastIcon = (type) => {
   switch (type) {
-    case 'success': return '✓'
-    case 'error': return '✕'
-    case 'warning': return '⚠️'
-    default: return 'ℹ️'
+    case 'success': return 'success'
+    case 'error': return 'error'
+    case 'warning': return 'warning'
+    default: return 'info'
   }
 }
 
@@ -126,10 +127,10 @@ const getBadgeClass = (type) => {
 
 const getBadgeIcon = (type) => {
   switch (type) {
-    case 'danger': return '⚡'
-    case 'warning': return '⚠️'
-    case 'success': return '✓'
-    default: return '🛡️'
+    case 'danger': return 'warning'
+    case 'warning': return 'warning'
+    case 'success': return 'success'
+    default: return 'shield'
   }
 }
 

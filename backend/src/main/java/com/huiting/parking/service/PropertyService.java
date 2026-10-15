@@ -72,8 +72,9 @@ public class PropertyService {
         List<RentalContract> terminated = communityContracts.stream()
                 .filter(c -> "TERMINATED".equals(c.status) && c.startDate != null && c.endDate != null).toList();
         int avgTurn = terminated.isEmpty() ? 0 : (int) Math.round(terminated.stream().mapToLong(c -> ChronoUnit.DAYS.between(c.startDate, c.endDate)).average().orElse(0));
-        List<QueueApplication> waitingApps = apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(cid, "WAITING");
-        int avgWait = waitingApps.isEmpty() ? 0 : (int) Math.round(waitingApps.stream().mapToLong(a -> ChronoUnit.DAYS.between(a.applyTime.toLocalDate(), Times.utcNow().toLocalDate())).average().orElse(0));
+        List<QueueApplication> waitingApps = QueueEngine.orderedWaiting(apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(cid, "WAITING"));
+        int avgWait = (int) Math.round(waitingApps.stream().filter(a -> a.applyTime != null).mapToLong(a -> ChronoUnit.DAYS.between(a.applyTime.toLocalDate(), Times.utcNow().toLocalDate())).average().orElse(0));
+        long legacyQueueUnlinked = waitingApps.stream().filter(a -> a.legacyImportBatchId != null && a.userId == null).count();
         long expiring = communityContracts.stream().filter(c -> "EXPIRING".equals(c.status)).count();
         long legacyCount = communityContracts.stream().filter(c -> c.legacyImportBatchId != null).count();
         boolean inventoryComplete = comm == null || !Boolean.FALSE.equals(comm.inventoryComplete);
@@ -85,12 +86,18 @@ public class PropertyService {
                 "occupancy_rate", inventoryComplete ? String.format("%.1f%%", rented * 100.0 / Math.max(1, total)) : "**",
                 "inventory_complete", inventoryComplete,
                 "legacy_import_count", legacyCount,
+                "legacy_queue_unlinked_count", legacyQueueUnlinked,
+                "allocation_awaits_identity", !waitingApps.isEmpty() && waitingApps.get(0).userId == null,
                 "inventory_note", inventoryComplete ? "" : "已导入在租车位台账；空闲及维修车位清单尚待补录，占用率暂不可计算。",
                 "pending_warnings", expiring + pendingDelivery + pendingAudit,
                 "avg_turnover_days", avgTurn, "avg_queue_wait_days", avgWait,
                 "completed_allocations", apps.countByCommunityIdAndStatus(cid, "COMPLETED"),
                 "released_total", evidences.countByCommunityIdAndEventType(cid, "TERMINATE"),
                 "audit_mode", mode,
+                "source_audit_mode", comm == null ? null : comm.sourceAuditMode,
+                "district", comm == null ? null : comm.district, "subdistrict", comm == null ? null : comm.subdistrict,
+                "company_name", comm == null ? null : comm.companyName,
+                "contact_name", comm == null ? null : comm.contactName, "contact_phone", comm == null ? null : comm.contactPhone,
                 "audit_mode_label", demoEnabled && "THREE_CERT_AUTO".equals(mode) ? "三证合一（演示自动审核）" : "物业人工审核");
     }
 
@@ -468,14 +475,19 @@ public class PropertyService {
                 "OFFLINE_PENDING", "线下签约中", "COMPLETED", "租约已生效", "CANCELLED", "已撤销/已归档", "TIMEOUT_CANCELLED", "超时放弃");
         List<Map<String, Object>> result = new ArrayList<>();
         for (QueueApplication app : list) {
-            UserAccount u = users.findById(app.userId).orElse(null);
+            UserAccount u = app.userId == null ? null : users.findById(app.userId).orElse(null);
             UserAccount auditor = app.auditorId == null ? null : users.findById(app.auditorId).orElse(null);
+            boolean legacyUnverified = app.legacyImportBatchId != null && app.userId == null;
             result.add(ParkingService.map(
-                    "id", app.id, "user_id", app.userId, "applicant_name", u != null ? u.realName : "未知", "applicant_phone", u != null ? u.phone : "--",
+                    "id", app.id, "user_id", app.userId, "applicant_name", u != null ? u.realName : legacyValue(app.legacyApplicantName),
+                    "applicant_phone", u != null ? u.phone : legacyValue(app.legacyApplicantPhone),
                     "property_no", app.propertyNo, "plate_no", app.plateNo, "car_relationship", or(app.carRelationship, "SELF"), "is_spouse_car", Boolean.TRUE.equals(app.spouseCar),
+                    "source_car_relationship", app.legacyCarRelationship,
+                    "legacy_unverified", legacyUnverified, "legacy_source_rank", app.legacySourceRank,
+                    "legacy_source_row", app.legacySourceRow, "legacy_notes", app.legacyNotes,
                     "priority_level", app.priorityLevel, "priority_label", app.priorityLevel != null && app.priorityLevel == 1 ? "家庭一车" : "家庭二车",
-                    "current_rank", app.currentRank, "status", app.status, "status_label", labels.getOrDefault(app.status, app.status),
-                    "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"), "audit_mode_label", "FLEXIBLE_HYBRID".equals(app.auditMode) ? "物业人工审核" : "演示自动审核",
+                    "current_rank", app.currentRank, "status", app.status, "status_label", legacyUnverified ? "历史排队（身份待补）" : labels.getOrDefault(app.status, app.status),
+                    "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"), "audit_mode_label", app.legacyImportBatchId != null ? "历史台账导入" : "FLEXIBLE_HYBRID".equals(app.auditMode) ? "物业人工审核" : "演示自动审核",
                     "reject_reason", app.rejectReason, "attachments", parse(app.attachmentsJson), "apply_time", Times.fmtBj(app.applyTime),
                     "audit_time", app.auditTime == null ? "--" : Times.fmtBj(app.auditTime), "auditor_name", auditor != null ? auditor.realName : "--",
                     "audit_reference", app.auditReference));

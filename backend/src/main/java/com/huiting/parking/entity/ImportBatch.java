@@ -27,6 +27,8 @@ public class ImportBatch {
     public Integer missingPhoneCount;
     @Column(name = "skipped_queue_count", nullable = false)
     public Integer skippedQueueCount;
+    @Column(name = "queue_count", nullable = false)
+    public Integer queueCount = 0;
     @Column(name = "imported_at", nullable = false)
     public LocalDateTime importedAt;
 }

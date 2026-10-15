@@ -17,6 +17,10 @@ public class UserAccount {
     public String passwordHash;
     @Column(name = "real_name")
     public String realName;
+    @Column(name = "job_title")
+    public String jobTitle;
+    @Column(name = "notes", columnDefinition = "TEXT")
+    public String notes;
     public String role = "OWNER";
     @Column(name = "community_id")
     public Integer communityId;

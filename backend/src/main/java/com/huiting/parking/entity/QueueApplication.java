@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "queue_applications")
+@Table(name = "queue_applications", uniqueConstraints = @UniqueConstraint(name = "uk_queue_import_source", columnNames = {"legacy_import_batch_id", "legacy_source_row"}))
 public class QueueApplication {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -48,4 +48,24 @@ public class QueueApplication {
     public Integer auditorId;
     @Column(name = "audit_reference")
     public String auditReference;
+    @Column(name = "legacy_applicant_name")
+    public String legacyApplicantName;
+    @Column(name = "legacy_applicant_phone")
+    public String legacyApplicantPhone;
+    @Column(name = "legacy_id_card")
+    public String legacyIdCard;
+    @Column(name = "legacy_car_relationship")
+    public String legacyCarRelationship;
+    @Column(name = "legacy_priority_text")
+    public String legacyPriorityText;
+    @Column(name = "legacy_source_rank")
+    public Integer legacySourceRank;
+    @Column(name = "legacy_apply_time_text")
+    public String legacyApplyTimeText;
+    @Column(name = "legacy_notes", columnDefinition = "TEXT")
+    public String legacyNotes;
+    @Column(name = "legacy_import_batch_id", length = 64)
+    public String legacyImportBatchId;
+    @Column(name = "legacy_source_row")
+    public Integer legacySourceRow;
 }

@@ -98,6 +98,7 @@
                     <span class="text-[10px] text-slate-400 font-normal">({{ item.masked_phone }})</span>
                   </div>
                   <span class="text-[10px] text-slate-400 block mt-0.5">申报时间: {{ item.apply_time }}</span>
+                  <span v-if="item.legacy_imported" class="text-[10px] text-blue-600 block mt-0.5">历史排队台账 · 原顺位保留</span>
                 </div>
               </div>
 

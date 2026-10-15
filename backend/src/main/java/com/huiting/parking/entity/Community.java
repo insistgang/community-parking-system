@@ -16,6 +16,8 @@ public class Community {
     public Integer totalSpaces = 50;
     @Column(name = "audit_mode")
     public String auditMode = "THREE_CERT_AUTO";
+    @Column(name = "source_audit_mode")
+    public String sourceAuditMode;
     @Column(name = "company_name")
     public String companyName;
     @Column(name = "contact_name")

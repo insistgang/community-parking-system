@@ -287,26 +287,27 @@ public class ParkingService {
         return map("contract_no", contract.contractNo, "term", term.label, "new_end_date", String.valueOf(contract.endDate), "_message", "续租成功！租约已顺延 " + term.label + " 至 " + contract.endDate + "。");
     }
 
-    @Transactional
+    @Transactional(readOnly = true)
     public Map<String, Object> queue(UserAccount user) {
-        List<QueueApplication> waiting = apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(user.communityId, "WAITING");
+        List<QueueApplication> waiting = QueueEngine.orderedWaiting(apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(user.communityId, "WAITING"));
         List<Map<String, Object>> result = new ArrayList<>();
         int idx = 1;
         for (QueueApplication app : waiting) {
-            if (!Objects.equals(app.currentRank, idx)) app.currentRank = idx;
-            UserAccount u = users.findById(app.userId).orElse(null);
-            result.add(map("rank", idx, "masked_name", maskName(u), "masked_phone", maskPhone(u),
+            UserAccount u = app.userId == null ? null : users.findById(app.userId).orElse(null);
+            result.add(map("rank", idx, "masked_name", maskName(u == null ? app.legacyApplicantName : u.realName),
+                    "masked_phone", maskPhone(u == null ? app.legacyApplicantPhone : u.phone),
                     "priority_level", app.priorityLevel, "priority_type", app.priorityLevel != null && app.priorityLevel == 1 ? "常规轮候" : "同户二车",
-                    "apply_time", Times.fmtBj(app.applyTime), "is_me", app.userId.equals(user.id)));
+                    "apply_time", Times.fmtBj(app.applyTime), "is_me", Objects.equals(app.userId, user.id),
+                    "legacy_imported", app.legacyImportBatchId != null));
             idx++;
         }
         List<Map<String, Object>> allocated = new ArrayList<>();
         for (QueueApplication app : apps.findByCommunityIdAndStatusInOrderByAllocatedTimeAsc(user.communityId, List.of("ALLOCATED", "OFFLINE_PENDING"))) {
-            UserAccount u = users.findById(app.userId).orElse(null);
+            UserAccount u = app.userId == null ? null : users.findById(app.userId).orElse(null);
             ParkingSpace sp = app.allocatedSpaceId == null ? null : spaces.findById(app.allocatedSpaceId).orElse(null);
             allocated.add(map("masked_name", maskName(u), "masked_phone", maskPhone(u), "space_no", sp != null ? sp.spaceNo : "--",
                     "status", app.status, "status_label", "ALLOCATED".equals(app.status) ? "中签待确认(48h)" : "线下签约办理中",
-                    "allocated_time", Times.fmtBj(app.allocatedTime), "is_me", app.userId.equals(user.id)));
+                    "allocated_time", Times.fmtBj(app.allocatedTime), "is_me", Objects.equals(app.userId, user.id)));
         }
         return map("waiting", result, "allocated", allocated);
     }
@@ -415,8 +416,10 @@ public class ParkingService {
         try { return json.readValue(raw, new TypeReference<>() {}); } catch (Exception e) { return List.of(); }
     }
 
-    private static String maskName(UserAccount u) { return u == null || u.realName == null || u.realName.isEmpty() ? "匿*" : u.realName.charAt(0) + "**"; }
-    private static String maskPhone(UserAccount u) { return u == null || u.phone == null || u.phone.length() < 7 ? "138****0000" : u.phone.substring(0, 3) + "****" + u.phone.substring(u.phone.length() - 4); }
+    private static String maskName(UserAccount u) { return maskName(u == null ? null : u.realName); }
+    private static String maskName(String name) { return name == null || name.isBlank() || "**".equals(name) ? "**" : name.charAt(0) + "**"; }
+    private static String maskPhone(UserAccount u) { return maskPhone(u == null ? null : u.phone); }
+    private static String maskPhone(String phone) { return phone == null || phone.length() < 7 ? "**" : phone.substring(0, 3) + "****" + phone.substring(phone.length() - 4); }
     private static String str(Object o) { return o == null ? "" : String.valueOf(o); }
     private static String or(String a, String b) { return a == null || a.isBlank() ? b : a; }
     private static String emptyToNull(String s) { return s == null || s.isBlank() ? null : s; }

@@ -102,6 +102,15 @@
         已导入 {{ stats.legacy_import_count ?? 0 }} 条历史在租台账，租户身份尚待补齐。空闲和维修车位清单未提供，出租率暂不计算；缺失字段显示 **。
       </div>
 
+      <div v-if="stats.company_name || stats.source_audit_mode" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-xs text-slate-300 leading-relaxed space-y-1">
+        <p>所属区街道：{{ stats.district || '**' }} / {{ stats.subdistrict || '**' }} · 物业公司：{{ stats.company_name || '**' }}</p>
+        <p>初始化联系人：{{ stats.contact_name || '**' }}（{{ stats.contact_phone || '**' }}）</p>
+        <p v-if="stats.source_audit_mode">原表审核方式：{{ stats.source_audit_mode }} · 当前执行：{{ stats.audit_mode_label }}<span v-if="stats.source_audit_mode === '三证自动' && stats.audit_mode === 'FLEXIBLE_HYBRID'">（自动核验服务尚未接入）</span></p>
+      </div>
+      <div v-if="stats.legacy_queue_unlinked_count" class="rounded-xl border border-amber-500/50 bg-amber-950/40 px-4 py-3 text-xs text-amber-100 leading-relaxed">
+        已录入 {{ stats.legacy_queue_unlinked_count }} 条待补齐身份的历史排队记录，原申请时间和顺位已保留。该顺位到达队首时，需先核实并关联业主账号，系统不会跳过此人分配给后续申请。
+      </div>
+
       <!-- 第 1 栏: 7 大关键大屏看板指标 -->
       <div v-show="activePanel === 'kpi'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
@@ -335,7 +344,7 @@
                   <th class="p-3">申报房屋坐落</th>
                   <th class="p-3">车牌号 / 归属</th>
                   <th class="p-3">审核机制</th>
-                  <th class="p-3">{{ isProduction ? '线下核验' : '证明材料附件' }}</th>
+                  <th class="p-3">{{ isProduction ? '核验 / 台账' : '证明材料附件' }}</th>
                   <th class="p-3">单据状态</th>
                   <th class="p-3">申报时间</th>
                   <th class="p-3 text-right">审核操作</th>
@@ -354,12 +363,13 @@
                   <td class="p-3">
                     <div class="font-bold text-white">{{ app.applicant_name }}</div>
                     <div class="text-[11px] text-slate-400 font-mono">{{ app.applicant_phone }}</div>
+                    <div v-if="app.legacy_source_rank" class="text-[10px] text-amber-300 mt-1">原顺位 {{ app.legacy_source_rank }} · 当前顺位 {{ app.current_rank }}</div>
                   </td>
                   <td class="p-3 text-slate-200">{{ app.property_no }}</td>
                   <td class="p-3">
                     <div class="font-mono font-bold text-white">{{ app.plate_no }}</div>
                     <div class="text-[10px] text-slate-400">
-                      {{ app.is_spouse_car ? '配偶车(结婚证)' : (app.car_relationship === 'FAMILY' ? '直系亲属(户口簿)' : '本人名下') }}
+                      {{ app.source_car_relationship || (app.is_spouse_car ? '配偶车(结婚证)' : (app.car_relationship === 'FAMILY' ? '直系亲属(户口簿)' : '本人名下')) }}
                     </div>
                   </td>
                   <td class="p-3">
@@ -375,7 +385,7 @@
                       @click="openViewAttachmentsModal(app)"
                       class="text-blue-400 hover:text-blue-300 px-2.5 py-1 rounded-lg bg-blue-950/40 hover:bg-blue-900/40 border border-blue-800/50 transition text-xs flex items-center gap-1 font-medium"
                     >
-                      <span><AppIcon name="review" :size="14" /> {{ isProduction ? '打开审核' : `查验原件资料 (${app.attachments?.length || 3}份)` }}</span>
+                      <span><AppIcon name="review" :size="14" /> {{ isProduction ? (app.legacy_unverified ? '查看历史台账' : '打开审核') : `查验原件资料 (${app.attachments?.length || 3}份)` }}</span>
                     </button>
                   </td>
                   <td class="p-3">
@@ -1581,7 +1591,7 @@
     <div v-if="productionReviewVisible && productionReviewApp" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
       <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-white">三证材料人工审核</h3>
+          <h3 class="font-bold text-white">{{ productionReviewApp.legacy_unverified ? '历史排队台账' : '三证材料人工审核' }}</h3>
           <button type="button" @click="productionReviewVisible = false" class="text-slate-400 hover:text-white" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
         <div class="rounded-xl bg-slate-900 p-3 text-xs text-slate-300 space-y-1">
@@ -1589,10 +1599,18 @@
           <p>房屋：{{ productionReviewApp.property_no }}</p>
           <p>车牌：{{ productionReviewApp.plate_no }}</p>
           <p>状态：{{ productionReviewApp.status_label }}</p>
+          <template v-if="productionReviewApp.legacy_source_rank">
+            <p>原排队序号：{{ productionReviewApp.legacy_source_rank }} · 当前顺位：{{ productionReviewApp.current_rank }}</p>
+            <p>原申请时间：{{ productionReviewApp.apply_time }}</p>
+            <p>原表车辆关系：{{ productionReviewApp.source_car_relationship || '**' }}</p>
+            <p>来源：04已有排队，第 {{ productionReviewApp.legacy_source_row }} 行</p>
+            <p>备注：{{ productionReviewApp.legacy_notes || '未填写' }}</p>
+          </template>
         </div>
-        <ApplicationDocumentList v-if="productionReviewApp.attachments?.length" :documents="productionReviewApp.attachments" dark />
+        <p v-if="productionReviewApp.legacy_unverified" class="rounded-xl bg-amber-950/40 border border-amber-800/60 p-3 text-xs text-amber-200 leading-relaxed">已按历史在排台账保留顺位，尚未生成可登录账号。请补齐并核实身份后关联账号；不会使用不合规证件号自动创建账号或绕过本人分配车位。</p>
+        <ApplicationDocumentList v-else-if="productionReviewApp.attachments?.length" :documents="productionReviewApp.attachments" dark />
         <p v-else class="rounded-xl bg-amber-950/40 border border-amber-800/60 p-3 text-xs text-amber-200 leading-relaxed">此申请未上传线上材料。可按原线下流程核验，或请申请人撤销后重新提交三证材料。</p>
-        <p class="text-xs text-slate-300 leading-relaxed">请查看申请材料并核对身份证明、房屋及车辆证明原件，填写核验登记编号后再给出审核结果。材料上传成功不代表核验通过。</p>
+        <p v-if="!productionReviewApp.legacy_unverified" class="text-xs text-slate-300 leading-relaxed">请查看申请材料并核对身份证明、房屋及车辆证明原件，填写核验登记编号后再给出审核结果。材料上传成功不代表核验通过。</p>
         <template v-if="productionReviewApp.status === 'PENDING_REVIEW'">
           <div>
             <label class="block text-xs text-slate-300 mb-1">线下核验登记编号</label>

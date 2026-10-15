@@ -16,6 +16,7 @@ $files = @(
   'PRODUCTION_DEPLOYMENT.md',
   'backup-production.sh',
   'database/migrations/20261015_application_documents.sql',
+  'database/migrations/20261015_legacy_queue.sql',
   'backend/Dockerfile',
   'backend/.dockerignore',
   'backend/target/parking-java-1.0.0.jar',

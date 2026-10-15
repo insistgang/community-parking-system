@@ -71,6 +71,8 @@ docker compose --env-file .env.production \
 ## 数据与回退
 
 - 生产 MySQL 数据保存在 `liugang_produce/mysql-data`；任何时候都不要复制测试端 `data/parking.db`。
+- 历史排队支持在未关联登录账号时保存原姓名、手机号、证件原文、车辆关系、原顺位、原申请时间和备注。上线前检查新增列不存在，再执行一次 `database/migrations/20261015_legacy_queue.sql`。补录数据使用事务和来源文件 SHA-256／原表行号防重。
+- 历史排队在同一优先级内按原表顺位排序，随后是新申请。队首尚未关联经核实的业主账号时，暂停该顺位及后续车位分配，避免跳过历史排队人。原始不合规证件号仅作为台账保留，不能直接生成可登录账号。
 - 三证文件保存在 `liugang_produce/application-documents`，由后端容器挂载到 `/app/application-documents`；不得放入 Nginx 静态目录。上线前以部署账号创建该目录并设置 `chmod 700 application-documents`。
 - 三证功能升级前先备份，然后在生产库执行 `database/migrations/20261015_application_documents.sql`，只新增材料元数据表。已提交材料与申请绑定，业主只能读取自己的材料，物业只能读取本小区已提交材料。
 - 每份材料支持 JPG、PNG、PDF，最大 10MB；Nginx 请求上限为 11MB。上线配置必须保留 `DOCUMENT_STORAGE_PATH` 和文件目录挂载，否则容器重建后会找不到文件。

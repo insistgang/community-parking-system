@@ -151,6 +151,7 @@
                 <th class="p-3">手机号码</th>
                 <th class="p-3">身份证号</th>
                 <th class="p-3">系统角色</th>
+                <th class="p-3">职务 / 备注</th>
                 <th class="p-3">所属小区</th>
                 <th class="p-3">注册时间</th>
                 <th class="p-3">登录次数</th>
@@ -172,6 +173,7 @@
                     {{ u.role_label }}
                   </span>
                 </td>
+                <td class="p-3 text-slate-300"><div>{{ u.job_title || '—' }}</div><div class="mt-1 text-[11px] text-slate-400">{{ u.notes || '—' }}</div></td>
                 <td class="p-3 text-slate-300">{{ u.community_name }}</td>
                 <td class="p-3 text-[11px] text-slate-400 font-mono">{{ u.created_at }}</td>
                 <td class="p-3 font-mono font-bold text-emerald-400">{{ u.login_count }} 次</td>

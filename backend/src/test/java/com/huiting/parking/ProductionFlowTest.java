@@ -7,10 +7,12 @@ import com.huiting.parking.entity.Community;
 import com.huiting.parking.entity.ParkingSpace;
 import com.huiting.parking.entity.RentalContract;
 import com.huiting.parking.entity.UserAccount;
+import com.huiting.parking.entity.QueueApplication;
 import com.huiting.parking.repo.Repos;
 import com.huiting.parking.service.PasswordService;
 import com.huiting.parking.service.EvidenceService;
 import com.huiting.parking.service.InviteService;
+import com.huiting.parking.service.QueueEngine;
 import com.huiting.parking.common.ApiException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,6 +46,8 @@ class ProductionFlowTest {
     @Autowired Repos.SpaceRepo spaces;
     @Autowired Repos.AppRepo applications;
     @Autowired Repos.DocumentRepo documents;
+    @Autowired Repos.NoticeRepo notices;
+    @Autowired QueueEngine queueEngine;
     @Autowired Repos.ContractRepo contracts;
     @Autowired Repos.EvidenceRepo evidences;
     @Autowired Repos.InviteRepo ownerInvites;
@@ -461,6 +465,80 @@ class ProductionFlowTest {
 
     private byte[] png() {
         return java.util.Base64.getDecoder().decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j5E0AAAAASUVORK5CYII=");
+    }
+
+    @Test
+    void historicalQueuePreservesPositionWithoutCreatingAnAccountOrSkippingAllocation() throws Exception {
+        Community community = new Community();
+        community.name = "历史排队验收小区";
+        community.totalSpaces = 1;
+        community.auditMode = "FLEXIBLE_HYBRID";
+        community.sourceAuditMode = "三证自动";
+        community = communities.save(community);
+        UserAccount legacyOwner = account("13800000101", "OWNER", community.id);
+        UserAccount newOwner = account("13800000102", "OWNER", community.id);
+        UserAccount manager = account("13900000101", "PROPERTY_ADMIN", community.id);
+        manager.jobTitle = "物业负责人";
+        manager.notes = "经理";
+        users.save(manager);
+        ParkingSpace space = new ParkingSpace();
+        space.communityId = community.id;
+        space.spaceNo = "H-001";
+        space = spaces.save(space);
+        QueueApplication legacy = new QueueApplication();
+        legacy.communityId = community.id;
+        legacy.propertyNo = "1号楼101室";
+        legacy.plateNo = "沪A12345";
+        legacy.applyTime = java.time.LocalDateTime.of(2025, 1, 11, 16, 0);
+        legacy.legacyApplicantName = "历史业主甲";
+        legacy.legacyApplicantPhone = "13800000101";
+        legacy.legacyIdCard = "0000000000000000001";
+        legacy.legacyImportBatchId = "c".repeat(64);
+        legacy.legacySourceRow = 3;
+        legacy.legacySourceRank = 1;
+        legacy.legacyCarRelationship = "业主";
+        legacy.legacyPriorityText = "1车";
+        legacy = applications.save(legacy);
+        QueueApplication current = new QueueApplication();
+        current.communityId = community.id;
+        current.userId = newOwner.id;
+        current.propertyNo = "2号楼101室";
+        current.plateNo = "沪B12345";
+        current.applyTime = java.time.LocalDateTime.of(2026, 10, 15, 1, 0);
+        current = applications.save(current);
+        long accountCount = users.count();
+        queueEngine.recalculate(community.id);
+        assertThat(users.count()).isEqualTo(accountCount);
+        assertThat(applications.findById(legacy.id).orElseThrow().currentRank).isEqualTo(1);
+        assertThat(applications.findById(current.id).orElseThrow().currentRank).isEqualTo(2);
+        assertThat(spaces.findById(space.id).orElseThrow().status).isEqualTo("VACANT");
+        assertThat(notices.findAll()).allMatch(n -> n.userId != null);
+        String ownerToken = login("/api/auth/login", "{\"identifier\":\"13800000102\",\"password\":\"password123\"}");
+        String managerToken = login("/api/auth/login", "{\"identifier\":\"13900000101\",\"password\":\"password123\"}");
+        mvc.perform(get("/api/parking/queue").header("Authorization", bearer(ownerToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.waiting[0].rank").value(1))
+                .andExpect(jsonPath("$.data.waiting[0].masked_name").value("历**"))
+                .andExpect(jsonPath("$.data.waiting[0].masked_phone").value("138****0101"))
+                .andExpect(jsonPath("$.data.waiting[0].apply_time").value("2025-01-12 00:00:00"))
+                .andExpect(jsonPath("$.data.waiting[0].legacy_imported").value(true))
+                .andExpect(jsonPath("$.data.waiting[0].is_me").value(false));
+        mvc.perform(get("/api/property/stats").header("Authorization", bearer(managerToken)))
+                .andExpect(jsonPath("$.data.legacy_queue_unlinked_count").value(1))
+                .andExpect(jsonPath("$.data.source_audit_mode").value("三证自动"));
+        String applicationBody = mvc.perform(get("/api/property/applications").header("Authorization", bearer(managerToken)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        JsonNode legacyView = json.readTree(applicationBody).path("data").get(1);
+        assertThat(legacyView.path("applicant_name").asText()).isEqualTo("历史业主甲");
+        assertThat(legacyView.path("source_car_relationship").asText()).isEqualTo("业主");
+        assertThat(legacyView.path("legacy_unverified").asBoolean()).isTrue();
+        legacy = applications.findById(legacy.id).orElseThrow();
+        legacy.userId = legacyOwner.id;
+        applications.save(legacy);
+        queueEngine.recalculate(community.id);
+        assertThat(spaces.findById(space.id).orElseThrow().currentUserId).isEqualTo(legacyOwner.id);
+        assertThat(applications.findById(legacy.id).orElseThrow().status).isEqualTo("ALLOCATED");
+        assertThat(applications.findById(current.id).orElseThrow().currentRank).isEqualTo(1);
     }
 
     private UserAccount account(String phone, String role, Integer communityId) {

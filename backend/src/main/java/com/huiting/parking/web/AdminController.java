@@ -158,6 +158,8 @@ public class AdminController {
                     "phone", u.phone,
                     "id_card_masked", maskedId,
                     "real_name", u.realName,
+                    "job_title", u.jobTitle,
+                    "notes", u.notes,
                     "role", u.role,
                     "role_label", "SUPER_ADMIN".equals(u.role) ? "系统超级管理员" : ("PROPERTY_ADMIN".equals(u.role) ? "物业管理员" : "社区业主"),
                     "community_id", u.communityId,

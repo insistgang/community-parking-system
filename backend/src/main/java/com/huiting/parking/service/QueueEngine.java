@@ -62,7 +62,7 @@ public class QueueEngine {
         communities.lockById(communityId).orElseThrow(() -> new IllegalStateException("小区不存在"));
         List<QueueApplication> bad = apps.findByCommunityIdAndStatusIn(communityId, List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING"))
                 .stream().filter(a -> {
-                    UserAccount u = users.findById(a.userId).orElse(null);
+                    UserAccount u = a.userId == null ? null : users.findById(a.userId).orElse(null);
                     return u != null && "PROPERTY_ADMIN".equals(u.role);
                 }).toList();
         for (QueueApplication app : bad) {
@@ -80,13 +80,15 @@ public class QueueEngine {
         }
 
         List<ParkingSpace> vacant = new ArrayList<>(spaces.findByCommunityIdAndStatusOrderBySpaceNoAsc(communityId, "VACANT"));
-        List<QueueApplication> waiting = apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(communityId, "WAITING")
+        List<QueueApplication> waiting = orderedWaiting(apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(communityId, "WAITING")
                 .stream().filter(a -> {
-                    UserAccount u = users.findById(a.userId).orElse(null);
+                    UserAccount u = a.userId == null ? null : users.findById(a.userId).orElse(null);
                     return u == null || !"PROPERTY_ADMIN".equals(u.role);
-                }).collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+                }).toList());
 
         while (!vacant.isEmpty() && !waiting.isEmpty()) {
+            // Preserve a historical applicant's position until their verified account is linked.
+            if (waiting.get(0).userId == null) break;
             ParkingSpace space = vacant.remove(0);
             QueueApplication app = waiting.remove(0);
             space.status = "ALLOCATED";
@@ -112,7 +114,7 @@ public class QueueEngine {
             int old = app.currentRank == null ? 0 : app.currentRank;
             if (old != rank) {
                 app.currentRank = rank;
-                if (old > rank || old == 0) {
+                if ((old > rank || old == 0) && app.userId != null) {
                     Notification n = new Notification();
                     n.userId = app.userId;
                     n.title = rank == 1 ? "候补首位通知" : "排队顺位提醒";
@@ -125,6 +127,16 @@ public class QueueEngine {
             }
             rank++;
         }
+    }
+
+    public static List<QueueApplication> orderedWaiting(List<QueueApplication> applications) {
+        return applications.stream().sorted(Comparator
+                .comparingInt((QueueApplication a) -> a.priorityLevel == null ? 1 : a.priorityLevel)
+                .thenComparingInt(a -> a.legacyImportBatchId == null ? 1 : 0)
+                .thenComparingInt(a -> a.legacySourceRank == null ? Integer.MAX_VALUE : a.legacySourceRank)
+                .thenComparing(a -> a.applyTime, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(a -> a.id, Comparator.nullsLast(Comparator.naturalOrder())))
+                .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
     }
 
     @Transactional

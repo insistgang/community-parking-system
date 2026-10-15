@@ -168,7 +168,7 @@ class ProductionFlowTest {
         String managerToken = login("/api/auth/login", "{\"identifier\":\"13900000021\",\"password\":\"password123\",\"login_type\":\"PASSWORD\"}");
         mvc.perform(get("/api/property/stats").header("Authorization", bearer(managerToken)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data.rented_spaces").value(1))
-                .andExpect(jsonPath("$.data.occupancy_rate").value("**"))
+                .andExpect(jsonPath("$.data.occupancy_rate").value("100%"))
                 .andExpect(jsonPath("$.data.legacy_import_count").value(1));
         mvc.perform(get("/api/property/spaces").header("Authorization", bearer(managerToken)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].user_name").value("历史租户"))

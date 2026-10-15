@@ -302,8 +302,6 @@
           </h3>
           <span class="text-[11px] text-slate-400">{{ overview?.inventory_complete === false ? '已录入车位' : '总车位' }} {{ overview?.total_spaces ?? 0 }} 个</span>
         </div>
-        <p v-if="overview?.inventory_complete === false" class="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-[11px] text-amber-800">{{ overview.inventory_note }}</p>
-
         <div class="grid grid-cols-4 gap-2 text-center text-xs">
           <div class="bg-slate-50 p-2.5 rounded-xl border border-slate-100">
             <AppIcon name="car" :size="17" class="mb-1 text-slate-500" />

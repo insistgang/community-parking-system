@@ -78,17 +78,20 @@ public class PropertyService {
         long expiring = communityContracts.stream().filter(c -> "EXPIRING".equals(c.status)).count();
         long legacyCount = communityContracts.stream().filter(c -> c.legacyImportBatchId != null).count();
         boolean inventoryComplete = comm == null || !Boolean.FALSE.equals(comm.inventoryComplete);
+        String occupancyRate = total == 0 ? "--" : (rented * 100) % total == 0
+                ? (rented * 100 / total) + "%"
+                : String.format(Locale.ROOT, "%.1f%%", rented * 100.0 / total);
         long pendingDelivery = apps.countByCommunityIdAndStatus(cid, "OFFLINE_PENDING");
         String mode = comm != null && comm.auditMode != null ? comm.auditMode : "THREE_CERT_AUTO";
         return ParkingService.map(
                 "total_spaces", total, "rented_spaces", rented, "vacant_spaces", vacant, "maintenance_spaces", maint,
                 "allocated_spaces", allocated, "waiting_count", waiting, "pending_audit_count", pendingAudit,
-                "occupancy_rate", inventoryComplete ? String.format("%.1f%%", rented * 100.0 / Math.max(1, total)) : "**",
+                "occupancy_rate", occupancyRate,
                 "inventory_complete", inventoryComplete,
                 "legacy_import_count", legacyCount,
                 "legacy_queue_unlinked_count", legacyQueueUnlinked,
                 "allocation_awaits_identity", !waitingApps.isEmpty() && waitingApps.get(0).userId == null,
-                "inventory_note", inventoryComplete ? "" : "已导入在租车位台账；空闲及维修车位清单尚待补录，占用率暂不可计算。",
+                "inventory_note", inventoryComplete ? "" : "出租率按已录入车位计算；实际总车位清单仍待核对。",
                 "pending_warnings", expiring + pendingDelivery + pendingAudit,
                 "avg_turnover_days", avgTurn, "avg_queue_wait_days", avgWait,
                 "completed_allocations", apps.countByCommunityIdAndStatus(cid, "COMPLETED"),

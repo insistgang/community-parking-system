@@ -56,6 +56,8 @@ class ProductionSystemSmokeTest {
                 "/api/property/export-spaces"}) {
             mvc.perform(get(route).header("Authorization", bearer(property))).andExpect(status().isOk());
         }
+        mvc.perform(get("/api/property/stats").header("Authorization", bearer(property)))
+                .andExpect(jsonPath("$.data.occupancy_rate").value("--"));
         for (String route : new String[]{"/api/admin/stats", "/api/admin/users", "/api/admin/login-logs",
                 "/api/admin/operation-logs", "/api/admin/external-api-logs"}) {
             mvc.perform(get(route).header("Authorization", bearer(platform))).andExpect(status().isOk());

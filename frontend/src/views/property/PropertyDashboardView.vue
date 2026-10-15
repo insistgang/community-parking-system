@@ -22,7 +22,7 @@
               物业管理 PC 端
             </span>
           </div>
-          <p class="text-xs text-slate-400 break-words">服务小区：{{ userStore.communityName }}（总车位 {{ stats.total_spaces ?? 0 }} 个）| 当前管理员：{{ userStore.realName }}</p>
+          <p class="text-xs text-slate-400 break-words">服务小区：{{ userStore.communityName }}（{{ stats.inventory_complete === false ? '已录入车位' : '总车位' }} {{ stats.total_spaces ?? 0 }} 个）| 当前管理员：{{ userStore.realName }}</p>
         </div>
       </div>
 
@@ -98,19 +98,11 @@
         </button>
       </div>
 
-      <div v-if="stats.inventory_complete === false" class="rounded-xl border border-amber-500/50 bg-amber-950/40 px-4 py-3 text-xs text-amber-100">
-        已导入 {{ stats.legacy_import_count ?? 0 }} 条历史在租台账，租户身份尚待补齐。空闲和维修车位清单未提供，出租率暂不计算；缺失字段显示 **。
-      </div>
-
       <div v-if="stats.company_name || stats.source_audit_mode" class="rounded-xl border border-slate-700 bg-slate-800 px-4 py-3 text-xs text-slate-300 leading-relaxed space-y-1">
         <p>所属区街道：{{ stats.district || '**' }} / {{ stats.subdistrict || '**' }} · 物业公司：{{ stats.company_name || '**' }}</p>
         <p>初始化联系人：{{ stats.contact_name || '**' }}（{{ stats.contact_phone || '**' }}）</p>
         <p v-if="stats.source_audit_mode">原表审核方式：{{ stats.source_audit_mode }} · 当前执行：{{ stats.audit_mode_label }}<span v-if="stats.source_audit_mode === '三证自动' && stats.audit_mode === 'FLEXIBLE_HYBRID'">（自动核验服务尚未接入）</span></p>
       </div>
-      <div v-if="stats.legacy_queue_unlinked_count" class="rounded-xl border border-amber-500/50 bg-amber-950/40 px-4 py-3 text-xs text-amber-100 leading-relaxed">
-        已录入 {{ stats.legacy_queue_unlinked_count }} 条待补齐身份的历史排队记录，原申请时间和顺位已保留。该顺位到达队首时，需先核实并关联业主账号，系统不会跳过此人分配给后续申请。
-      </div>
-
       <!-- 第 1 栏: 7 大关键大屏看板指标 -->
       <div v-show="activePanel === 'kpi'" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3">
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
@@ -118,18 +110,18 @@
           <span class="text-2xl font-black text-white mt-1 block font-mono">{{ stats.total_spaces ?? 0 }}</span>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
-          <span class="text-xs text-blue-400 block font-medium">已租车位 (出租率)</span>
+          <span class="text-xs text-blue-400 block font-medium">已租车位（已录入出租率）</span>
           <div class="flex items-baseline gap-1 mt-1">
             <span class="text-2xl font-black text-blue-400 font-mono">{{ stats.rented_spaces ?? 0 }}</span>
-            <span class="text-xs text-slate-400">({{ stats.occupancy_rate || '0%' }})</span>
+            <span class="text-xs text-slate-400">({{ stats.occupancy_rate || '--' }})</span>
           </div>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
-          <span class="text-xs text-emerald-400 block font-medium">空闲待分车位</span>
+          <span class="text-xs text-emerald-400 block font-medium">{{ stats.inventory_complete === false ? '已录入空闲车位' : '空闲待分车位' }}</span>
           <span class="text-2xl font-black text-emerald-400 mt-1 block font-mono">{{ stats.vacant_spaces ?? 0 }}</span>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
-          <span class="text-xs text-orange-400 block font-medium">维修停用车位</span>
+          <span class="text-xs text-orange-400 block font-medium">{{ stats.inventory_complete === false ? '已录入维修车位' : '维修停用车位' }}</span>
           <span class="text-2xl font-black text-orange-400 mt-1 block font-mono">{{ stats.maintenance_spaces ?? 0 }}</span>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">

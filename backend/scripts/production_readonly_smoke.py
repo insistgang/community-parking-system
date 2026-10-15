@@ -120,7 +120,8 @@ def main():
             except Exception:
                 pass
     print(json.dumps({"result": "PASS", "checked_api_calls": checked,
-                      "accounts_logged_in": len(sessions)}, ensure_ascii=False))
+                      "accounts_logged_in": len(sessions),
+                      "pending_warnings": property_stats["pending_warnings"]}, ensure_ascii=False))
 
 
 if __name__ == "__main__":

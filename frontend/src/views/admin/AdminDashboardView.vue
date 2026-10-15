@@ -70,7 +70,7 @@
       <!-- 平台统计大盘指标 -->
       <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 text-xs">
         <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-          <span class="text-slate-400 block">注册用户总数</span>
+          <span class="text-slate-400 block">登录账号总数</span>
           <span class="text-2xl font-black text-white mt-1 block font-mono">{{ stats.total_users ?? 0 }}</span>
         </div>
         <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
@@ -82,11 +82,11 @@
           <span class="text-2xl font-black text-purple-400 mt-1 block font-mono">{{ stats.property_count ?? 0 }}</span>
         </div>
         <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-          <span class="text-emerald-400 block">纳管车位总量</span>
+          <span class="text-emerald-400 block">已录入车位总数</span>
           <span class="text-2xl font-black text-emerald-400 mt-1 block font-mono">{{ stats.total_spaces ?? 0 }}</span>
         </div>
         <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
-          <span class="text-amber-400 block">车位申请总量</span>
+          <span class="text-amber-400 block">申请记录总数</span>
           <span class="text-2xl font-black text-amber-400 mt-1 block font-mono">{{ stats.total_applications ?? 0 }}</span>
         </div>
         <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800">
@@ -126,7 +126,7 @@
             <h2 class="text-sm font-bold text-white flex items-center gap-2">
               <span><AppIcon name="users" size="1em" /> 用户档案与登录状态汇总</span>
             </h2>
-            <span class="text-[11px] text-slate-400">包含业主注册信息、物业注册信息及最后活跃登录记录</span>
+            <span class="text-[11px] text-slate-400">包含已开通的业主、物业账号及最近登录记录</span>
           </div>
           <!-- 角色过滤 -->
           <div class="flex items-center gap-1.5 text-xs">
@@ -147,13 +147,13 @@
             <thead class="bg-slate-950/60 text-slate-400 font-bold">
               <tr>
                 <th class="p-3">ID</th>
-                <th class="p-3">真实姓名</th>
+                <th class="p-3">登记姓名</th>
                 <th class="p-3">手机号码</th>
                 <th class="p-3">身份证号</th>
                 <th class="p-3">系统角色</th>
                 <th class="p-3">职务 / 备注</th>
                 <th class="p-3">所属小区</th>
-                <th class="p-3">注册时间</th>
+                <th class="p-3">建档时间</th>
                 <th class="p-3">登录次数</th>
                 <th class="p-3">最后登录时间</th>
                 <th class="p-3">最后登录 IP</th>

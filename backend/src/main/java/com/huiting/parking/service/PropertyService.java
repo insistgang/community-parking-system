@@ -75,7 +75,8 @@ public class PropertyService {
         List<QueueApplication> waitingApps = QueueEngine.orderedWaiting(apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(cid, "WAITING"));
         int avgWait = (int) Math.round(waitingApps.stream().filter(a -> a.applyTime != null).mapToLong(a -> ChronoUnit.DAYS.between(a.applyTime.toLocalDate(), Times.utcNow().toLocalDate())).average().orElse(0));
         long legacyQueueUnlinked = waitingApps.stream().filter(a -> a.legacyImportBatchId != null && a.userId == null).count();
-        long expiring = communityContracts.stream().filter(c -> "EXPIRING".equals(c.status)).count();
+        long rentalWarnings = communityContracts.stream()
+                .filter(c -> "EXPIRING".equals(c.status) || "OVERDUE".equals(c.status)).count();
         long legacyCount = communityContracts.stream().filter(c -> c.legacyImportBatchId != null).count();
         boolean inventoryComplete = comm == null || !Boolean.FALSE.equals(comm.inventoryComplete);
         String occupancyRate = total == 0 ? "--" : (rented * 100) % total == 0
@@ -92,7 +93,7 @@ public class PropertyService {
                 "legacy_queue_unlinked_count", legacyQueueUnlinked,
                 "allocation_awaits_identity", !waitingApps.isEmpty() && waitingApps.get(0).userId == null,
                 "inventory_note", inventoryComplete ? "" : "出租率按已录入车位计算；实际总车位清单仍待核对。",
-                "pending_warnings", expiring + pendingDelivery + pendingAudit,
+                "pending_warnings", rentalWarnings + pendingDelivery + pendingAudit,
                 "avg_turnover_days", avgTurn, "avg_queue_wait_days", avgWait,
                 "completed_allocations", apps.countByCommunityIdAndStatus(cid, "COMPLETED"),
                 "released_total", evidences.countByCommunityIdAndEventType(cid, "TERMINATE"),

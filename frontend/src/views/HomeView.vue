@@ -253,7 +253,7 @@
       <div v-else-if="viewState === 'IDENTITY_PENDING'" class="rounded-2xl border border-amber-200 bg-white p-6 text-center shadow-sm space-y-3">
         <AppIcon name="shield" class="mx-auto h-9 w-9 text-amber-600" />
         <h3 class="text-base font-bold text-slate-800">账号已开通，历史台账待核实</h3>
-        <p class="text-xs leading-relaxed text-slate-600">Excel 台账中的姓名或身份证资料不完整。请联系物业核实身份并关联历史租约；完成前可查看小区概况和公开排队信息。</p>
+        <p class="text-xs leading-relaxed text-slate-600">当前登记资料尚待物业核实。完成身份核验及历史租约关联前，可查看小区概况和公开排队信息。</p>
       </div>
 
       <!-- 视图 B: 新客无车位视图 / 物业管理员巡检视图 -->
@@ -310,7 +310,7 @@
           </div>
           <div class="bg-emerald-50 p-2.5 rounded-xl border border-emerald-100">
             <AppIcon name="parking" :size="17" class="mb-1 text-emerald-500" />
-            <span class="text-emerald-600 text-[10px] block font-medium">空闲可用</span>
+            <span class="text-emerald-600 text-[10px] block font-medium">{{ overview?.inventory_complete === false ? '已录入空闲' : '空闲可用' }}</span>
             <span class="text-base font-extrabold text-emerald-700 mt-0.5 block">{{ overview?.vacant_spaces ?? 0 }}</span>
           </div>
           <div class="bg-amber-50 p-2.5 rounded-xl border border-amber-100">
@@ -320,7 +320,7 @@
           </div>
           <div class="bg-orange-50 p-2.5 rounded-xl border border-orange-100">
             <AppIcon name="wrench" :size="17" class="mb-1 text-orange-500" />
-            <span class="text-orange-600 text-[10px] block font-medium">维修停用</span>
+            <span class="text-orange-600 text-[10px] block font-medium">{{ overview?.inventory_complete === false ? '已录入维修' : '维修停用' }}</span>
             <span class="text-base font-extrabold text-orange-700 mt-0.5 block">{{ overview?.maintenance_spaces ?? 0 }}</span>
           </div>
         </div>

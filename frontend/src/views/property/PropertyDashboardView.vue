@@ -133,7 +133,7 @@
           <span class="text-2xl font-black text-purple-400 mt-1 block font-mono">{{ stats.waiting_count ?? 0 }}</span>
         </div>
         <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700">
-          <span class="text-xs text-rose-400 block font-medium">待办预警 (临期/待交割)</span>
+          <span class="text-xs text-rose-400 block font-medium">待办预警（临期/逾期/待交割）</span>
           <span class="text-2xl font-black text-rose-400 mt-1 block font-mono">{{ stats.pending_warnings ?? 0 }}</span>
         </div>
       </div>
@@ -1599,7 +1599,7 @@
             <p>备注：{{ productionReviewApp.legacy_notes || '未填写' }}</p>
           </template>
         </div>
-        <p v-if="productionReviewApp.legacy_unverified" class="rounded-xl bg-amber-950/40 border border-amber-800/60 p-3 text-xs text-amber-200 leading-relaxed">已按历史在排台账保留顺位，尚未生成可登录账号。请补齐并核实身份后关联账号；不会使用不合规证件号自动创建账号或绕过本人分配车位。</p>
+        <p v-if="productionReviewApp.legacy_unverified" class="rounded-xl bg-slate-800 border border-slate-700 p-3 text-xs text-slate-300 leading-relaxed">原申请时间与顺位已保留。登录账号与这条申请尚未完成身份关联；请核实证件后办理关联，核实前不会参与自动分配。</p>
         <ApplicationDocumentList v-else-if="productionReviewApp.attachments?.length" :documents="productionReviewApp.attachments" dark />
         <p v-else class="rounded-xl bg-amber-950/40 border border-amber-800/60 p-3 text-xs text-amber-200 leading-relaxed">此申请未上传线上材料。可按原线下流程核验，或请申请人撤销后重新提交三证材料。</p>
         <p v-if="!productionReviewApp.legacy_unverified" class="text-xs text-slate-300 leading-relaxed">请查看申请材料并核对身份证明、房屋及车辆证明原件，填写核验登记编号后再给出审核结果。材料上传成功不代表核验通过。</p>

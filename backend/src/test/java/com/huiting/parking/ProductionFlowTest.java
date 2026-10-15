@@ -489,7 +489,8 @@ class ProductionFlowTest {
         legacy.communityId = community.id;
         legacy.propertyNo = "1号楼101室";
         legacy.plateNo = "沪A12345";
-        legacy.applyTime = java.time.LocalDateTime.of(2025, 1, 11, 16, 0);
+        legacy.applyTime = java.time.LocalDateTime.of(2025, 1, 12, 0, 0);
+        legacy.legacyApplyTimeText = "2025-01-12 00:00:00";
         legacy.legacyApplicantName = "历史业主甲";
         legacy.legacyApplicantPhone = "13800000101";
         legacy.legacyIdCard = "0000000000000000001";
@@ -532,6 +533,14 @@ class ProductionFlowTest {
         assertThat(legacyView.path("applicant_name").asText()).isEqualTo("历史业主甲");
         assertThat(legacyView.path("source_car_relationship").asText()).isEqualTo("业主");
         assertThat(legacyView.path("legacy_unverified").asBoolean()).isTrue();
+        assertThat(legacyView.path("apply_time").asText()).isEqualTo("2025-01-12 00:00:00");
+        byte[] exported = mvc.perform(get("/api/property/export-spaces").header("Authorization", bearer(managerToken)))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray();
+        try (var workbook = new org.apache.poi.xssf.usermodel.XSSFWorkbook(new java.io.ByteArrayInputStream(exported))) {
+            var row = workbook.getSheet("排队轮候名单").getRow(1);
+            assertThat(row.getCell(1).getStringCellValue()).isEqualTo("历史业主甲");
+            assertThat(row.getCell(6).getStringCellValue()).isEqualTo("2025-01-12 00:00:00");
+        }
         legacy = applications.findById(legacy.id).orElseThrow();
         legacy.userId = legacyOwner.id;
         applications.save(legacy);

@@ -360,9 +360,11 @@ public class PropertyService {
             Sheet ws2 = wb.createSheet("排队轮候名单");
             row(ws2, head, "实时排位", "业主姓名", "联系电话", "登记车牌", "优先级", "申报房屋", "申请时间");
             int idx = 1;
-            for (QueueApplication app : apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(admin.communityId, "WAITING")) {
-                UserAccount u = users.findById(app.userId).orElse(null);
-                row(ws2, null, idx++, u != null ? u.realName : "--", u != null ? u.phone : "--", app.plateNo, app.priorityLevel != null && app.priorityLevel == 1 ? "家庭一车" : "家庭二车", app.propertyNo, Times.fmtBj(app.applyTime));
+            for (QueueApplication app : QueueEngine.orderedWaiting(apps.findByCommunityIdAndStatusOrderByPriorityLevelAscApplyTimeAsc(admin.communityId, "WAITING"))) {
+                UserAccount u = app.userId == null ? null : users.findById(app.userId).orElse(null);
+                row(ws2, null, idx++, u != null ? u.realName : legacyValue(app.legacyApplicantName),
+                        u != null ? u.phone : legacyValue(app.legacyApplicantPhone), app.plateNo,
+                        app.priorityLevel != null && app.priorityLevel == 1 ? "家庭一车" : "家庭二车", app.propertyNo, ParkingService.formatApplicationTime(app));
             }
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
             wb.write(bos);
@@ -488,7 +490,7 @@ public class PropertyService {
                     "priority_level", app.priorityLevel, "priority_label", app.priorityLevel != null && app.priorityLevel == 1 ? "家庭一车" : "家庭二车",
                     "current_rank", app.currentRank, "status", app.status, "status_label", legacyUnverified ? "历史排队（身份待补）" : labels.getOrDefault(app.status, app.status),
                     "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"), "audit_mode_label", app.legacyImportBatchId != null ? "历史台账导入" : "FLEXIBLE_HYBRID".equals(app.auditMode) ? "物业人工审核" : "演示自动审核",
-                    "reject_reason", app.rejectReason, "attachments", parse(app.attachmentsJson), "apply_time", Times.fmtBj(app.applyTime),
+                    "reject_reason", app.rejectReason, "attachments", parse(app.attachmentsJson), "apply_time", ParkingService.formatApplicationTime(app),
                     "audit_time", app.auditTime == null ? "--" : Times.fmtBj(app.auditTime), "auditor_name", auditor != null ? auditor.realName : "--",
                     "audit_reference", app.auditReference));
         }

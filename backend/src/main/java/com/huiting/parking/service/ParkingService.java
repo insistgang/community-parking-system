@@ -297,7 +297,7 @@ public class ParkingService {
             result.add(map("rank", idx, "masked_name", maskName(u == null ? app.legacyApplicantName : u.realName),
                     "masked_phone", maskPhone(u == null ? app.legacyApplicantPhone : u.phone),
                     "priority_level", app.priorityLevel, "priority_type", app.priorityLevel != null && app.priorityLevel == 1 ? "常规轮候" : "同户二车",
-                    "apply_time", Times.fmtBj(app.applyTime), "is_me", Objects.equals(app.userId, user.id),
+                    "apply_time", formatApplicationTime(app), "is_me", Objects.equals(app.userId, user.id),
                     "legacy_imported", app.legacyImportBatchId != null));
             idx++;
         }
@@ -336,14 +336,14 @@ public class ParkingService {
         List<Map<String, Object>> attachments = parse(app.attachmentsJson);
         if ("PENDING_REVIEW".equals(app.status)) {
             return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "status", "PENDING_REVIEW",
-                    "status_label", "待物业人工审核", "audit_mode", or(app.auditMode, "FLEXIBLE_HYBRID"), "apply_time", Times.fmtBj(app.applyTime),
+                    "status_label", "待物业人工审核", "audit_mode", or(app.auditMode, "FLEXIBLE_HYBRID"), "apply_time", formatApplicationTime(app),
                     "attachments", attachments, "notice", "申请已提交，正在等待物业人工核验材料。");
         }
         if ("REJECTED".equals(app.status)) {
             return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "status", "REJECTED",
                     "status_label", "审核已驳回", "reject_reason", or(app.rejectReason, "申请材料不符合要求，请核对后重新提交"),
                     "audit_time", app.auditTime == null ? "--" : Times.fmtBj(app.auditTime), "audit_mode", or(app.auditMode, "FLEXIBLE_HYBRID"),
-                    "apply_time", Times.fmtBj(app.applyTime), "attachments", attachments, "can_reapply", true);
+                    "apply_time", formatApplicationTime(app), "attachments", attachments, "can_reapply", true);
         }
         String allocatedNo = null;
         int countdown = 0;
@@ -361,7 +361,7 @@ public class ParkingService {
         return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "priority_level", app.priorityLevel,
                 "priority_label", app.priorityLevel != null && app.priorityLevel == 1 ? "常规优先轮候" : "同户二车(顺延后置)",
                 "current_rank", app.currentRank, "total_queue", totalWaiting, "is_first_candidate", app.currentRank != null && app.currentRank == 1,
-                "apply_time", Times.fmtBj(app.applyTime), "ai_waiting_time", est[0], "ai_estimation_basis", est[1],
+                "apply_time", formatApplicationTime(app), "ai_waiting_time", est[0], "ai_estimation_basis", est[1],
                 "allocated_space_no", allocatedNo, "countdown_seconds", countdown, "attachments", attachments,
                 "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"));
     }
@@ -414,6 +414,12 @@ public class ParkingService {
     private List<Map<String, Object>> parse(String raw) {
         if (raw == null || raw.isBlank()) return List.of();
         try { return json.readValue(raw, new TypeReference<>() {}); } catch (Exception e) { return List.of(); }
+    }
+
+    public static String formatApplicationTime(QueueApplication app) {
+        if (app.legacyImportBatchId != null && app.legacyApplyTimeText != null && !app.legacyApplyTimeText.isBlank())
+            return app.legacyApplyTimeText;
+        return Times.fmtBj(app.applyTime);
     }
 
     private static String maskName(UserAccount u) { return maskName(u == null ? null : u.realName); }

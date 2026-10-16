@@ -438,12 +438,13 @@
         <ApplicationDocumentList v-if="reviewApp.attachments?.length" :documents="reviewApp.attachments" dark />
         <p v-else class="text-amber-300">此申请没有线上材料，须核对原始台账。</p>
         <template v-if="reviewApp.status === 'PENDING_REVIEW'">
-          <p class="text-xs text-slate-400">请人工核对身份证明、房屋证明、车辆行驶证及必要的关系证明原件。系统目前不调用人证核验或 OCR 接口。</p>
+          <p class="text-xs text-slate-400">请人工核对身份证明、房屋证明、车辆行驶证及必要的关系证明原件，并确认房屋确属所选小区。系统目前不调用人证核验或 OCR 接口。</p>
           <label class="block text-slate-300">核验登记编号<input v-model.trim="reviewReference" maxlength="100" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" placeholder="如 LH-2026-001"></label>
           <label class="flex gap-2 text-slate-300"><input v-model="reviewVerified" type="checkbox">我已人工核对证明材料原件</label>
+          <label class="flex gap-2 text-slate-300"><input v-model="reviewCommunityVerified" type="checkbox">我已核对房屋属于申请人所选小区</label>
           <label class="block text-slate-300">驳回理由（驳回时填写）<textarea v-model.trim="reviewReason" maxlength="500" rows="2" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white"></textarea></label>
           <p v-if="reviewError" role="alert" class="text-rose-300">{{ reviewError }}</p>
-          <div class="flex gap-2"><button @click="submitReview('REJECT')" :disabled="reviewLoading || !reviewReason" class="flex-1 rounded-lg bg-rose-700 p-2 font-bold text-white disabled:opacity-50">驳回</button><button @click="submitReview('APPROVE')" :disabled="reviewLoading || !reviewVerified || !reviewReference" class="flex-1 rounded-lg bg-emerald-700 p-2 font-bold text-white disabled:opacity-50">审核通过并入队</button></div>
+          <div class="flex gap-2"><button @click="submitReview('REJECT')" :disabled="reviewLoading || !reviewReason" class="flex-1 rounded-lg bg-rose-700 p-2 font-bold text-white disabled:opacity-50">驳回</button><button @click="submitReview('APPROVE')" :disabled="reviewLoading || !reviewVerified || !reviewCommunityVerified || !reviewReference" class="flex-1 rounded-lg bg-emerald-700 p-2 font-bold text-white disabled:opacity-50">审核通过并入队</button></div>
         </template>
         <p v-else-if="reviewApp.auditor_name && reviewApp.auditor_name !== '--'" class="text-xs text-slate-400">审核人：{{ reviewApp.auditor_name }} · {{ reviewApp.audit_time }} · {{ reviewApp.audit_reference || '未填写编号' }}</p>
       </div>
@@ -571,6 +572,7 @@ const applicationStatus = ref('PENDING_REVIEW')
 const reviewApp = ref(null)
 const reviewReference = ref('')
 const reviewVerified = ref(false)
+const reviewCommunityVerified = ref(false)
 const reviewReason = ref('')
 const reviewError = ref('')
 const reviewLoading = ref(false)
@@ -644,6 +646,7 @@ const openApplication = (app) => {
   reviewApp.value = app
   reviewReference.value = ''
   reviewVerified.value = false
+  reviewCommunityVerified.value = false
   reviewReason.value = ''
   reviewError.value = ''
 }
@@ -657,6 +660,7 @@ const submitReview = async (action) => {
       app_id: reviewApp.value.id, action,
       audit_reference: reviewReference.value,
       documents_verified: reviewVerified.value,
+      community_verified: reviewCommunityVerified.value,
       reject_reason: reviewReason.value
     })
     reviewApp.value = null

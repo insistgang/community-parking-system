@@ -138,6 +138,7 @@ public class AdminController {
     }
 
     @PostMapping("/audit-application")
+    @Transactional
     public ApiResponse auditApplication(@RequestAttribute(name = "authUserId") Integer uid,
                                         @RequestBody Map<String, Object> req, HttpServletRequest request) {
         UserAccount admin = requireAdmin(uid);

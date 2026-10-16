@@ -538,8 +538,9 @@ public class PropertyService {
         String action = str(req.get("action"));
         if ("APPROVE".equals(action)) {
             String reference = str(req.get("audit_reference")).trim();
-            if (!demoEnabled && (!Boolean.TRUE.equals(req.get("documents_verified")) || reference.isBlank()))
-                throw new ApiException(400, "请先线下核对证明材料并填写核验登记编号");
+            if (!demoEnabled && (!Boolean.TRUE.equals(req.get("documents_verified"))
+                    || !Boolean.TRUE.equals(req.get("community_verified")) || reference.isBlank()))
+                throw new ApiException(400, "请先人工核对证明材料和房屋所属小区，并填写核验登记编号");
             app.status = "WAITING";
             app.auditTime = Times.utcNow();
             app.auditorId = admin.id;
@@ -548,7 +549,7 @@ public class PropertyService {
             evidence.create(communityId, applicant != null ? applicant.id : admin.id, "AUDIT_PASS",
                     reviewerTitle + "【" + admin.realName + "】审核通过业主【" + name + "】车位申请，单据正式进入排位序列",
                     Map.of("app_id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "auditor", admin.realName,
-                            "action", "APPROVE", "audit_reference", reference), null);
+                            "action", "APPROVE", "audit_reference", reference, "community_verified", Boolean.TRUE.equals(req.get("community_verified"))), null);
             saveNotice(app.userId, "车位申请审核通过通知", "恭喜！您提交的车位申请（房屋: " + app.propertyNo + "，车辆: " + app.plateNo + "）已通过" + reviewerTitle + "人工审核，现已正式进入小区公平排位序列！", "SYSTEM", "GO_QUEUE");
             engine.recalculate(communityId);
             return "审核通过！业主【" + name + "】的申请已正式进入车位排位序列。";

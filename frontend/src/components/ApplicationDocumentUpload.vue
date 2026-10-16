@@ -10,7 +10,7 @@
         <AppIcon name="file-check" :size="18" class="text-blue-600 mt-0.5" />
         <div class="min-w-0 flex-1">
           <p class="text-xs font-medium text-slate-800 break-all">{{ modelValue.name }}</p>
-          <p class="text-[11px] text-slate-500 mt-1">{{ formatSize(modelValue.size_bytes) }} · 已上传，待物业人工核验</p>
+          <p class="text-[11px] text-slate-500 mt-1">{{ formatSize(modelValue.size_bytes) }} · 已上传，待平台人工核验</p>
         </div>
       </div>
       <div class="flex items-center gap-4 text-xs">
@@ -29,6 +29,10 @@
       <AppIcon :name="busy ? 'loading' : 'upload'" :size="17" :class="busy ? 'animate-spin' : ''" />
       {{ busy ? '正在处理…' : modelValue ? `更换${title}` : `上传${title}` }}
     </button>
+    <div v-if="busy && progress !== null" class="space-y-1" role="progressbar" :aria-valuenow="progress" aria-valuemin="0" aria-valuemax="100" :aria-label="`${title}上传进度`">
+      <div class="h-1.5 overflow-hidden rounded-full bg-blue-100"><div class="h-full bg-blue-600 transition-all" :style="{ width: `${progress}%` }"></div></div>
+      <p class="text-[11px] text-blue-700">已上传 {{ progress }}%</p>
+    </div>
     <p class="text-[11px] text-slate-400">支持 JPG、PNG、PDF，单份不超过 10MB；多页材料可合并为 PDF。</p>
     <p v-if="error" role="alert" class="text-xs text-rose-600 leading-relaxed">{{ error }}</p>
   </div>
@@ -48,6 +52,7 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'busy'])
 const fileInput = ref(null)
 const busy = ref(false)
+const progress = ref(null)
 const error = ref('')
 const setBusy = (value) => { busy.value = value; emit('busy', value) }
 const formatSize = (value) => value >= 1024 * 1024 ? `${(value / 1024 / 1024).toFixed(1)} MB` : `${Math.max(1, Math.ceil(value / 1024))} KB`
@@ -60,19 +65,23 @@ const upload = async (event) => {
   if (!/\.(jpe?g|png|pdf)$/i.test(file.name)) { error.value = '请选择 JPG、PNG 或 PDF 文件'; return }
   if (file.size > 10 * 1024 * 1024) { error.value = '每份材料不能超过 10MB'; return }
   setBusy(true)
+  progress.value = 0
   try {
     const previous = props.modelValue
     const body = new FormData()
     body.append('document_type', props.type)
     body.append('file', file)
-    const response = await api.post('/parking/application-documents', body, { timeout: 60000 })
+    const response = await api.post('/parking/application-documents', body, {
+      timeout: 60000,
+      onUploadProgress: ({ loaded, total }) => { if (total) progress.value = Math.min(100, Math.round(loaded * 100 / total)) }
+    })
     emit('update:modelValue', response.data)
     if (previous?.id) {
       try { await api.delete(`/parking/application-documents/${encodeURIComponent(previous.id)}`) }
       catch { error.value = '新材料已保存，旧草稿暂未清理，您可继续申请。' }
     }
   } catch (err) { error.value = err.message || '上传失败，请重试' }
-  finally { setBusy(false) }
+  finally { setBusy(false); progress.value = null }
 }
 const remove = async () => {
   if (!props.modelValue?.id || busy.value) return

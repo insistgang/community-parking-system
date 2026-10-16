@@ -195,8 +195,8 @@ const submit = async () => {
   }
   loading.value = true
   try {
-    await api.post('/parking/apply', { ...form, plate_no: normalizePlate(), document_ids: selectedDocuments.value.map(doc => doc.id) })
-    showToast('申请已提交，等待平台人工审核', 'success')
+    const response = await api.post('/parking/apply', { ...form, plate_no: normalizePlate(), document_ids: selectedDocuments.value.map(doc => doc.id) })
+    showToast(`申请 #${response.data.id} 已提交，等待平台人工审核`, 'success')
     try { await userStore.fetchHomeData() } catch { /* 首页会自行重试读取状态 */ }
     router.push('/')
   } catch (err) { error.value = err.message || '提交失败，请稍后重试' }

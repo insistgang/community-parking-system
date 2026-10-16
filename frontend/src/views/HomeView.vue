@@ -169,6 +169,7 @@
               <span class="text-2xl font-black font-mono text-slate-800 tracking-wider">
                 {{ myQueue?.plate_no || '审核中' }}
               </span>
+              <span v-if="myQueue?.id" class="mt-1 block text-[11px] font-mono text-slate-500">申请编号 #{{ myQueue.id }}</span>
             </div>
 
             <ApplicationDocumentList v-if="myQueue?.attachments?.length" :documents="myQueue.attachments" />

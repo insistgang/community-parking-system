@@ -223,7 +223,8 @@ class ProductionFlowTest {
         mvc.perform(get("/api/evidence/verify/" + foreignEvidence.evidenceId).header("Authorization", bearer(ownerToken)))
                 .andExpect(status().isNotFound());
 
-        int appId = submitApplication(ownerToken, "12号楼302室", "沪A12345");
+        // 未有权威房屋台账时，地址关键词不能替代资格核验；交由平台人工审核。
+        int appId = submitApplication(ownerToken, "浦东新区世纪大道888弄201室", "沪A12345");
         mvc.perform(get("/api/admin/applications?status=PENDING_REVIEW").header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(appId));
         mvc.perform(get("/api/property/applications?status=PENDING_REVIEW").header("Authorization", bearer(managerToken)))
@@ -252,7 +253,16 @@ class ProductionFlowTest {
         mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(adminToken))
                 .contentType("application/json")
                 .content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\",\"documents_verified\":true,\"audit_reference\":\"CHECK-001\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(adminToken))
+                .contentType("application/json")
+                .content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\",\"documents_verified\":true,\"community_verified\":true,\"audit_reference\":\"CHECK-001\"}"))
                 .andExpect(status().isOk());
+        mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(adminToken))
+                .contentType("application/json")
+                .content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\",\"documents_verified\":true,\"community_verified\":true,\"audit_reference\":\"CHECK-001\"}"))
+                .andExpect(status().isBadRequest());
+        assertThat(evidences.countByCommunityIdAndEventType(home.id, "AUDIT_PASS")).isEqualTo(1);
         mvc.perform(get("/api/user/home").header("Authorization", bearer(ownerToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.view_state").value("ALLOCATED"));
@@ -325,7 +335,7 @@ class ProductionFlowTest {
                 .andExpect(jsonPath("$.data.pending_audit_count").value(0));
         mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(adminToken))
                 .contentType("application/json").content(json.writeValueAsString(java.util.Map.of(
-                        "app_id", appId, "action", "APPROVE", "documents_verified", true, "audit_reference", "CHECK-CANCELLED"))))
+                        "app_id", appId, "action", "APPROVE", "documents_verified", true, "community_verified", true, "audit_reference", "CHECK-CANCELLED"))))
                 .andExpect(status().isBadRequest());
         mvc.perform(post("/api/parking/cancel-apply").header("Authorization", bearer(ownerToken)))
                 .andExpect(status().isBadRequest());
@@ -356,7 +366,7 @@ class ProductionFlowTest {
         for (int appId : new int[]{firstApp, secondApp}) {
             mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(admin))
                     .contentType("application/json").content(json.writeValueAsString(java.util.Map.of(
-                            "app_id", appId, "action", "APPROVE", "documents_verified", true, "audit_reference", "CHECK-" + appId))))
+                            "app_id", appId, "action", "APPROVE", "documents_verified", true, "community_verified", true, "audit_reference", "CHECK-" + appId))))
                     .andExpect(status().isOk());
         }
         assertThat(applications.findById(secondApp).orElseThrow().currentRank).isEqualTo(2);

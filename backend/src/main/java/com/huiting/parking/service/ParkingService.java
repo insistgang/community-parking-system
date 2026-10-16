@@ -128,7 +128,7 @@ public class ParkingService {
             if (!plate.matches("[京津沪渝冀豫云辽黑湘皖鲁新苏浙赣鄂桂甘晋蒙陕吉闽贵粤青藏川宁琼使领][A-HJ-NP-Z][A-HJ-NP-Z0-9]{4,5}[A-HJ-NP-Z0-9挂学警港澳]"))
                 throw new ApiException(400, "请输入完整车牌号码，例如沪A12345或沪AD12345；特殊号牌请联系物业办理");
         }
-        if (propertyNo.contains("浦东") || propertyNo.contains("世纪大道") || propertyNo.contains("外区"))
+        if (demoEnabled && (propertyNo.contains("浦东") || propertyNo.contains("世纪大道") || propertyNo.contains("外区")))
             throw new ApiException(400, "仅限本小区产权房屋可申请车位，外区房产无法通过核验！");
         if (apps.findFirstByUserIdAndStatusIn(user.id, List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW")).isPresent())
             throw new ApiException(400, "您已有正在生效或轮候中的申请，不可重复发起！");

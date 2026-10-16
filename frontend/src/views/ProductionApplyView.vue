@@ -13,7 +13,7 @@
         <p class="text-xs text-blue-100 mt-4 leading-relaxed">按步骤填写信息并上传证明材料。提交后由物业核对原件，审核通过后进入公开轮候队列。</p>
       </section>
 
-      <ol aria-label="三证申报步骤" class="grid grid-cols-3 rounded-2xl bg-white border border-slate-200 p-3 shadow-sm">
+      <ol v-if="ready && !identityPending && !activeApplication" aria-label="三证申报步骤" class="grid grid-cols-3 rounded-2xl bg-white border border-slate-200 p-3 shadow-sm">
         <li v-for="(item, index) in steps" :key="item.label">
           <button type="button" @click="goToStep(index + 1)" :disabled="uploading || loading || !ready" :aria-current="step === index + 1 ? 'step' : undefined"
             class="flex w-full flex-col items-center gap-2 rounded-xl py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:opacity-50">
@@ -27,13 +27,17 @@
         您已有正在办理的申请，请先查看当前进度；如需重新申报，可在首页撤销待审核或排队中的申请。
         <router-link to="/" class="block mt-2 text-blue-600 font-semibold">查看当前申请 <AppIcon name="arrow" :size="14" /></router-link>
       </div>
+      <div v-if="identityPending" class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-xs text-blue-900 leading-relaxed">
+        身份资料尚待物业核实。请先联系物业完成核验，之后再上传三证材料并申请车位。
+        <router-link to="/" class="block mt-2 font-semibold text-blue-700">返回首页 <AppIcon name="arrow" :size="14" /></router-link>
+      </div>
       <p v-if="draftLoading" class="text-center text-xs text-slate-500 py-3"><AppIcon name="loading" class="animate-spin" :size="17" /> 正在读取材料草稿…</p>
       <div v-if="error" role="alert" class="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-700 leading-relaxed">
         <AppIcon name="warning" :size="16" /> {{ error }}
         <button v-if="!ready" type="button" @click="loadDraft" class="block mt-2 font-semibold underline">重新读取</button>
       </div>
 
-      <form v-if="ready" @submit.prevent="step < 3 ? goToStep(step + 1) : submit()" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-5" :aria-busy="loading || uploading">
+      <form v-if="ready && !identityPending && !activeApplication" @submit.prevent="step < 3 ? goToStep(step + 1) : submit()" class="rounded-2xl bg-white border border-slate-200 shadow-sm p-5 space-y-5" :aria-busy="loading || uploading">
         <section v-if="step === 1" class="space-y-4" aria-labelledby="identity-title">
           <div>
             <h2 id="identity-title" class="text-base font-bold text-slate-800">第一步：身份证明</h2>
@@ -46,7 +50,7 @@
             <div class="flex justify-between gap-3"><dt class="text-slate-500">所属小区</dt><dd class="font-medium text-slate-800">{{ userStore.communityName }}</dd></div>
           </dl>
           <ApplicationDocumentUpload type="ID_CARD" title="身份证明" icon="identity" v-model="documents.ID_CARD"
-            hint="上传身份证明图片或包含正反面的 PDF；请确保证件信息清晰、完整。" @busy="setBusy('ID_CARD', $event)" />
+            hint="请将身份证正反面合成一张清晰图片，或合并为一个 PDF 后上传；每类材料只能保存一个文件。" @busy="setBusy('ID_CARD', $event)" />
         </section>
 
         <section v-else-if="step === 2" class="space-y-4" aria-labelledby="property-title">
@@ -127,6 +131,7 @@ import NavBar from '../components/NavBar.vue'
 import BottomNav from '../components/BottomNav.vue'
 import AppIcon from '../components/AppIcon.vue'
 import ApplicationDocumentUpload from '../components/ApplicationDocumentUpload.vue'
+import { showToast } from '../utils/dialog'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -143,6 +148,7 @@ const ready = ref(false)
 const error = ref('')
 const uploading = computed(() => Object.values(busyTypes).some(Boolean))
 const activeApplication = computed(() => ['PENDING_REVIEW', 'WAITING', 'ALLOCATED', 'OFFLINE_PENDING'].includes(userStore.homeData?.view_state))
+const identityPending = computed(() => userStore.homeData?.user_info?.identity_pending === true)
 const requiredTypes = computed(() => ['ID_CARD', 'PROPERTY_CERT', 'VEHICLE_LICENSE', ...(form.car_relationship === 'SELF' ? [] : ['RELATIONSHIP_PROOF'])])
 const selectedDocuments = computed(() => requiredTypes.value.map(type => documents[type]).filter(Boolean))
 const setBusy = (type, value) => { busyTypes[type] = value }
@@ -159,7 +165,7 @@ const validateStep = (value) => {
   return ''
 }
 const goToStep = (target) => {
-  if (loading.value || uploading.value || !ready.value) return
+  if (loading.value || uploading.value || !ready.value || identityPending.value || activeApplication.value) return
   error.value = ''
   if (target > step.value) {
     for (let index = 1; index < target; index++) {
@@ -181,7 +187,7 @@ const loadDraft = async () => {
   finally { draftLoading.value = false }
 }
 const submit = async () => {
-  if (loading.value || uploading.value || !acknowledged.value || activeApplication.value) return
+  if (loading.value || uploading.value || !acknowledged.value || activeApplication.value || identityPending.value) return
   error.value = ''
   for (let index = 1; index <= 3; index++) {
     const message = validateStep(index)
@@ -190,7 +196,8 @@ const submit = async () => {
   loading.value = true
   try {
     await api.post('/parking/apply', { ...form, plate_no: normalizePlate(), document_ids: selectedDocuments.value.map(doc => doc.id) })
-    await userStore.fetchHomeData()
+    showToast('申请已提交，等待物业人工审核', 'success')
+    try { await userStore.fetchHomeData() } catch { /* 首页会自行重试读取状态 */ }
     router.push('/')
   } catch (err) { error.value = err.message || '提交失败，请稍后重试' }
   finally { loading.value = false }

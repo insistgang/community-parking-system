@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.*;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.security.MessageDigest;
 import java.util.*;
 
@@ -27,12 +28,15 @@ public class ApplicationDocumentService {
             "ID_CARD", "身份证明", "PROPERTY_CERT", "房屋证明",
             "VEHICLE_LICENSE", "车辆行驶证", "RELATIONSHIP_PROOF", "车辆关系证明");
     private final Repos.DocumentRepo documents;
+    private final Repos.AppRepo applications;
     private final Repos.CommunityRepo communities;
     private final Path storage;
 
-    public ApplicationDocumentService(Repos.DocumentRepo documents, Repos.CommunityRepo communities,
+    public ApplicationDocumentService(Repos.DocumentRepo documents, Repos.AppRepo applications,
+            Repos.CommunityRepo communities,
             @Value("${app.documents.storage-path:${user.dir}/data/application-documents}") String storagePath) {
         this.documents = documents;
+        this.applications = applications;
         this.communities = communities;
         this.storage = Path.of(storagePath).toAbsolutePath().normalize();
     }
@@ -49,6 +53,8 @@ public class ApplicationDocumentService {
     @Transactional(rollbackFor = Exception.class)
     public Map<String, Object> upload(UserAccount user, String type, MultipartFile file) throws IOException {
         requireOwner(user);
+        if (user.idCard == null || !user.idCard.matches("[0-9]{17}[0-9Xx]"))
+            throw new ApiException(403, "身份资料待物业核实，完成后再上传申请材料");
         if (!TYPES.containsKey(type)) throw new ApiException(400, "请选择有效的材料类型");
         if (file.isEmpty()) throw new ApiException(400, "请选择需要上传的文件");
         if (file.getSize() > MAX_BYTES) throw new ApiException(413, "每份材料不能超过10MB");
@@ -64,6 +70,9 @@ public class ApplicationDocumentService {
                 : "image/png".equals(mediaType) ? lower.endsWith(".png") : lower.endsWith(".jpg") || lower.endsWith(".jpeg");
         if (!extensionMatches) throw new ApiException(400, "文件内容与扩展名不符，请上传JPG、PNG或PDF文件");
         communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
+        if (applications.findFirstByUserIdAndStatusIn(user.id,
+                List.of("PENDING_REVIEW", "WAITING", "ALLOCATED", "OFFLINE_PENDING")).isPresent())
+            throw new ApiException(409, "已有办理中的车位申请，请先查看当前进度");
         if (documents.countByOwnerIdAndApplicationIdIsNull(user.id) >= 12)
             throw new ApiException(400, "未提交材料已达到12份，请先移除不需要的草稿材料");
         ApplicationDocument doc = new ApplicationDocument();
@@ -78,6 +87,8 @@ public class ApplicationDocumentService {
         try { doc.sha256 = HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(bytes)); }
         catch (Exception e) { throw new IllegalStateException(e); }
         Files.createDirectories(storage);
+        if (Files.getFileStore(storage).supportsFileAttributeView("posix"))
+            Files.setPosixFilePermissions(storage, PosixFilePermissions.fromString("rwx------"));
         Path path = filePath(doc);
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override public void afterCompletion(int status) {
@@ -85,6 +96,8 @@ public class ApplicationDocumentService {
             }
         });
         Files.write(path, bytes, StandardOpenOption.CREATE_NEW);
+        if (Files.getFileStore(path).supportsFileAttributeView("posix"))
+            Files.setPosixFilePermissions(path, PosixFilePermissions.fromString("rw-------"));
         documents.save(doc);
         return describe(doc);
     }

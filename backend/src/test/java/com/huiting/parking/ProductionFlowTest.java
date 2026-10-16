@@ -432,6 +432,10 @@ class ProductionFlowTest {
         int appId = json.readTree(result).path("data").path("id").asInt();
         assertThat(documents.findById(ids.get(0)).orElseThrow().applicationId).isEqualTo(appId);
         assertThat(applications.findById(appId).orElseThrow().plateNo).isEqualTo("沪A12345");
+        mvc.perform(multipart("/api/parking/application-documents")
+                .file(new MockMultipartFile("file", "重复材料.png", "image/png", png()))
+                .param("document_type", "ID_CARD").header("Authorization", bearer(owner)))
+                .andExpect(status().isConflict());
         path = "/api/parking/application-documents/" + ids.get(0);
         mvc.perform(get(path).header("Authorization", bearer(manager))).andExpect(status().isOk());
         mvc.perform(get(path).header("Authorization", bearer(foreignManager))).andExpect(status().isNotFound());
@@ -541,6 +545,10 @@ class ProductionFlowTest {
                 .andExpect(jsonPath("$.data.waiting[0].legacy_imported").value(true))
                 .andExpect(jsonPath("$.data.waiting[0].is_me").value(false));
         String provisionalToken = login("/api/auth/login", "{\"identifier\":\"13800000101\",\"password\":\"password123\"}");
+        mvc.perform(multipart("/api/parking/application-documents")
+                .file(new MockMultipartFile("file", "待核实证件.png", "image/png", png()))
+                .param("document_type", "ID_CARD").header("Authorization", bearer(provisionalToken)))
+                .andExpect(status().isForbidden());
         mvc.perform(get("/api/user/home").header("Authorization", bearer(provisionalToken)))
                 .andExpect(jsonPath("$.data.view_state").value("WAITING"))
                 .andExpect(jsonPath("$.data.my_queue.current_rank").value(1))

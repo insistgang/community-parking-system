@@ -15,6 +15,10 @@ public class Repos {
         List<ApplicationDocument> findByOwnerIdAndApplicationIdIsNullOrderByCreatedAtDesc(Integer ownerId);
         long countByOwnerIdAndApplicationIdIsNull(Integer ownerId);
     }
+    public interface ReviewHistoryRepo extends JpaRepository<ApplicationReviewHistory, Integer> {
+        List<ApplicationReviewHistory> findByApplicationIdOrderByIdAsc(Integer applicationId);
+        boolean existsByApplicationId(Integer applicationId);
+    }
     public interface CommunityRepo extends JpaRepository<Community, Integer> {
         Optional<Community> findByName(String name);
         @Lock(LockModeType.PESSIMISTIC_WRITE)

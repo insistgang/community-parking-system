@@ -47,6 +47,7 @@ class ProductionFlowTest {
     @Autowired Repos.SpaceRepo spaces;
     @Autowired Repos.AppRepo applications;
     @Autowired Repos.DocumentRepo documents;
+    @Autowired Repos.ReviewHistoryRepo reviewHistory;
     @Autowired Repos.NoticeRepo notices;
     @Autowired QueueEngine queueEngine;
     @Autowired Repos.ContractRepo contracts;
@@ -225,6 +226,8 @@ class ProductionFlowTest {
 
         // 未有权威房屋台账时，地址关键词不能替代资格核验；交由平台人工审核。
         int appId = submitApplication(ownerToken, "浦东新区世纪大道888弄201室", "沪A12345");
+        assertThat(reviewHistory.findByApplicationIdOrderByIdAsc(appId)).hasSize(1)
+                .first().extracting(r -> r.eventType).isEqualTo("SUBMITTED");
         mvc.perform(get("/api/admin/applications?status=PENDING_REVIEW").header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(appId));
         mvc.perform(get("/api/property/applications?status=PENDING_REVIEW").header("Authorization", bearer(managerToken)))
@@ -263,6 +266,7 @@ class ProductionFlowTest {
                 .content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\",\"documents_verified\":true,\"community_verified\":true,\"audit_reference\":\"CHECK-001\"}"))
                 .andExpect(status().isBadRequest());
         assertThat(evidences.countByCommunityIdAndEventType(home.id, "AUDIT_PASS")).isEqualTo(1);
+        assertThat(reviewHistory.findByApplicationIdOrderByIdAsc(appId)).hasSize(2);
         mvc.perform(get("/api/user/home").header("Authorization", bearer(ownerToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.view_state").value("ALLOCATED"));
@@ -377,6 +381,113 @@ class ProductionFlowTest {
         assertThat(applications.findById(firstApp).orElseThrow().currentRank).isZero();
         assertThat(applications.findById(secondApp).orElseThrow().currentRank).isEqualTo(1);
         assertThat(contracts.count()).isZero();
+    }
+
+    @Test
+    void correctionKeepsApplicationAndEarlierDocumentsForPlatformReview() throws Exception {
+        Community community = new Community();
+        community.name = "材料补正验收小区";
+        community.totalSpaces = 0;
+        community = communities.save(community);
+        account("13800000061", "OWNER", community.id);
+        account("13800000062", "OWNER", community.id);
+        account("13900000061", "PROPERTY_ADMIN", community.id);
+        String owner = login("/api/auth/login", "{\"identifier\":\"13800000061\",\"password\":\"password123\"}");
+        String stranger = login("/api/auth/login", "{\"identifier\":\"13800000062\",\"password\":\"password123\"}");
+        String manager = login("/api/auth/login", "{\"identifier\":\"13900000061\",\"password\":\"password123\"}");
+        String admin = login("/api/admin/login", "{\"username\":\"13900000000\",\"password\":\"test-bootstrap-admin-password\"}");
+        int appId = submitApplication(owner, "1号楼101室", "沪A12345");
+        QueueApplication original = applications.findById(appId).orElseThrow();
+        var initialDocs = json.readTree(original.attachmentsJson);
+        String idCard = initialDocs.get(0).path("id").asText();
+        String oldProperty = initialDocs.get(1).path("id").asText();
+        String vehicle = initialDocs.get(2).path("id").asText();
+
+        mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(admin))
+                .contentType("application/json")
+                .content(json.writeValueAsString(java.util.Map.of("app_id", appId, "action", "REQUEST_CORRECTION",
+                        "correction_reason", "房屋证明第二页不清晰，请重新上传"))))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/user/home").header("Authorization", bearer(owner)))
+                .andExpect(jsonPath("$.data.view_state").value("NEEDS_CORRECTION"))
+                .andExpect(jsonPath("$.data.my_queue.id").value(appId));
+        mvc.perform(get("/api/parking/queue").header("Authorization", bearer(owner)))
+                .andExpect(jsonPath("$.data.waiting.length()").value(0));
+        mvc.perform(post("/api/property/audit-application").header("Authorization", bearer(manager))
+                .contentType("application/json").content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\"}"))
+                .andExpect(status().isForbidden());
+        String newProperty = uploadDocument(owner, "PROPERTY_CERT");
+        var correction = java.util.Map.of("app_id", appId, "document_ids", java.util.List.of(idCard, newProperty, vehicle));
+        mvc.perform(post("/api/parking/resubmit-correction").header("Authorization", bearer(stranger))
+                .contentType("application/json").content(json.writeValueAsString(correction)))
+                .andExpect(status().isNotFound());
+        mvc.perform(post("/api/parking/resubmit-correction").header("Authorization", bearer(owner))
+                .contentType("application/json").content(json.writeValueAsString(correction)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(appId))
+                .andExpect(jsonPath("$.data.review_version").value(2));
+        mvc.perform(post("/api/parking/resubmit-correction").header("Authorization", bearer(owner))
+                .contentType("application/json").content(json.writeValueAsString(correction)))
+                .andExpect(status().isConflict());
+        assertThat(documents.findById(oldProperty).orElseThrow().applicationId).isEqualTo(appId);
+        assertThat(documents.findById(newProperty).orElseThrow().applicationId).isEqualTo(appId);
+        assertThat(reviewHistory.findByApplicationIdOrderByIdAsc(appId)).extracting(r -> r.eventType)
+                .containsExactly("SUBMITTED", "CORRECTION_REQUESTED", "RESUBMITTED");
+        var versions = reviewHistory.findByApplicationIdOrderByIdAsc(appId);
+        assertThat(json.readTree(versions.get(0).snapshotJson).path("attachments").get(1).path("id").asText()).isEqualTo(oldProperty);
+        assertThat(json.readTree(versions.get(2).snapshotJson).path("attachments").get(1).path("id").asText()).isEqualTo(newProperty);
+        mvc.perform(get("/api/admin/applications?status=PENDING_REVIEW").header("Authorization", bearer(admin)))
+                .andExpect(jsonPath("$.data[0].review_history[0].snapshot.attachments[1].id").value(oldProperty))
+                .andExpect(jsonPath("$.data[0].review_history[2].snapshot.attachments[1].id").value(newProperty));
+
+        mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(admin))
+                .contentType("application/json")
+                .content(json.writeValueAsString(java.util.Map.of("app_id", appId, "action", "APPROVE",
+                        "documents_verified", true, "community_verified", true, "audit_reference", "CHECK-CORRECTION"))))
+                .andExpect(status().isOk());
+        assertThat(reviewHistory.findByApplicationIdOrderByIdAsc(appId)).extracting(r -> r.eventType)
+                .containsExactly("SUBMITTED", "CORRECTION_REQUESTED", "RESUBMITTED", "APPROVED");
+        assertThat(applications.findById(appId).orElseThrow().status).isEqualTo("WAITING");
+    }
+
+    @Test
+    void rejectedOwnerCanAppealOnceWithoutPropertyAuditPermission() throws Exception {
+        Community community = new Community();
+        community.name = "申诉复审验收小区";
+        community.totalSpaces = 0;
+        community = communities.save(community);
+        account("13800000071", "OWNER", community.id);
+        account("13900000071", "PROPERTY_ADMIN", community.id);
+        String owner = login("/api/auth/login", "{\"identifier\":\"13800000071\",\"password\":\"password123\"}");
+        String manager = login("/api/auth/login", "{\"identifier\":\"13900000071\",\"password\":\"password123\"}");
+        String admin = login("/api/admin/login", "{\"username\":\"13900000000\",\"password\":\"test-bootstrap-admin-password\"}");
+        int appId = submitApplication(owner, "2号楼202室", "沪A12345");
+        mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(admin))
+                .contentType("application/json")
+                .content(json.writeValueAsString(java.util.Map.of("app_id", appId, "action", "REJECT", "reject_reason", "请进一步核实房屋权属"))))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/user/home").header("Authorization", bearer(owner)))
+                .andExpect(jsonPath("$.data.my_queue.can_appeal").value(true));
+        mvc.perform(post("/api/parking/appeal").header("Authorization", bearer(owner))
+                .contentType("application/json")
+                .content(json.writeValueAsString(java.util.Map.of("app_id", appId, "reason", "房屋产权为本人持有，请重新核对原件。"))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.id").value(appId));
+        mvc.perform(get("/api/admin/applications?status=APPEAL_PENDING").header("Authorization", bearer(admin)))
+                .andExpect(jsonPath("$.data[0].id").value(appId));
+        mvc.perform(post("/api/property/audit-application").header("Authorization", bearer(manager))
+                .contentType("application/json").content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(admin))
+                .contentType("application/json")
+                .content(json.writeValueAsString(java.util.Map.of("app_id", appId, "action", "REJECT", "reject_reason", "复审后仍不能确认房屋权属"))))
+                .andExpect(status().isOk());
+        mvc.perform(get("/api/user/home").header("Authorization", bearer(owner)))
+                .andExpect(jsonPath("$.data.my_queue.can_appeal").value(false));
+        mvc.perform(post("/api/parking/appeal").header("Authorization", bearer(owner))
+                .contentType("application/json")
+                .content(json.writeValueAsString(java.util.Map.of("app_id", appId, "reason", "再次提交人工复审申请说明"))))
+                .andExpect(status().isConflict());
+        assertThat(reviewHistory.findByApplicationIdOrderByIdAsc(appId)).extracting(r -> r.eventType)
+                .containsExactly("SUBMITTED", "REJECTED", "APPEALED", "APPEAL_UPHELD");
     }
 
     private int submitApplication(String token, String propertyNo, String plateNo) throws Exception {

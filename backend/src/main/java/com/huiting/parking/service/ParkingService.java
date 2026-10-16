@@ -19,7 +19,7 @@ public class ParkingService {
     @Value("${app.demo.enabled:false}")
     private boolean demoEnabled;
     private static final List<String> LIVE = List.of("ACTIVE", "EXPIRING", "OVERDUE");
-    private static final List<String> OPEN_APP = List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW", "REJECTED");
+    private static final List<String> OPEN_APP = List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW", "NEEDS_CORRECTION", "APPEAL_PENDING", "REJECTED");
 
     private final Repos.UserRepo users;
     private final Repos.CommunityRepo communities;
@@ -31,10 +31,11 @@ public class ParkingService {
     private final EvidenceService evidence;
     private final ObjectMapper json;
     private final ApplicationDocumentService documents;
+    private final ApplicationReviewHistoryService reviewHistory;
 
     public ParkingService(Repos.UserRepo users, Repos.CommunityRepo communities, Repos.SpaceRepo spaces, Repos.AppRepo apps,
                           Repos.ContractRepo contracts, Repos.NoticeRepo notices, QueueEngine engine, EvidenceService evidence, ObjectMapper json,
-                          ApplicationDocumentService documents) {
+                          ApplicationDocumentService documents, ApplicationReviewHistoryService reviewHistory) {
         this.users = users;
         this.communities = communities;
         this.spaces = spaces;
@@ -45,6 +46,7 @@ public class ParkingService {
         this.evidence = evidence;
         this.json = json;
         this.documents = documents;
+        this.reviewHistory = reviewHistory;
     }
 
     public UserAccount requireUser(Integer id) {
@@ -130,11 +132,11 @@ public class ParkingService {
         }
         if (demoEnabled && (propertyNo.contains("浦东") || propertyNo.contains("世纪大道") || propertyNo.contains("外区")))
             throw new ApiException(400, "仅限本小区产权房屋可申请车位，外区房产无法通过核验！");
-        if (apps.findFirstByUserIdAndStatusIn(user.id, List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW")).isPresent())
+        if (apps.findFirstByUserIdAndStatusIn(user.id, List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW", "NEEDS_CORRECTION", "APPEAL_PENDING")).isPresent())
             throw new ApiException(400, "您已有正在生效或轮候中的申请，不可重复发起！");
         apps.findByUserIdAndStatus(user.id, "REJECTED").forEach(a -> a.status = "CANCELLED");
         boolean house = !apps.findByCommunityIdAndPropertyNoAndStatusIn(user.communityId, propertyNo,
-                List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW", "COMPLETED")).isEmpty();
+                List.of("WAITING", "ALLOCATED", "OFFLINE_PENDING", "PENDING_REVIEW", "NEEDS_CORRECTION", "APPEAL_PENDING", "COMPLETED")).isEmpty();
         boolean rented = contracts.findFirstByUserIdAndStatusIn(user.id, LIVE).isPresent();
         int priority = (house || rented) ? 2 : 1;
         boolean spouseFlag = Boolean.TRUE.equals(req.get("is_spouse_car"));
@@ -172,9 +174,11 @@ public class ParkingService {
         app.status = "FLEXIBLE_HYBRID".equals(mode) ? "PENDING_REVIEW" : "WAITING";
         app.auditMode = mode;
         app.applyTime = Times.utcNow();
+        app.lastSubmittedAt = app.applyTime;
         try { app.attachmentsJson = json.writeValueAsString(attachments); } catch (Exception ignored) { app.attachmentsJson = "[]"; }
         app = apps.save(app);
         if (!demoEnabled) documents.link(selectedDocuments, app.id);
+        reviewHistory.record(app, user, "SUBMITTED", "第1版申请材料已提交");
         String pri = priority == 1 ? "家庭一车" : "家庭二车";
         if ("FLEXIBLE_HYBRID".equals(mode)) {
             evidence.create(user.communityId, user.id, "APPLY_SUBMIT",
@@ -191,9 +195,68 @@ public class ParkingService {
     }
 
     @Transactional
+    public Map<String, Object> resubmitCorrection(UserAccount user, Map<String, Object> req) {
+        if (demoEnabled) throw new ApiException(403, "演示环境未启用补正流程");
+        if (!"OWNER".equals(user.role)) throw new ApiException(403, "仅申请业主可以提交补正材料");
+        communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
+        Integer appId;
+        try { appId = Integer.valueOf(String.valueOf(req.get("app_id"))); }
+        catch (NumberFormatException e) { throw new ApiException(400, "请提供有效的申请编号"); }
+        QueueApplication app = apps.findById(appId)
+                .filter(a -> Objects.equals(a.userId, user.id) && Objects.equals(a.communityId, user.communityId))
+                .orElseThrow(() -> new ApiException(404, "申请不存在或无权补正"));
+        if (!"NEEDS_CORRECTION".equals(app.status)) throw new ApiException(409, "当前申请不在待补正状态，请刷新页面");
+        List<ApplicationDocument> selected = documents.requireDocuments(user, req.get("document_ids"), app.carRelationship, app.id);
+        documents.link(selected, app.id);
+        app.reviewVersion = (app.reviewVersion == null ? 1 : app.reviewVersion) + 1;
+        app.lastSubmittedAt = Times.utcNow();
+        app.status = "PENDING_REVIEW";
+        app.correctionReason = null;
+        app.rejectReason = null;
+        app.auditTime = null;
+        app.auditorId = null;
+        app.auditReference = null;
+        try { app.attachmentsJson = json.writeValueAsString(selected.stream().map(documents::describe).toList()); }
+        catch (Exception e) { throw new IllegalStateException("补正材料记录失败", e); }
+        apps.save(app);
+        reviewHistory.record(app, user, "RESUBMITTED", "第" + app.reviewVersion + "版补正材料已提交");
+        evidence.create(user.communityId, user.id, "CORRECTION_SUBMIT", "业主补正第" + app.reviewVersion + "版车位申请材料",
+                Map.of("app_id", app.id, "version", app.reviewVersion, "attachments_count", selected.size()), null);
+        saveNotice(user.id, "补正材料提交成功", "申请 #" + app.id + " 的第" + app.reviewVersion + "版材料已提交，等待平台管理员复审。", "SYSTEM", "GO_QUEUE");
+        return map("id", app.id, "status", app.status, "review_version", app.reviewVersion);
+    }
+
+    @Transactional
+    public Map<String, Object> appeal(UserAccount user, Map<String, Object> req) {
+        if (demoEnabled) throw new ApiException(403, "演示环境未启用申诉流程");
+        if (!"OWNER".equals(user.role)) throw new ApiException(403, "仅申请业主可以提交申诉");
+        communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
+        Integer appId;
+        try { appId = Integer.valueOf(String.valueOf(req.get("app_id"))); }
+        catch (NumberFormatException e) { throw new ApiException(400, "请提供有效的申请编号"); }
+        QueueApplication app = apps.findById(appId)
+                .filter(a -> Objects.equals(a.userId, user.id) && Objects.equals(a.communityId, user.communityId))
+                .orElseThrow(() -> new ApiException(404, "申请不存在或无权申诉"));
+        if (!"REJECTED".equals(app.status) || (app.appealCount != null && app.appealCount >= 1))
+            throw new ApiException(409, "该申请当前不能再次申诉");
+        String reason = str(req.get("reason")).trim();
+        if (reason.length() < 10 || reason.length() > 1000) throw new ApiException(400, "请填写10至1000字的具体申诉说明");
+        app.status = "APPEAL_PENDING";
+        app.appealReason = reason;
+        app.appealTime = Times.utcNow();
+        app.appealCount = (app.appealCount == null ? 0 : app.appealCount) + 1;
+        apps.save(app);
+        reviewHistory.record(app, user, "APPEALED", "业主申请人工复审；说明：" + reason);
+        evidence.create(user.communityId, user.id, "APPEAL_SUBMIT", "业主对车位申请审核结果提出人工复审",
+                Map.of("app_id", app.id, "version", app.reviewVersion == null ? 1 : app.reviewVersion), null);
+        saveNotice(user.id, "申请复审已受理", "申请 #" + app.id + " 的申诉已提交，平台管理员将查看原材料与审核意见后答复。", "SYSTEM", "GO_QUEUE");
+        return map("id", app.id, "status", app.status);
+    }
+
+    @Transactional
     public String cancel(UserAccount user, String reason) {
         communities.lockById(user.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
-        QueueApplication app = apps.findByUserIdAndStatusInOrderByIdDesc(user.id, List.of("PENDING_REVIEW", "WAITING"))
+        QueueApplication app = apps.findByUserIdAndStatusInOrderByIdDesc(user.id, List.of("PENDING_REVIEW", "NEEDS_CORRECTION", "APPEAL_PENDING", "WAITING"))
                 .stream().filter(a -> Objects.equals(a.communityId, user.communityId)).findFirst()
                 .orElseThrow(() -> new ApiException(400, "未找到可撤销的待审核或排队申请，请刷新页面查看最新状态"));
         String previousStatus = app.status;
@@ -202,6 +265,7 @@ public class ParkingService {
         app.status = "CANCELLED";
         app.currentRank = 0;
         apps.save(app);
+        reviewHistory.record(app, user, "CANCELLED", "申请人撤销申请");
         String summary = waiting
                 ? "业主【" + user.realName + "】主动撤销第【" + old + "】位排队资格"
                 : "业主【" + user.realName + "】主动撤销待平台审核的车位申请";
@@ -343,13 +407,29 @@ public class ParkingService {
         if ("PENDING_REVIEW".equals(app.status)) {
             return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "status", "PENDING_REVIEW",
                     "status_label", "待平台人工审核", "audit_mode", or(app.auditMode, "FLEXIBLE_HYBRID"), "apply_time", formatApplicationTime(app),
-                    "attachments", attachments, "notice", "申请已提交，正在等待平台管理员人工核验材料。");
+                    "attachments", attachments, "review_version", app.reviewVersion == null ? 1 : app.reviewVersion,
+                    "review_history", reviewHistory.list(app.id), "notice", "申请已提交，正在等待平台管理员人工核验材料。");
+        }
+        if ("NEEDS_CORRECTION".equals(app.status)) {
+            return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "car_relationship", app.carRelationship, "status", app.status,
+                    "status_label", "待补正材料", "correction_reason", or(app.correctionReason, "请按平台要求补正材料"),
+                    "audit_mode", or(app.auditMode, "FLEXIBLE_HYBRID"), "apply_time", formatApplicationTime(app),
+                    "attachments", attachments, "review_version", app.reviewVersion == null ? 1 : app.reviewVersion,
+                    "review_history", reviewHistory.list(app.id));
+        }
+        if ("APPEAL_PENDING".equals(app.status)) {
+            return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "status", app.status,
+                    "status_label", "待平台人工复审", "appeal_reason", app.appealReason,
+                    "reject_reason", app.rejectReason, "apply_time", formatApplicationTime(app), "attachments", attachments,
+                    "review_version", app.reviewVersion == null ? 1 : app.reviewVersion, "review_history", reviewHistory.list(app.id));
         }
         if ("REJECTED".equals(app.status)) {
             return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "status", "REJECTED",
                     "status_label", "审核已驳回", "reject_reason", or(app.rejectReason, "申请材料不符合要求，请核对后重新提交"),
                     "audit_time", app.auditTime == null ? "--" : Times.fmtBj(app.auditTime), "audit_mode", or(app.auditMode, "FLEXIBLE_HYBRID"),
-                    "apply_time", formatApplicationTime(app), "attachments", attachments, "can_reapply", true);
+                    "apply_time", formatApplicationTime(app), "attachments", attachments, "review_version", app.reviewVersion == null ? 1 : app.reviewVersion,
+                    "review_history", reviewHistory.list(app.id), "can_reapply", true,
+                    "can_appeal", app.appealCount == null || app.appealCount < 1);
         }
         String allocatedNo = null;
         int countdown = 0;

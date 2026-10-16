@@ -1602,6 +1602,7 @@
         <p v-if="productionReviewApp.legacy_unverified" class="rounded-xl bg-slate-800 border border-slate-700 p-3 text-xs text-slate-300 leading-relaxed">原申请时间与顺位已保留。登录账号与这条申请尚未完成身份关联；请核实证件后办理关联，核实前不会参与自动分配。</p>
         <ApplicationDocumentList v-else-if="productionReviewApp.attachments?.length" :documents="productionReviewApp.attachments" dark />
         <p v-else class="rounded-xl bg-amber-950/40 border border-amber-800/60 p-3 text-xs text-amber-200 leading-relaxed">此申请未上传线上材料。可按原线下流程核验，或请申请人撤销后重新提交三证材料。</p>
+        <ApplicationReviewHistory :history="productionReviewApp.review_history" dark />
         <p v-if="!productionReviewApp.legacy_unverified" class="text-xs text-slate-300 leading-relaxed">物业可查看申请材料。平台管理员负责人工核验原件并审核；材料上传成功不代表审核通过。</p>
       </div>
     </div>
@@ -1634,6 +1635,7 @@
 <script setup>
 import AppIcon from '../../components/AppIcon.vue'
 import ApplicationDocumentList from '../../components/ApplicationDocumentList.vue'
+import ApplicationReviewHistory from '../../components/ApplicationReviewHistory.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'

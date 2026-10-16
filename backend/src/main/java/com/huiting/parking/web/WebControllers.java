@@ -290,6 +290,16 @@ class ParkingController {
         return ApiResponse.ok(message, data);
     }
 
+    @PostMapping("/parking/resubmit-correction")
+    public ApiResponse resubmitCorrection(@RequestAttribute(name = "authUserId") Integer uid, @RequestBody Map<String, Object> req) {
+        return ApiResponse.ok("补正材料已提交，等待平台复审", parking.resubmitCorrection(parking.requireUser(uid), req));
+    }
+
+    @PostMapping("/parking/appeal")
+    public ApiResponse appeal(@RequestAttribute(name = "authUserId") Integer uid, @RequestBody Map<String, Object> req) {
+        return ApiResponse.ok("申诉已提交，等待平台人工复审", parking.appeal(parking.requireUser(uid), req));
+    }
+
     @PostMapping("/parking/cancel-apply")
     public ApiResponse cancel(@RequestAttribute(name = "authUserId") Integer uid, @RequestBody(required = false) Map<String, Object> req) {
         String reason = req == null ? null : String.valueOf(req.getOrDefault("reason", "个人原因自愿撤销"));

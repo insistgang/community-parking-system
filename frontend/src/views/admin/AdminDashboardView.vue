@@ -126,7 +126,7 @@
             <p class="text-xs text-slate-400 mt-1">物业可查看材料；平台管理员核对原件后决定通过或驳回。人证核验与 OCR 接口暂未接入。</p>
           </div>
           <select v-model="applicationStatus" @change="loadApplications" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white">
-            <option value="PENDING_REVIEW">待审核</option><option value="ALL">全部申请</option>
+            <option value="PENDING_REVIEW">待审核</option><option value="APPEAL_PENDING">待复审</option><option value="NEEDS_CORRECTION">待业主补正</option><option value="ALL">全部申请</option>
           </select>
         </div>
         <div class="overflow-x-auto rounded-xl border border-slate-800">
@@ -135,7 +135,7 @@
             <tbody><tr v-for="a in applications" :key="a.id" class="border-t border-slate-800 text-slate-200">
               <td class="p-3 font-mono">#{{ a.id }}</td><td class="p-3">{{ a.community_name }}</td><td class="p-3">{{ a.applicant_name }}<br><span class="text-slate-400">{{ a.applicant_phone }}</span></td>
               <td class="p-3">{{ a.property_no }}<br>{{ a.plate_no }}</td><td class="p-3">{{ a.apply_time }}</td><td class="p-3">{{ a.status_label }}</td>
-              <td class="p-3"><button @click="openApplication(a)" class="rounded-lg bg-indigo-700 px-3 py-1.5 text-white">{{ a.status === 'PENDING_REVIEW' ? '查看并审核' : '查看' }}</button></td>
+              <td class="p-3"><button @click="openApplication(a)" class="rounded-lg bg-indigo-700 px-3 py-1.5 text-white">{{ ['PENDING_REVIEW', 'APPEAL_PENDING'].includes(a.status) ? '查看并审核' : '查看' }}</button></td>
             </tr><tr v-if="!applications.length"><td colspan="7" class="p-6 text-center text-slate-400">暂无{{ applicationStatus === 'PENDING_REVIEW' ? '待审核' : '' }}申请</td></tr></tbody>
           </table>
         </div>
@@ -435,16 +435,22 @@
       <div class="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-4 text-sm">
         <div class="flex justify-between gap-3"><h3 class="font-bold text-white">申请 #{{ reviewApp.id }} · {{ reviewApp.community_name }}</h3><button @click="reviewApp = null" class="text-slate-400">关闭</button></div>
         <p class="text-slate-300">{{ reviewApp.applicant_name }} · {{ reviewApp.applicant_phone }} · {{ reviewApp.property_no }} · {{ reviewApp.plate_no }}</p>
+        <p v-if="reviewApp.status === 'APPEAL_PENDING'" class="rounded-lg border border-amber-700 bg-amber-950/40 p-3 text-xs text-amber-200">业主申诉说明：{{ reviewApp.appeal_reason }}</p>
         <ApplicationDocumentList v-if="reviewApp.attachments?.length" :documents="reviewApp.attachments" dark />
         <p v-else class="text-amber-300">此申请没有线上材料，须核对原始台账。</p>
-        <template v-if="reviewApp.status === 'PENDING_REVIEW'">
+        <ApplicationReviewHistory :history="reviewApp.review_history" dark />
+        <template v-if="['PENDING_REVIEW', 'APPEAL_PENDING'].includes(reviewApp.status)">
           <p class="text-xs text-slate-400">请人工核对身份证明、房屋证明、车辆行驶证及必要的关系证明原件，并确认房屋确属所选小区。系统目前不调用人证核验或 OCR 接口。</p>
           <label class="block text-slate-300">核验登记编号<input v-model.trim="reviewReference" maxlength="100" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" placeholder="如 LH-2026-001"></label>
           <label class="flex gap-2 text-slate-300"><input v-model="reviewVerified" type="checkbox">我已人工核对证明材料原件</label>
           <label class="flex gap-2 text-slate-300"><input v-model="reviewCommunityVerified" type="checkbox">我已核对房屋属于申请人所选小区</label>
-          <label class="block text-slate-300">驳回理由（驳回时填写）<textarea v-model.trim="reviewReason" maxlength="500" rows="2" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white"></textarea></label>
+          <label class="block text-slate-300">补正要求或正式驳回理由<textarea v-model.trim="reviewReason" maxlength="1000" rows="2" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white"></textarea></label>
           <p v-if="reviewError" role="alert" class="text-rose-300">{{ reviewError }}</p>
-          <div class="flex gap-2"><button @click="submitReview('REJECT')" :disabled="reviewLoading || !reviewReason" class="flex-1 rounded-lg bg-rose-700 p-2 font-bold text-white disabled:opacity-50">驳回</button><button @click="submitReview('APPROVE')" :disabled="reviewLoading || !reviewVerified || !reviewCommunityVerified || !reviewReference" class="flex-1 rounded-lg bg-emerald-700 p-2 font-bold text-white disabled:opacity-50">审核通过并入队</button></div>
+          <div class="grid gap-2 sm:grid-cols-3">
+            <button @click="submitReview('REQUEST_CORRECTION')" :disabled="reviewLoading || !reviewReason" class="rounded-lg bg-amber-600 p-2 font-bold text-white disabled:opacity-50">要求补正</button>
+            <button @click="submitReview('REJECT')" :disabled="reviewLoading || !reviewReason" class="rounded-lg bg-rose-700 p-2 font-bold text-white disabled:opacity-50">{{ reviewApp.status === 'APPEAL_PENDING' ? '维持驳回' : '正式驳回' }}</button>
+            <button @click="submitReview('APPROVE')" :disabled="reviewLoading || !reviewVerified || !reviewCommunityVerified || !reviewReference" class="rounded-lg bg-emerald-700 p-2 font-bold text-white disabled:opacity-50">通过并入队</button>
+          </div>
         </template>
         <p v-else-if="reviewApp.auditor_name && reviewApp.auditor_name !== '--'" class="text-xs text-slate-400">审核人：{{ reviewApp.auditor_name }} · {{ reviewApp.audit_time }} · {{ reviewApp.audit_reference || '未填写编号' }}</p>
       </div>
@@ -553,6 +559,7 @@
 <script setup>
 import AppIcon from '../../components/AppIcon.vue'
 import ApplicationDocumentList from '../../components/ApplicationDocumentList.vue'
+import ApplicationReviewHistory from '../../components/ApplicationReviewHistory.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
@@ -661,7 +668,8 @@ const submitReview = async (action) => {
       audit_reference: reviewReference.value,
       documents_verified: reviewVerified.value,
       community_verified: reviewCommunityVerified.value,
-      reject_reason: reviewReason.value
+      reject_reason: reviewReason.value,
+      correction_reason: reviewReason.value
     })
     reviewApp.value = null
     await Promise.all([loadApplications(), loadAllData()])

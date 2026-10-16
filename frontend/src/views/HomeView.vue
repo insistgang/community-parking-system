@@ -173,6 +173,7 @@
             </div>
 
             <ApplicationDocumentList v-if="myQueue?.attachments?.length" :documents="myQueue.attachments" />
+            <ApplicationReviewHistory :history="myQueue?.review_history" />
 
             <!-- 审核流程进度条 -->
             <div class="bg-amber-50/80 rounded-xl p-3 border border-amber-200/80 space-y-2 text-xs">
@@ -215,6 +216,29 @@
         </div>
       </div>
 
+      <div v-else-if="viewState === 'NEEDS_CORRECTION'" class="space-y-3 animate-fade-in">
+        <div class="rounded-2xl border-2 border-amber-300 bg-white p-5 shadow-sm space-y-4">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="font-bold text-amber-900">申请 #{{ myQueue?.id }} 待补正材料</h2>
+            <span class="rounded-full bg-amber-100 px-2 py-1 text-[11px] text-amber-800">第 {{ myQueue?.review_version || 1 }} 版</span>
+          </div>
+          <div class="rounded-xl bg-amber-50 p-3 text-xs leading-relaxed text-amber-900"><strong>平台补正意见：</strong>{{ myQueue?.correction_reason }}</div>
+          <ApplicationDocumentList v-if="myQueue?.attachments?.length" :documents="myQueue.attachments" />
+          <ApplicationReviewHistory :history="myQueue?.review_history" />
+          <router-link to="/apply" class="block rounded-xl bg-blue-600 px-4 py-3 text-center text-xs font-bold text-white">补充材料并提交复审</router-link>
+          <button type="button" @click="handleCancelApply" class="w-full rounded-xl border border-rose-200 px-4 py-2 text-xs font-semibold text-rose-600">撤销本次申请</button>
+        </div>
+      </div>
+
+      <div v-else-if="viewState === 'APPEAL_PENDING'" class="space-y-3 animate-fade-in">
+        <div class="rounded-2xl border-2 border-blue-300 bg-white p-5 shadow-sm space-y-4">
+          <h2 class="font-bold text-blue-900">申请 #{{ myQueue?.id }} 人工复审中</h2>
+          <p class="rounded-xl bg-blue-50 p-3 text-xs leading-relaxed text-blue-900">平台管理员正在复核原申请材料和您的申诉说明：{{ myQueue?.appeal_reason }}</p>
+          <ApplicationReviewHistory :history="myQueue?.review_history" />
+          <button type="button" @click="handleCancelApply" class="w-full rounded-xl border border-rose-200 px-4 py-2 text-xs font-semibold text-rose-600">撤销本次申请</button>
+        </div>
+      </div>
+
       <!-- 视图 F: 申请被驳回视图 (提示驳回理由，支持一键重新调整申报) -->
       <div v-else-if="viewState === 'REJECTED'" class="space-y-3 animate-fade-in">
         <div class="bg-white rounded-2xl p-5 shadow-sm border-2 border-rose-300 relative overflow-hidden">
@@ -238,6 +262,7 @@
             <p class="text-[11px] text-slate-500 pt-1">
               您可根据平台管理员驳回意见，重新补充或调整相关车辆与房产证明附件后再次提交。
             </p>
+            <ApplicationReviewHistory :history="myQueue?.review_history" />
           </div>
 
           <div class="pt-2 flex items-center gap-2">
@@ -247,6 +272,15 @@
             >
               <AppIcon name="edit" size="1em" /> 修改材料，重新发起申报 <AppIcon name="arrow" size="1em" />
             </router-link>
+          </div>
+          <div v-if="myQueue?.can_appeal" class="space-y-2 border-t border-slate-100 pt-3">
+            <button type="button" @click="showAppealForm = !showAppealForm" class="text-xs font-semibold text-blue-700">申请平台人工复审</button>
+            <form v-if="showAppealForm" @submit.prevent="handleAppeal" class="space-y-2">
+              <label for="appeal-reason" class="block text-xs text-slate-600">请具体说明申诉理由（10 至 1000 字）</label>
+              <textarea id="appeal-reason" v-model.trim="appealReason" minlength="10" maxlength="1000" required rows="3" class="w-full rounded-lg border border-slate-300 p-3 text-xs"></textarea>
+              <p v-if="appealError" role="alert" class="text-xs text-rose-600">{{ appealError }}</p>
+              <button type="submit" :disabled="appealLoading || appealReason.length < 10" class="rounded-lg bg-blue-600 px-4 py-2 text-xs font-bold text-white disabled:opacity-50">{{ appealLoading ? '正在提交…' : '提交人工复审' }}</button>
+            </form>
           </div>
         </div>
       </div>
@@ -426,6 +460,7 @@
 <script setup>
 import AppIcon from '../components/AppIcon.vue'
 import ApplicationDocumentList from '../components/ApplicationDocumentList.vue'
+import ApplicationReviewHistory from '../components/ApplicationReviewHistory.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '../store/user'
 import api from '../api'
@@ -443,6 +478,10 @@ let pollTimer = null
 const showRenewModal = ref(false)
 const renewLoading = ref(false)
 const selectedRenewMonths = ref(6)
+const showAppealForm = ref(false)
+const appealReason = ref('')
+const appealError = ref('')
+const appealLoading = ref(false)
 
 const renewTerms = [
   { months: 6, label: '半年 (6个月)', desc: '顺延 180 天', recommended: true },
@@ -486,7 +525,7 @@ onUnmounted(() => {
 })
 
 const handleCancelApply = async () => {
-  const pendingReview = viewState.value === 'PENDING_REVIEW'
+  const pendingReview = ['PENDING_REVIEW', 'NEEDS_CORRECTION', 'APPEAL_PENDING'].includes(viewState.value)
   const ok = await showConfirm({
     title: pendingReview ? '撤销待审核申请确认' : '撤销排队申请确认',
     content: pendingReview
@@ -504,6 +543,23 @@ const handleCancelApply = async () => {
     await loadData()
   } catch (err) {
     showToast('撤销失败: ' + err.message, 'error')
+  }
+}
+
+const handleAppeal = async () => {
+  if (!myQueue.value?.id || appealLoading.value) return
+  appealError.value = ''
+  appealLoading.value = true
+  try {
+    await api.post('/parking/appeal', { app_id: myQueue.value.id, reason: appealReason.value })
+    showToast('人工复审申请已提交', 'success')
+    showAppealForm.value = false
+    appealReason.value = ''
+    await loadData()
+  } catch (err) {
+    appealError.value = err.message || '申诉提交失败'
+  } finally {
+    appealLoading.value = false
   }
 }
 

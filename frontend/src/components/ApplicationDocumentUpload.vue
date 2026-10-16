@@ -76,7 +76,7 @@ const upload = async (event) => {
       onUploadProgress: ({ loaded, total }) => { if (total) progress.value = Math.min(100, Math.round(loaded * 100 / total)) }
     })
     emit('update:modelValue', response.data)
-    if (previous?.id) {
+    if (previous?.id && !previous.submitted) {
       try { await api.delete(`/parking/application-documents/${encodeURIComponent(previous.id)}`) }
       catch { error.value = '新材料已保存，旧草稿暂未清理，您可继续申请。' }
     }
@@ -86,6 +86,7 @@ const upload = async (event) => {
 const remove = async () => {
   if (!props.modelValue?.id || busy.value) return
   error.value = ''
+  if (props.modelValue.submitted) { emit('update:modelValue', null); return }
   setBusy(true)
   try {
     await api.delete(`/parking/application-documents/${encodeURIComponent(props.modelValue.id)}`)

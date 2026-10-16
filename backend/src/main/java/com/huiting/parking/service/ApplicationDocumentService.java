@@ -128,6 +128,10 @@ public class ApplicationDocumentService {
     }
 
     public List<ApplicationDocument> requireDocuments(UserAccount user, Object rawIds, String relationship) {
+        return requireDocuments(user, rawIds, relationship, null);
+    }
+
+    public List<ApplicationDocument> requireDocuments(UserAccount user, Object rawIds, String relationship, Integer applicationId) {
         if (!(rawIds instanceof List<?> ids) || ids.isEmpty() || ids.size() > 4)
             throw new ApiException(400, "请上传身份证明、房屋证明和车辆行驶证");
         Set<String> seen = new HashSet<>();
@@ -137,7 +141,8 @@ public class ApplicationDocumentService {
             String id = String.valueOf(value);
             if (!seen.add(id)) throw new ApiException(400, "请勿重复选择同一份材料");
             ApplicationDocument doc = documents.findById(id)
-                    .filter(d -> d.ownerId.equals(user.id) && d.communityId.equals(user.communityId) && d.applicationId == null)
+                    .filter(d -> d.ownerId.equals(user.id) && d.communityId.equals(user.communityId)
+                            && (d.applicationId == null || (applicationId != null && applicationId.equals(d.applicationId))))
                     .orElseThrow(() -> new ApiException(400, "材料无效、已提交或不属于当前申请人，请重新上传"));
             if (!types.add(doc.documentType)) throw new ApiException(400, "同一类材料请选择一份文件，多页材料可合并为PDF");
             if (!Files.isRegularFile(filePath(doc))) throw new ApiException(400, "材料文件缺失，请重新上传");
@@ -151,7 +156,7 @@ public class ApplicationDocumentService {
     }
 
     public void link(List<ApplicationDocument> selected, Integer applicationId) {
-        selected.forEach(d -> d.applicationId = applicationId);
+        selected.stream().filter(d -> d.applicationId == null).forEach(d -> d.applicationId = applicationId);
         documents.saveAll(selected);
     }
 
@@ -159,7 +164,7 @@ public class ApplicationDocumentService {
         return ParkingService.map("id", doc.id, "name", doc.originalName, "type", doc.documentType,
                 "type_label", TYPES.get(doc.documentType), "size_bytes", doc.sizeBytes,
                 "content_type", doc.contentType, "sha256", doc.sha256, "uploaded_at", Times.fmtBj(doc.createdAt),
-                "verification_status", "PENDING_MANUAL");
+                "verification_status", "PENDING_MANUAL", "submitted", doc.applicationId != null);
     }
 
     public Path filePath(ApplicationDocument doc) {

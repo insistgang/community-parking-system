@@ -32,10 +32,11 @@ public class PropertyService {
     private final QueueEngine engine;
     private final EvidenceService evidence;
     private final ObjectMapper json;
+    private final ApplicationReviewHistoryService reviewHistory;
 
     public PropertyService(Repos.UserRepo users, Repos.CommunityRepo communities, Repos.SpaceRepo spaces, Repos.AppRepo apps,
                            Repos.ContractRepo contracts, Repos.EvidenceRepo evidences, Repos.NoticeRepo notices,
-                           QueueEngine engine, EvidenceService evidence, ObjectMapper json) {
+                           QueueEngine engine, EvidenceService evidence, ObjectMapper json, ApplicationReviewHistoryService reviewHistory) {
         this.users = users;
         this.communities = communities;
         this.spaces = spaces;
@@ -46,6 +47,7 @@ public class PropertyService {
         this.engine = engine;
         this.evidence = evidence;
         this.json = json;
+        this.reviewHistory = reviewHistory;
     }
 
     public UserAccount requireAdmin(Integer id) {
@@ -489,7 +491,7 @@ public class PropertyService {
 
     private List<Map<String, Object>> applicationRows(List<QueueApplication> list) {
         Map<String, String> labels = Map.of(
-                "PENDING_REVIEW", demoEnabled ? "待物业人工审核" : "待平台人工审核", "REJECTED", "审核驳回", "WAITING", "排队轮候中", "ALLOCATED", "已中签待确认",
+                "PENDING_REVIEW", demoEnabled ? "待物业人工审核" : "待平台人工审核", "NEEDS_CORRECTION", "待业主补正", "APPEAL_PENDING", "待平台人工复审", "REJECTED", "审核驳回", "WAITING", "排队轮候中", "ALLOCATED", "已中签待确认",
                 "OFFLINE_PENDING", "线下签约中", "COMPLETED", "租约已生效", "CANCELLED", "已撤销/已归档", "TIMEOUT_CANCELLED", "超时放弃");
         List<Map<String, Object>> result = new ArrayList<>();
         for (QueueApplication app : list) {
@@ -509,8 +511,11 @@ public class PropertyService {
                     "current_rank", app.currentRank, "status", app.status, "status_label", legacyUnverified ? "历史排队（身份待补）" : labels.getOrDefault(app.status, app.status),
                     "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"), "audit_mode_label", app.legacyImportBatchId != null ? "历史台账导入" : "FLEXIBLE_HYBRID".equals(app.auditMode) ? (demoEnabled ? "物业人工审核" : "平台人工审核") : "演示自动审核",
                     "reject_reason", app.rejectReason, "attachments", parse(app.attachmentsJson), "apply_time", ParkingService.formatApplicationTime(app),
+                    "appeal_reason", app.appealReason, "correction_reason", app.correctionReason,
                     "audit_time", app.auditTime == null ? "--" : Times.fmtBj(app.auditTime), "auditor_name", auditor != null ? auditor.realName : "--",
-                    "audit_reference", app.auditReference));
+                    "audit_reference", app.auditReference,
+                    "review_version", app.reviewVersion == null ? 1 : app.reviewVersion,
+                    "review_history", reviewHistory.list(app.id)));
         }
         return result;
     }
@@ -532,9 +537,12 @@ public class PropertyService {
     private String auditInternal(UserAccount admin, Map<String, Object> req, Integer communityId, String reviewerTitle) {
         communities.lockById(communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
         QueueApplication app = apps.findById(num(req.get("app_id"))).filter(a -> a.communityId.equals(communityId)).orElseThrow(() -> new ApiException(404, "未找到指定车位申请单"));
-        if (!"PENDING_REVIEW".equals(app.status)) throw new ApiException(400, "该申请单当前状态为【" + app.status + "】，仅待人工审核单据允许操作！");
+        boolean appealCase = "APPEAL_PENDING".equals(app.status);
+        if (!"PENDING_REVIEW".equals(app.status) && !appealCase)
+            throw new ApiException(400, "该申请单当前状态为【" + app.status + "】，不允许审核！");
         UserAccount applicant = users.findById(app.userId).orElse(null);
         String name = applicant != null ? applicant.realName : "申请业主";
+        reviewHistory.ensureInitial(app, applicant);
         String action = str(req.get("action"));
         if ("APPROVE".equals(action)) {
             String reference = str(req.get("audit_reference")).trim();
@@ -546,6 +554,8 @@ public class PropertyService {
             app.auditorId = admin.id;
             app.auditReference = reference.isBlank() ? null : reference;
             app.rejectReason = null;
+            reviewHistory.record(app, admin, appealCase ? "APPEAL_APPROVED" : "APPROVED",
+                    (appealCase ? "申诉复审通过" : "审核通过") + "并进入轮候；核验编号：" + reference);
             evidence.create(communityId, applicant != null ? applicant.id : admin.id, "AUDIT_PASS",
                     reviewerTitle + "【" + admin.realName + "】审核通过业主【" + name + "】车位申请，单据正式进入排位序列",
                     Map.of("app_id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "auditor", admin.realName,
@@ -554,6 +564,20 @@ public class PropertyService {
             engine.recalculate(communityId);
             return "审核通过！业主【" + name + "】的申请已正式进入车位排位序列。";
         }
+        if (!demoEnabled && "REQUEST_CORRECTION".equals(action)) {
+            String reason = str(req.get("correction_reason")).trim();
+            if (reason.isEmpty() || reason.length() > 1000) throw new ApiException(400, "请填写具体补正内容，且不超过1000字");
+            app.status = "NEEDS_CORRECTION";
+            app.correctionReason = reason;
+            app.auditTime = Times.utcNow();
+            app.auditorId = admin.id;
+            reviewHistory.record(app, admin, "CORRECTION_REQUESTED", "要求补正；原因：" + reason);
+            evidence.create(communityId, applicant != null ? applicant.id : admin.id, "CORRECTION_REQUESTED",
+                    reviewerTitle + "【" + admin.realName + "】要求业主【" + name + "】补正申请材料",
+                    Map.of("app_id", app.id, "version", app.reviewVersion == null ? 1 : app.reviewVersion, "reason", reason), null);
+            saveNotice(app.userId, "车位申请材料待补正", "申请 #" + app.id + " 需要补正材料。具体内容：【" + reason + "】。请在原申请中重新提交，申请编号保持不变。", "SYSTEM", "GO_QUEUE");
+            return "已通知业主补正申请 #" + app.id + " 的材料";
+        }
         if ("REJECT".equals(action)) {
             String reason = str(req.get("reject_reason")).trim();
             if (reason.isEmpty()) throw new ApiException(400, "审核驳回时必须详细填写驳回理由！");
@@ -561,13 +585,15 @@ public class PropertyService {
             app.rejectReason = reason;
             app.auditTime = Times.utcNow();
             app.auditorId = admin.id;
+            reviewHistory.record(app, admin, appealCase ? "APPEAL_UPHELD" : "REJECTED",
+                    (appealCase ? "复审维持驳回" : "审核驳回") + "；理由：" + reason);
             evidence.create(communityId, applicant != null ? applicant.id : admin.id, "AUDIT_REJECT",
                     reviewerTitle + "【" + admin.realName + "】审核驳回业主【" + name + "】车位申请 (理由: " + reason + ")",
                     Map.of("app_id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "auditor", admin.realName, "action", "REJECT", "reason", reason), null);
             saveNotice(app.userId, "车位申请审核驳回通知", "很抱歉，您提交的车位申请（房屋: " + app.propertyNo + "，车辆: " + app.plateNo + "）未能通过" + reviewerTitle + "人工审核。驳回理由：【" + reason + "】。您可以重新调整申请材料后再次提交。", "SYSTEM", "GO_QUEUE");
             return "已成功驳回该申请，驳回原因已通过站内消息即时送达业主。";
         }
-        throw new ApiException(400, "无效的审核操作动作 (仅支持 APPROVE 或 REJECT)");
+        throw new ApiException(400, "无效的审核操作动作");
     }
 
     private void saveNotice(Integer uid, String title, String content, String type, String action) {

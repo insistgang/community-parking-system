@@ -7,11 +7,16 @@
           <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20"><AppIcon name="clipboard" :size="24" /></span>
           <div>
             <p class="text-[11px] text-blue-200">三证材料申报 · 平台人工审核</p>
-            <h1 class="text-lg font-bold mt-0.5">申请小区停车位</h1>
+            <h1 class="text-lg font-bold mt-0.5">{{ correctionMode ? `补正申请 #${correctionApplication?.id}` : '申请小区停车位' }}</h1>
           </div>
         </div>
-        <p class="text-xs text-blue-100 mt-4 leading-relaxed">按步骤填写信息并上传证明材料。提交后由平台管理员人工核对原件，审核通过后进入公开轮候队列。人证核验与 OCR 接口暂未接入。</p>
+        <p class="text-xs text-blue-100 mt-4 leading-relaxed">{{ correctionMode ? '请按平台意见补齐或更换证明材料，重新提交后仍沿用原申请编号。' : '按步骤填写信息并上传证明材料。提交后由平台管理员人工核对原件，审核通过后进入公开轮候队列。人证核验与 OCR 接口暂未接入。' }}</p>
       </section>
+
+      <div v-if="correctionMode" class="rounded-xl border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900 leading-relaxed">
+        <strong>平台补正意见：</strong>{{ correctionApplication?.correction_reason }}
+        <p class="mt-1 text-amber-800">本次可更换证明材料；房屋、车牌或关系信息如有错误，请联系平台管理员处理。</p>
+      </div>
 
       <ol v-if="ready && !identityPending && !activeApplication" aria-label="三证申报步骤" class="grid grid-cols-3 rounded-2xl bg-white border border-slate-200 p-3 shadow-sm">
         <li v-for="(item, index) in steps" :key="item.label">
@@ -60,8 +65,8 @@
           </div>
           <div>
             <label for="propertyNo" class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2"><AppIcon name="building" :size="18" class="text-blue-600" /> 本小区房屋地址 <span class="text-rose-500">*</span></label>
-            <input id="propertyNo" v-model.trim="form.property_no" required maxlength="100" placeholder="如：12号楼302室"
-              class="w-full rounded-xl border border-slate-300 px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input id="propertyNo" v-model.trim="form.property_no" required maxlength="100" placeholder="如：12号楼302室" :disabled="correctionMode"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100" />
           </div>
           <ApplicationDocumentUpload type="PROPERTY_CERT" title="房屋证明" icon="home" v-model="documents.PROPERTY_CERT"
             hint="上传产权证、公房租赁凭证或其他有效居住证明。是否符合本小区申请条件，以物业核验结果为准。" @busy="setBusy('PROPERTY_CERT', $event)" />
@@ -74,14 +79,14 @@
           </div>
           <div>
             <label for="plateNo" class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2"><AppIcon name="car" :size="18" class="text-blue-600" /> 车牌号码 <span class="text-rose-500">*</span></label>
-            <input id="plateNo" v-model.trim="form.plate_no" required maxlength="12" placeholder="如：沪A12345 或 沪AD12345"
-              class="w-full rounded-xl border border-slate-300 px-3.5 py-3 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <input id="plateNo" v-model.trim="form.plate_no" required maxlength="12" placeholder="如：沪A12345 或 沪AD12345" :disabled="correctionMode"
+              class="w-full rounded-xl border border-slate-300 px-3.5 py-3 text-sm uppercase focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100" />
             <p class="mt-1.5 text-[11px] text-slate-500">特殊号牌请联系物业办理。</p>
           </div>
           <div>
             <label for="relationship" class="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2"><AppIcon name="users" :size="18" class="text-blue-600" /> 车辆与申请人关系</label>
             <div class="relative">
-              <select id="relationship" v-model="form.car_relationship" class="w-full appearance-none rounded-xl border border-slate-300 pl-3.5 pr-10 py-3 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <select id="relationship" v-model="form.car_relationship" :disabled="correctionMode" class="w-full appearance-none rounded-xl border border-slate-300 pl-3.5 pr-10 py-3 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100">
                 <option value="SELF">本人</option><option value="SPOUSE">配偶</option><option value="FAMILY">同住家人</option>
               </select>
               <AppIcon name="down" :size="17" class="pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -113,7 +118,7 @@
           <button v-else type="submit" :disabled="loading || uploading || !acknowledged || activeApplication"
             class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm text-white font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
             <AppIcon :name="loading ? 'loading' : 'send'" :size="17" :class="loading ? 'animate-spin' : ''" />
-            {{ loading ? '正在提交…' : '提交平台审核' }}
+            {{ loading ? '正在提交…' : correctionMode ? '提交补正材料' : '提交平台审核' }}
           </button>
         </div>
       </form>
@@ -147,6 +152,8 @@ const draftLoading = ref(false)
 const ready = ref(false)
 const error = ref('')
 const uploading = computed(() => Object.values(busyTypes).some(Boolean))
+const correctionMode = computed(() => userStore.homeData?.view_state === 'NEEDS_CORRECTION')
+const correctionApplication = computed(() => correctionMode.value ? userStore.homeData?.my_queue : null)
 const activeApplication = computed(() => ['PENDING_REVIEW', 'WAITING', 'ALLOCATED', 'OFFLINE_PENDING'].includes(userStore.homeData?.view_state))
 const identityPending = computed(() => userStore.homeData?.user_info?.identity_pending === true)
 const requiredTypes = computed(() => ['ID_CARD', 'PROPERTY_CERT', 'VEHICLE_LICENSE', ...(form.car_relationship === 'SELF' ? [] : ['RELATIONSHIP_PROOF'])])
@@ -181,7 +188,18 @@ const loadDraft = async () => {
   try {
     const [response] = await Promise.all([api.get('/parking/application-documents'), userStore.fetchHomeData()])
     profile.value = response.data
-    Object.keys(documents).forEach(type => { documents[type] = response.data.documents.find(doc => doc.type === type) || null })
+    const current = correctionApplication.value
+    if (current) {
+      form.property_no = current.property_no || ''
+      form.plate_no = current.plate_no || ''
+      form.car_relationship = current.car_relationship || 'SELF'
+    }
+    Object.keys(documents).forEach(type => {
+      const previous = current?.attachments?.find(doc => doc.type === type && doc.id)
+      documents[type] = response.data.documents.find(doc => doc.type === type)
+        || (previous ? { ...previous, submitted: true } : null)
+        || null
+    })
     ready.value = true
   } catch (err) { error.value = err.message || '材料草稿读取失败，请重试' }
   finally { draftLoading.value = false }
@@ -195,8 +213,12 @@ const submit = async () => {
   }
   loading.value = true
   try {
-    const response = await api.post('/parking/apply', { ...form, plate_no: normalizePlate(), document_ids: selectedDocuments.value.map(doc => doc.id) })
-    showToast(`申请 #${response.data.id} 已提交，等待平台人工审核`, 'success')
+    const response = correctionMode.value
+      ? await api.post('/parking/resubmit-correction', { app_id: correctionApplication.value.id, document_ids: selectedDocuments.value.map(doc => doc.id) })
+      : await api.post('/parking/apply', { ...form, plate_no: normalizePlate(), document_ids: selectedDocuments.value.map(doc => doc.id) })
+    showToast(correctionMode.value
+      ? `申请 #${response.data.id} 第${response.data.review_version}版补正材料已提交`
+      : `申请 #${response.data.id} 已提交，等待平台人工审核`, 'success')
     try { await userStore.fetchHomeData() } catch { /* 首页会自行重试读取状态 */ }
     router.push('/')
   } catch (err) { error.value = err.message || '提交失败，请稍后重试' }

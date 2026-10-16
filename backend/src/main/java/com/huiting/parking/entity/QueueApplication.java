@@ -42,6 +42,18 @@ public class QueueApplication {
     public String rejectReason;
     @Column(name = "attachments_json", columnDefinition = "TEXT")
     public String attachmentsJson;
+    @Column(name = "review_version")
+    public Integer reviewVersion = 1;
+    @Column(name = "correction_reason", columnDefinition = "TEXT")
+    public String correctionReason;
+    @Column(name = "last_submitted_at")
+    public LocalDateTime lastSubmittedAt;
+    @Column(name = "appeal_reason", columnDefinition = "TEXT")
+    public String appealReason;
+    @Column(name = "appeal_time")
+    public LocalDateTime appealTime;
+    @Column(name = "appeal_count")
+    public Integer appealCount = 0;
     @Column(name = "audit_time")
     public LocalDateTime auditTime;
     @Column(name = "auditor_id")

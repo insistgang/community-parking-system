@@ -5,7 +5,7 @@
         <div class="flex items-center gap-3">
           <div class="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center text-white"><AppIcon name="shield" :size="20" /></div>
           <div>
-            <h3 class="text-sm font-bold text-slate-900">电子存证凭据</h3>
+            <h3 class="text-sm font-bold text-slate-900">电子存证演示凭据</h3>
             <p class="text-[11px] text-slate-500 mt-0.5">本地数据库存证与 SHA-256 哈希链校验</p>
           </div>
         </div>
@@ -23,22 +23,22 @@
         </dl>
         <div class="flex items-center justify-between gap-3 border-t border-slate-200 pt-3">
         <div class="min-w-0 space-y-1 text-xs">
-          <p class="font-bold text-slate-800"><span class="text-rose-600">●</span> 慧停管家本地电子存证</p>
+          <p class="font-bold text-slate-800"><span class="text-rose-600">●</span> 慧停管家电子存证演示</p>
           <p class="leading-relaxed text-slate-500">核验底座：系统数据库 · SHA-256 哈希链</p>
-          <p class="leading-relaxed text-slate-500">浦江数链接口待接入，当前记录尚未上链。</p>
+          <p class="leading-relaxed text-slate-500">演示记录保存在本地数据库，未提交真实浦江数链。</p>
         </div>
-        <svg viewBox="0 0 160 160" role="img" aria-label="慧停管家本地电子存证展示章，浦江数链待接入"
+        <svg viewBox="0 0 160 160" role="img" aria-label="电子存证演示印章，本地记录未上链"
           class="h-32 w-32 shrink-0 -rotate-12 text-rose-600 sm:h-36 sm:w-36">
           <defs><path id="local-seal-arc" d="M 19,80 A 61,61 0 1,1 141,80" fill="none" /></defs>
           <circle cx="80" cy="80" r="75" fill="none" stroke="currentColor" stroke-width="3" />
           <circle cx="80" cy="80" r="69" fill="none" stroke="currentColor" stroke-width="1" />
           <circle cx="80" cy="80" r="48" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="3 3" />
           <text fill="currentColor" font-size="11" font-weight="700" letter-spacing="2">
-            <textPath href="#local-seal-arc" startOffset="50%" text-anchor="middle">慧停管家本地电子存证</textPath>
+            <textPath href="#local-seal-arc" startOffset="50%" text-anchor="middle">慧停管家电子存证演示</textPath>
           </text>
           <path d="M80 54l7 17h18L91 82l5 18-16-11-16 11 5-18-14-11h18z" fill="currentColor" />
-          <text x="80" y="117" text-anchor="middle" fill="currentColor" font-size="13" font-weight="900">本地存证</text>
-          <text x="80" y="135" text-anchor="middle" fill="currentColor" font-size="9" font-weight="700">浦江数链待接入</text>
+          <text x="80" y="117" text-anchor="middle" fill="currentColor" font-size="13" font-weight="900">演示专用</text>
+          <text x="80" y="135" text-anchor="middle" fill="currentColor" font-size="9" font-weight="700">本地哈希链</text>
         </svg>
         </div>
       </div>

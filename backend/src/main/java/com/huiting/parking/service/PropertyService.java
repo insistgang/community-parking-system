@@ -498,6 +498,9 @@ public class PropertyService {
             UserAccount u = app.userId == null ? null : users.findById(app.userId).orElse(null);
             UserAccount auditor = app.auditorId == null ? null : users.findById(app.auditorId).orElse(null);
             boolean legacyUnverified = app.legacyImportBatchId != null && app.userId == null;
+            var submittedAt = app.lastSubmittedAt != null ? app.lastSubmittedAt : app.applyTime;
+            Long waitDays = submittedAt != null && List.of("PENDING_REVIEW", "NEEDS_CORRECTION", "APPEAL_PENDING").contains(app.status)
+                    ? Math.max(0, ChronoUnit.DAYS.between(submittedAt, Times.utcNow())) : null;
             result.add(ParkingService.map(
                     "id", app.id, "community_id", app.communityId,
                     "community_name", communities.findById(app.communityId).map(c -> c.name).orElse("未知小区"),
@@ -511,6 +514,7 @@ public class PropertyService {
                     "current_rank", app.currentRank, "status", app.status, "status_label", legacyUnverified ? "历史排队（身份待补）" : labels.getOrDefault(app.status, app.status),
                     "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"), "audit_mode_label", app.legacyImportBatchId != null ? "历史台账导入" : "FLEXIBLE_HYBRID".equals(app.auditMode) ? (demoEnabled ? "物业人工审核" : "平台人工审核") : "演示自动审核",
                     "reject_reason", app.rejectReason, "attachments", parse(app.attachmentsJson), "apply_time", ParkingService.formatApplicationTime(app),
+                    "wait_days", waitDays,
                     "appeal_reason", app.appealReason, "correction_reason", app.correctionReason,
                     "audit_time", app.auditTime == null ? "--" : Times.fmtBj(app.auditTime), "auditor_name", auditor != null ? auditor.realName : "--",
                     "audit_reference", app.auditReference,

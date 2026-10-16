@@ -229,7 +229,8 @@ class ProductionFlowTest {
         assertThat(reviewHistory.findByApplicationIdOrderByIdAsc(appId)).hasSize(1)
                 .first().extracting(r -> r.eventType).isEqualTo("SUBMITTED");
         mvc.perform(get("/api/admin/applications?status=PENDING_REVIEW").header("Authorization", bearer(adminToken)))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(appId));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(appId))
+                .andExpect(jsonPath("$.data[0].wait_days").isNumber());
         mvc.perform(get("/api/property/applications?status=PENDING_REVIEW").header("Authorization", bearer(managerToken)))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(appId));
 

@@ -125,18 +125,26 @@
             <h2 class="font-bold text-white">三证合一 · 平台人工审核</h2>
             <p class="text-xs text-slate-400 mt-1">物业可查看材料；平台管理员核对原件后决定通过或驳回。人证核验与 OCR 接口暂未接入。</p>
           </div>
-          <select v-model="applicationStatus" @change="loadApplications" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white">
-            <option value="PENDING_REVIEW">待审核</option><option value="APPEAL_PENDING">待复审</option><option value="NEEDS_CORRECTION">待业主补正</option><option value="ALL">全部申请</option>
-          </select>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <select v-model="applicationStatus" aria-label="按申请状态筛选" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white">
+              <option value="PENDING_REVIEW">待审核</option><option value="APPEAL_PENDING">待复审</option><option value="NEEDS_CORRECTION">待业主补正</option><option value="ALL">全部状态</option>
+            </select>
+            <select v-model="applicationCommunity" aria-label="按小区筛选" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white">
+              <option value="ALL">全部小区</option><option v-for="community in applicationCommunities" :key="community.id" :value="String(community.id)">{{ community.name }}</option>
+            </select>
+            <select v-model="applicationWaitDays" aria-label="按等待天数筛选" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white">
+              <option value="ALL">全部等待时长</option><option value="3">至少 3 天</option><option value="7">至少 7 天</option>
+            </select>
+          </div>
         </div>
         <div class="overflow-x-auto rounded-xl border border-slate-800">
           <table class="w-full text-left text-xs">
-            <thead class="bg-slate-950 text-slate-400"><tr><th class="p-3">申请</th><th class="p-3">小区</th><th class="p-3">业主</th><th class="p-3">房屋 / 车牌</th><th class="p-3">提交时间</th><th class="p-3">状态</th><th class="p-3">操作</th></tr></thead>
-            <tbody><tr v-for="a in applications" :key="a.id" class="border-t border-slate-800 text-slate-200">
+            <thead class="bg-slate-950 text-slate-400"><tr><th class="p-3">申请</th><th class="p-3">小区</th><th class="p-3">业主</th><th class="p-3">房屋 / 车牌</th><th class="p-3">提交时间</th><th class="p-3">等待</th><th class="p-3">状态</th><th class="p-3">操作</th></tr></thead>
+            <tbody><tr v-for="a in filteredApplications" :key="a.id" class="border-t border-slate-800 text-slate-200">
               <td class="p-3 font-mono">#{{ a.id }}</td><td class="p-3">{{ a.community_name }}</td><td class="p-3">{{ a.applicant_name }}<br><span class="text-slate-400">{{ a.applicant_phone }}</span></td>
-              <td class="p-3">{{ a.property_no }}<br>{{ a.plate_no }}</td><td class="p-3">{{ a.apply_time }}</td><td class="p-3">{{ a.status_label }}</td>
+              <td class="p-3">{{ a.property_no }}<br>{{ a.plate_no }}</td><td class="p-3">{{ a.apply_time }}</td><td class="p-3">{{ a.wait_days == null ? '—' : `${a.wait_days} 天` }}</td><td class="p-3">{{ a.status_label }}</td>
               <td class="p-3"><button @click="openApplication(a)" class="rounded-lg bg-indigo-700 px-3 py-1.5 text-white">{{ ['PENDING_REVIEW', 'APPEAL_PENDING'].includes(a.status) ? '查看并审核' : '查看' }}</button></td>
-            </tr><tr v-if="!applications.length"><td colspan="7" class="p-6 text-center text-slate-400">暂无{{ applicationStatus === 'PENDING_REVIEW' ? '待审核' : '' }}申请</td></tr></tbody>
+            </tr><tr v-if="!filteredApplications.length"><td colspan="8" class="p-6 text-center text-slate-400">暂无符合筛选条件的申请</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -576,6 +584,8 @@ const operationLogs = ref([])
 const externalApiLogs = ref([])
 const applications = ref([])
 const applicationStatus = ref('PENDING_REVIEW')
+const applicationCommunity = ref('ALL')
+const applicationWaitDays = ref('ALL')
 const reviewApp = ref(null)
 const reviewReference = ref('')
 const reviewVerified = ref(false)
@@ -600,6 +610,15 @@ const filteredUsers = computed(() => {
   if (userRoleFilter.value === 'ALL') return userList.value
   return userList.value.filter(u => u.role === userRoleFilter.value)
 })
+const applicationCommunities = computed(() => {
+  const byId = new Map(applications.value.map(app => [app.community_id, app.community_name]))
+  return [...byId].map(([id, name]) => ({ id, name }))
+})
+const filteredApplications = computed(() => applications.value.filter(app =>
+  (applicationStatus.value === 'ALL' || app.status === applicationStatus.value)
+  && (applicationCommunity.value === 'ALL' || String(app.community_id) === applicationCommunity.value)
+  && (applicationWaitDays.value === 'ALL' || Number(app.wait_days || 0) >= Number(applicationWaitDays.value))
+))
 
 // 弹窗状态
 const showJsonModal = ref(false)
@@ -645,7 +664,7 @@ const handleIssuePropertyInvite = async () => {
 
 const loadApplications = async () => {
   if (!isProduction) return
-  const res = await api.get('/admin/applications', { params: { status: applicationStatus.value } })
+  const res = await api.get('/admin/applications', { params: { status: 'ALL' } })
   if (res.code === 200) applications.value = res.data
 }
 
@@ -672,7 +691,7 @@ const submitReview = async (action) => {
       correction_reason: reviewReason.value
     })
     reviewApp.value = null
-    await Promise.all([loadApplications(), loadAllData()])
+    await loadAllData()
   } catch (err) {
     reviewError.value = err.message || '审核失败'
   } finally {

@@ -120,7 +120,8 @@ public class ApplicationDocumentService {
     public ApplicationDocument readable(UserAccount user, String id) {
         ApplicationDocument doc = documents.findById(id).filter(d ->
                 ("OWNER".equals(user.role) && d.ownerId.equals(user.id))
-                        || ("PROPERTY_ADMIN".equals(user.role) && d.communityId.equals(user.communityId) && d.applicationId != null))
+                        || ("PROPERTY_ADMIN".equals(user.role) && d.communityId.equals(user.communityId) && d.applicationId != null)
+                        || ("SUPER_ADMIN".equals(user.role) && d.applicationId != null))
                 .orElseThrow(() -> new ApiException(404, "材料不存在或无权查看"));
         if (!Files.isRegularFile(filePath(doc))) throw new ApiException(404, "材料文件不存在，请联系物业核查");
         return doc;

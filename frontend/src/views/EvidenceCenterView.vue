@@ -9,8 +9,8 @@
             <AppIcon name="shield" size="1em" />
           </div>
           <div>
-            <h2 class="text-base font-extrabold tracking-wide">个人审计记录中心</h2>
-            <p class="text-xs text-blue-200 mt-0.5">本地 SHA-256 哈希链 · 浦江数链待接入</p>
+            <h2 class="text-base font-extrabold tracking-wide">浦江数链模拟存证</h2>
+            <p class="text-xs text-blue-200 mt-0.5">业务环节写入本地数据库和 SHA-256 哈希链；未调用真实区块链接口</p>
           </div>
         </div>
       </div>
@@ -18,7 +18,7 @@
       <!-- 存证流水列表 -->
       <div class="space-y-3">
         <div class="flex items-center justify-between text-xs font-bold text-slate-700 px-1">
-          <span>审计流水明细（倒序排列）</span>
+          <span>模拟存证流水（倒序排列）</span>
           <span class="text-[11px] text-slate-400 font-normal">点击单条查看核验信息</span>
         </div>
 

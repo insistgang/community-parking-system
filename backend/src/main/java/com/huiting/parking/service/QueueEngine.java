@@ -114,6 +114,9 @@ public class QueueEngine {
             int old = app.currentRank == null ? 0 : app.currentRank;
             if (old != rank) {
                 app.currentRank = rank;
+                evidence.create(communityId, app.userId, "QUEUE_RANK",
+                        "申请单【" + app.id + "】排队顺位由第" + old + "位变为第" + rank + "位",
+                        Map.of("app_id", app.id, "old_rank", old, "new_rank", rank), null);
                 if ((old > rank || old == 0) && app.userId != null) {
                     Notification n = new Notification();
                     n.userId = app.userId;

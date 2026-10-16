@@ -6,7 +6,7 @@
           <AppIcon name="parking" class="w-8 h-8" />
         </div>
         <h1 class="text-xl font-black text-slate-900 tracking-tight">慧停管家 · 老旧小区停车位管理系统</h1>
-        <p class="text-xs text-slate-500 mt-1">正式版 · 公平排位 · 物业人工审核</p>
+        <p class="text-xs text-slate-500 mt-1">正式版 · 公平排位 · 平台人工审核</p>
       </div>
 
       <form @submit.prevent="login" class="space-y-4 text-sm">

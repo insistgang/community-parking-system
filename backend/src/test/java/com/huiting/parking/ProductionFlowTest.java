@@ -210,6 +210,7 @@ class ProductionFlowTest {
 
         String ownerToken = login("/api/auth/login", "{\"identifier\":\"13800000011\",\"password\":\"password123\",\"login_type\":\"PASSWORD\"}");
         String managerToken = login("/api/auth/login", "{\"identifier\":\"13900000011\",\"password\":\"password123\",\"login_type\":\"PASSWORD\"}");
+        String adminToken = login("/api/admin/login", "{\"username\":\"13900000000\",\"password\":\"test-bootstrap-admin-password\"}");
 
         mvc.perform(get("/api/admin/users").header("Authorization", bearer(ownerToken)).header("X-User-Id", "1"))
                 .andExpect(status().isForbidden());
@@ -223,6 +224,10 @@ class ProductionFlowTest {
                 .andExpect(status().isNotFound());
 
         int appId = submitApplication(ownerToken, "12号楼302室", "沪A12345");
+        mvc.perform(get("/api/admin/applications?status=PENDING_REVIEW").header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(appId));
+        mvc.perform(get("/api/property/applications?status=PENDING_REVIEW").header("Authorization", bearer(managerToken)))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data[0].id").value(appId));
 
         mvc.perform(post("/api/property/spaces").header("Authorization", bearer(managerToken))
                 .contentType("application/json")
@@ -231,8 +236,20 @@ class ProductionFlowTest {
         mvc.perform(post("/api/property/audit-application").header("Authorization", bearer(managerToken))
                 .contentType("application/json")
                 .content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\"}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isForbidden());
         mvc.perform(post("/api/property/audit-application").header("Authorization", bearer(managerToken))
+                .contentType("application/json")
+                .content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\",\"documents_verified\":true,\"audit_reference\":\"CHECK-001\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(ownerToken))
+                .contentType("application/json")
+                .content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\",\"documents_verified\":true,\"audit_reference\":\"CHECK-001\"}"))
+                .andExpect(status().isForbidden());
+        mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(adminToken))
+                .contentType("application/json")
+                .content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\"}"))
+                .andExpect(status().isBadRequest());
+        mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(adminToken))
                 .contentType("application/json")
                 .content("{\"app_id\":" + appId + ",\"action\":\"APPROVE\",\"documents_verified\":true,\"audit_reference\":\"CHECK-001\"}"))
                 .andExpect(status().isOk());
@@ -290,6 +307,7 @@ class ProductionFlowTest {
         String ownerToken = login("/api/auth/login", "{\"identifier\":\"13800000031\",\"password\":\"password123\"}");
         String otherToken = login("/api/auth/login", "{\"identifier\":\"13800000032\",\"password\":\"password123\"}");
         String managerToken = login("/api/auth/login", "{\"identifier\":\"13900000031\",\"password\":\"password123\"}");
+        String adminToken = login("/api/admin/login", "{\"username\":\"13900000000\",\"password\":\"test-bootstrap-admin-password\"}");
         int appId = submitApplication(ownerToken, "1号楼101室", "沪A12345");
 
         mvc.perform(post("/api/parking/cancel-apply").header("Authorization", bearer(otherToken)))
@@ -305,7 +323,7 @@ class ProductionFlowTest {
                 .andExpect(jsonPath("$.data.view_state").value("NO_APPLY"));
         mvc.perform(get("/api/property/stats").header("Authorization", bearer(managerToken)))
                 .andExpect(jsonPath("$.data.pending_audit_count").value(0));
-        mvc.perform(post("/api/property/audit-application").header("Authorization", bearer(managerToken))
+        mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(adminToken))
                 .contentType("application/json").content(json.writeValueAsString(java.util.Map.of(
                         "app_id", appId, "action", "APPROVE", "documents_verified", true, "audit_reference", "CHECK-CANCELLED"))))
                 .andExpect(status().isBadRequest());
@@ -314,7 +332,7 @@ class ProductionFlowTest {
         assertThat(evidences.countByCommunityIdAndEventType(community.id, "CANCEL")).isEqualTo(1);
         ChainEvidence cancellation = evidences.findFirstByCommunityIdOrderByIdDesc(community.id).orElseThrow();
         assertThat(cancellation.userId).isEqualTo(owner.id);
-        assertThat(cancellation.eventSummary).contains("撤销待物业审核的车位申请").doesNotContain("第【0】位");
+        assertThat(cancellation.eventSummary).contains("撤销待平台审核的车位申请").doesNotContain("第【0】位");
         assertThat(json.readTree(cancellation.rawPayloadJson).path("previous_status").asText()).isEqualTo("PENDING_REVIEW");
         assertThat(submitApplication(ownerToken, "1号楼102室", "沪A12345")).isGreaterThan(appId);
     }
@@ -332,10 +350,11 @@ class ProductionFlowTest {
         String first = login("/api/auth/login", "{\"identifier\":\"13800000041\",\"password\":\"password123\"}");
         String second = login("/api/auth/login", "{\"identifier\":\"13800000042\",\"password\":\"password123\"}");
         String manager = login("/api/auth/login", "{\"identifier\":\"13900000041\",\"password\":\"password123\"}");
+        String admin = login("/api/admin/login", "{\"username\":\"13900000000\",\"password\":\"test-bootstrap-admin-password\"}");
         int firstApp = submitApplication(first, "1号楼101室", "沪A12345");
         int secondApp = submitApplication(second, "2号楼101室", "沪B12345");
         for (int appId : new int[]{firstApp, secondApp}) {
-            mvc.perform(post("/api/property/audit-application").header("Authorization", bearer(manager))
+            mvc.perform(post("/api/admin/audit-application").header("Authorization", bearer(admin))
                     .contentType("application/json").content(json.writeValueAsString(java.util.Map.of(
                             "app_id", appId, "action", "APPROVE", "documents_verified", true, "audit_reference", "CHECK-" + appId))))
                     .andExpect(status().isOk());
@@ -380,6 +399,7 @@ class ProductionFlowTest {
         String otherOwner = login("/api/auth/login", "{\"identifier\":\"13800000052\",\"password\":\"password123\"}");
         String manager = login("/api/auth/login", "{\"identifier\":\"13900000051\",\"password\":\"password123\"}");
         String foreignManager = login("/api/auth/login", "{\"identifier\":\"13900000052\",\"password\":\"password123\"}");
+        String platformAdmin = login("/api/admin/login", "{\"username\":\"13900000000\",\"password\":\"test-bootstrap-admin-password\"}");
         mvc.perform(multipart("/api/parking/application-documents")
                 .file(new MockMultipartFile("file", "证件.png", "image/png", png())).param("document_type", "ID_CARD"))
                 .andExpect(status().isUnauthorized());
@@ -399,7 +419,7 @@ class ProductionFlowTest {
         mvc.perform(get(path).header("Authorization", bearer(owner)))
                 .andExpect(status().isOk()).andExpect(content().bytes(png()))
                 .andExpect(header().string("Cache-Control", "no-store"));
-        for (String token : java.util.List.of(otherOwner, manager, foreignManager)) {
+        for (String token : java.util.List.of(otherOwner, manager, foreignManager, platformAdmin)) {
             mvc.perform(get(path).header("Authorization", bearer(token))).andExpect(status().isNotFound());
         }
         mvc.perform(delete(path).header("Authorization", bearer(owner))).andExpect(status().isOk());
@@ -438,6 +458,7 @@ class ProductionFlowTest {
                 .andExpect(status().isConflict());
         path = "/api/parking/application-documents/" + ids.get(0);
         mvc.perform(get(path).header("Authorization", bearer(manager))).andExpect(status().isOk());
+        mvc.perform(get(path).header("Authorization", bearer(platformAdmin))).andExpect(status().isOk());
         mvc.perform(get(path).header("Authorization", bearer(foreignManager))).andExpect(status().isNotFound());
         mvc.perform(delete(path).header("Authorization", bearer(owner))).andExpect(status().isConflict());
         mvc.perform(post("/api/parking/cancel-apply").header("Authorization", bearer(owner))).andExpect(status().isOk());

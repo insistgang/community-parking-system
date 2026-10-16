@@ -17,6 +17,7 @@ import com.huiting.parking.service.SessionService;
 import com.huiting.parking.service.LoginThrottle;
 import com.huiting.parking.service.InviteService;
 import com.huiting.parking.service.EvidenceService;
+import com.huiting.parking.service.PropertyService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
@@ -39,6 +40,7 @@ public class AdminController {
     private final Repos.ContractRepo contracts;
     private final Repos.EvidenceRepo evidences;
     private final EvidenceService evidence;
+    private final PropertyService property;
     private final AuditLogService auditLog;
     private final BootJobs bootJobs;
     private final PasswordService passwords;
@@ -52,7 +54,7 @@ public class AdminController {
                            Repos.AppRepo apps, Repos.LoginLogRepo loginLogs, Repos.OperationLogRepo operationLogs,
                            Repos.ExternalApiLogRepo externalApiLogs, Repos.NoticeRepo notices,
                            Repos.ImportBatchRepo batches, Repos.ContractRepo contracts, Repos.EvidenceRepo evidences,
-                           EvidenceService evidence,
+                           EvidenceService evidence, PropertyService property,
                            AuditLogService auditLog, BootJobs bootJobs, PasswordService passwords,
                            SessionService sessions, LoginThrottle loginThrottle, InviteService invites) {
         this.users = users;
@@ -67,6 +69,7 @@ public class AdminController {
         this.contracts = contracts;
         this.evidences = evidences;
         this.evidence = evidence;
+        this.property = property;
         this.auditLog = auditLog;
         this.bootJobs = bootJobs;
         this.passwords = passwords;
@@ -127,6 +130,23 @@ public class AdminController {
         return ApiResponse.ok("物业入驻邀请码已生成", invites.issueProperty(requireAdmin(uid), req));
     }
 
+    @GetMapping("/applications")
+    public ApiResponse applications(@RequestAttribute(name = "authUserId") Integer uid,
+                                    @RequestParam(required = false) String status) {
+        requireAdmin(uid);
+        return ApiResponse.ok(property.platformApplications(status));
+    }
+
+    @PostMapping("/audit-application")
+    public ApiResponse auditApplication(@RequestAttribute(name = "authUserId") Integer uid,
+                                        @RequestBody Map<String, Object> req, HttpServletRequest request) {
+        UserAccount admin = requireAdmin(uid);
+        String result = property.platformAudit(admin, req);
+        auditLog.recordOperation(admin.id, admin.realName, admin.role, "APPLICATION", "PLATFORM_AUDIT",
+                result, getIp(request), ParkingService.map("app_id", req.get("app_id"), "action", req.get("action")));
+        return ApiResponse.msg(result);
+    }
+
     @PostMapping("/import-evidence/{sourceSha256}")
     @Transactional
     public ApiResponse recordImportEvidence(@RequestAttribute(name = "authUserId") Integer uid,
@@ -166,6 +186,7 @@ public class AdminController {
         long propertyAdmins = users.findAll().stream().filter(u -> "PROPERTY_ADMIN".equals(u.role)).count();
         long totalSpaces = spaces.count();
         long totalApps = apps.count();
+        long pendingReview = apps.findAll().stream().filter(a -> "PENDING_REVIEW".equals(a.status)).count();
         long totalLogins = loginLogs.count();
         long totalApiLogs = externalApiLogs.count();
         long smsUpgraded = notices.findAll().stream().filter(n -> Boolean.TRUE.equals(n.smsUpgraded)).count();
@@ -176,6 +197,7 @@ public class AdminController {
                 "property_count", propertyAdmins,
                 "total_spaces", totalSpaces,
                 "total_applications", totalApps,
+                "pending_review_count", pendingReview,
                 "total_logins", totalLogins,
                 "total_api_calls", totalApiLogs,
                 "sms_upgraded_count", smsUpgraded

@@ -178,10 +178,10 @@ public class ParkingService {
         String pri = priority == 1 ? "家庭一车" : "家庭二车";
         if ("FLEXIBLE_HYBRID".equals(mode)) {
             evidence.create(user.communityId, user.id, "APPLY_SUBMIT",
-                    "业主【" + user.realName + "】提交车位申请，待物业人工审核（" + relLabel + "·" + pri + "）",
+                    "业主【" + user.realName + "】提交车位申请，待平台管理员人工审核（" + relLabel + "·" + pri + "）",
                     Map.of("property_no", propertyNo, "plate_no", plate, "audit_mode", "FLEXIBLE_HYBRID", "attachments_count", attachments.size(), "priority", priority), null);
-            saveNotice(user.id, "车位申请提交成功（待物业审核）", "您的申请已提交，物业将核对房屋、车辆及身份证明后通知审核结果。", "SYSTEM", "GO_QUEUE");
-            return map("id", app.id, "status", app.status, "audit_mode", app.auditMode, "_message", "申请已提交，请按物业要求提供证明材料并等待人工审核。");
+            saveNotice(user.id, "车位申请提交成功（待平台审核）", "您的申请已提交，平台管理员将人工核对房屋、车辆及身份证明后通知审核结果。", "SYSTEM", "GO_QUEUE");
+            return map("id", app.id, "status", app.status, "audit_mode", app.auditMode, "_message", "申请已提交，请保留证明材料原件并等待平台人工审核。");
         }
         evidence.create(user.communityId, user.id, "APPLY",
                 "业主【" + user.realName + "】提交车位申请(三证合一AI直审通过·" + relLabel + "·" + pri + ")",
@@ -204,7 +204,7 @@ public class ParkingService {
         apps.save(app);
         String summary = waiting
                 ? "业主【" + user.realName + "】主动撤销第【" + old + "】位排队资格"
-                : "业主【" + user.realName + "】主动撤销待物业审核的车位申请";
+                : "业主【" + user.realName + "】主动撤销待平台审核的车位申请";
         evidence.create(user.communityId, user.id, "CANCEL", summary,
                 Map.of("app_id", app.id, "previous_status", previousStatus,
                         "reason", reason == null || reason.isBlank() ? "个人原因自愿撤销" : reason,
@@ -342,8 +342,8 @@ public class ParkingService {
         List<Map<String, Object>> attachments = parse(app.attachmentsJson);
         if ("PENDING_REVIEW".equals(app.status)) {
             return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "status", "PENDING_REVIEW",
-                    "status_label", "待物业人工审核", "audit_mode", or(app.auditMode, "FLEXIBLE_HYBRID"), "apply_time", formatApplicationTime(app),
-                    "attachments", attachments, "notice", "申请已提交，正在等待物业人工核验材料。");
+                    "status_label", "待平台人工审核", "audit_mode", or(app.auditMode, "FLEXIBLE_HYBRID"), "apply_time", formatApplicationTime(app),
+                    "attachments", attachments, "notice", "申请已提交，正在等待平台管理员人工核验材料。");
         }
         if ("REJECTED".equals(app.status)) {
             return map("id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "status", "REJECTED",

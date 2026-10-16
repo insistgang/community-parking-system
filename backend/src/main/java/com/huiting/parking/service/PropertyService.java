@@ -102,7 +102,7 @@ public class PropertyService {
                 "district", comm == null ? null : comm.district, "subdistrict", comm == null ? null : comm.subdistrict,
                 "company_name", comm == null ? null : comm.companyName,
                 "contact_name", comm == null ? null : comm.contactName, "contact_phone", comm == null ? null : comm.contactPhone,
-                "audit_mode_label", demoEnabled && "THREE_CERT_AUTO".equals(mode) ? "三证合一（演示自动审核）" : "物业人工审核");
+                "audit_mode_label", demoEnabled && "THREE_CERT_AUTO".equals(mode) ? "三证合一（演示自动审核）" : "平台人工审核");
     }
 
     @Transactional(readOnly = true)
@@ -405,7 +405,7 @@ public class PropertyService {
 
     @Transactional
     public Map<String, Object> updateAudit(UserAccount admin, String mode) {
-        if (!demoEnabled) throw new ApiException(403, "正式版统一采用物业人工审核");
+        if (!demoEnabled) throw new ApiException(403, "正式版统一采用平台人工审核");
         if (!"THREE_CERT_AUTO".equals(mode) && !"FLEXIBLE_HYBRID".equals(mode)) throw new ApiException(400, "无效的审核方式，仅支持 THREE_CERT_AUTO 或 FLEXIBLE_HYBRID");
         Community comm = communities.findById(admin.communityId).orElseThrow(() -> new ApiException(404, "未找到所属小区"));
         String old = comm.auditMode == null ? "THREE_CERT_AUTO" : comm.auditMode;
@@ -447,7 +447,7 @@ public class PropertyService {
 
     @Transactional
     public Map<String, Object> setUserMode(UserAccount admin, Map<String, Object> req) {
-        if (!demoEnabled) throw new ApiException(403, "正式版统一采用物业人工审核");
+        if (!demoEnabled) throw new ApiException(403, "正式版统一采用平台人工审核");
         UserAccount user = users.findById(num(req.get("user_id"))).filter(u -> u.communityId.equals(admin.communityId)).orElseThrow(() -> new ApiException(404, "未找到该业主账号"));
         Community comm = communities.findById(admin.communityId).orElse(null);
         String commMode = comm != null && comm.auditMode != null ? comm.auditMode : "THREE_CERT_AUTO";
@@ -476,8 +476,20 @@ public class PropertyService {
         List<QueueApplication> list = (status == null || status.isBlank() || "ALL".equals(status))
                 ? apps.findByCommunityIdOrderByIdDesc(admin.communityId)
                 : apps.findByCommunityIdAndStatusOrderByIdDesc(admin.communityId, status);
+        return applicationRows(list);
+    }
+
+    @Transactional(readOnly = true)
+    public List<Map<String, Object>> platformApplications(String status) {
+        List<QueueApplication> list = apps.findAll().stream()
+                .filter(a -> status == null || status.isBlank() || "ALL".equals(status) || status.equals(a.status))
+                .sorted(Comparator.comparing((QueueApplication a) -> a.id).reversed()).toList();
+        return applicationRows(list);
+    }
+
+    private List<Map<String, Object>> applicationRows(List<QueueApplication> list) {
         Map<String, String> labels = Map.of(
-                "PENDING_REVIEW", "待物业人工审核", "REJECTED", "审核驳回", "WAITING", "排队轮候中", "ALLOCATED", "已中签待确认",
+                "PENDING_REVIEW", demoEnabled ? "待物业人工审核" : "待平台人工审核", "REJECTED", "审核驳回", "WAITING", "排队轮候中", "ALLOCATED", "已中签待确认",
                 "OFFLINE_PENDING", "线下签约中", "COMPLETED", "租约已生效", "CANCELLED", "已撤销/已归档", "TIMEOUT_CANCELLED", "超时放弃");
         List<Map<String, Object>> result = new ArrayList<>();
         for (QueueApplication app : list) {
@@ -485,7 +497,9 @@ public class PropertyService {
             UserAccount auditor = app.auditorId == null ? null : users.findById(app.auditorId).orElse(null);
             boolean legacyUnverified = app.legacyImportBatchId != null && app.userId == null;
             result.add(ParkingService.map(
-                    "id", app.id, "user_id", app.userId, "applicant_name", u != null ? u.realName : legacyValue(app.legacyApplicantName),
+                    "id", app.id, "community_id", app.communityId,
+                    "community_name", communities.findById(app.communityId).map(c -> c.name).orElse("未知小区"),
+                    "user_id", app.userId, "applicant_name", u != null ? u.realName : legacyValue(app.legacyApplicantName),
                     "applicant_phone", u != null ? u.phone : legacyValue(app.legacyApplicantPhone),
                     "property_no", app.propertyNo, "plate_no", app.plateNo, "car_relationship", or(app.carRelationship, "SELF"), "is_spouse_car", Boolean.TRUE.equals(app.spouseCar),
                     "source_car_relationship", app.legacyCarRelationship,
@@ -493,7 +507,7 @@ public class PropertyService {
                     "legacy_source_row", app.legacySourceRow, "legacy_notes", app.legacyNotes,
                     "priority_level", app.priorityLevel, "priority_label", app.priorityLevel != null && app.priorityLevel == 1 ? "家庭一车" : "家庭二车",
                     "current_rank", app.currentRank, "status", app.status, "status_label", legacyUnverified ? "历史排队（身份待补）" : labels.getOrDefault(app.status, app.status),
-                    "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"), "audit_mode_label", app.legacyImportBatchId != null ? "历史台账导入" : "FLEXIBLE_HYBRID".equals(app.auditMode) ? "物业人工审核" : "演示自动审核",
+                    "audit_mode", or(app.auditMode, "THREE_CERT_AUTO"), "audit_mode_label", app.legacyImportBatchId != null ? "历史台账导入" : "FLEXIBLE_HYBRID".equals(app.auditMode) ? (demoEnabled ? "物业人工审核" : "平台人工审核") : "演示自动审核",
                     "reject_reason", app.rejectReason, "attachments", parse(app.attachmentsJson), "apply_time", ParkingService.formatApplicationTime(app),
                     "audit_time", app.auditTime == null ? "--" : Times.fmtBj(app.auditTime), "auditor_name", auditor != null ? auditor.realName : "--",
                     "audit_reference", app.auditReference));
@@ -503,8 +517,21 @@ public class PropertyService {
 
     @Transactional
     public String audit(UserAccount admin, Map<String, Object> req) {
-        communities.lockById(admin.communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
-        QueueApplication app = apps.findById(num(req.get("app_id"))).filter(a -> a.communityId.equals(admin.communityId)).orElseThrow(() -> new ApiException(404, "未找到指定车位申请单"));
+        if (!demoEnabled) throw new ApiException(403, "生产端由平台管理员审核，物业仅可查看材料");
+        return auditInternal(admin, req, admin.communityId, "物业管理员");
+    }
+
+    @Transactional
+    public String platformAudit(UserAccount admin, Map<String, Object> req) {
+        if (!"SUPER_ADMIN".equals(admin.role)) throw new ApiException(403, "仅平台管理员可审核申请");
+        QueueApplication target = apps.findById(num(req.get("app_id")))
+                .orElseThrow(() -> new ApiException(404, "未找到指定车位申请单"));
+        return auditInternal(admin, req, target.communityId, "平台管理员");
+    }
+
+    private String auditInternal(UserAccount admin, Map<String, Object> req, Integer communityId, String reviewerTitle) {
+        communities.lockById(communityId).orElseThrow(() -> new ApiException(404, "小区不存在"));
+        QueueApplication app = apps.findById(num(req.get("app_id"))).filter(a -> a.communityId.equals(communityId)).orElseThrow(() -> new ApiException(404, "未找到指定车位申请单"));
         if (!"PENDING_REVIEW".equals(app.status)) throw new ApiException(400, "该申请单当前状态为【" + app.status + "】，仅待人工审核单据允许操作！");
         UserAccount applicant = users.findById(app.userId).orElse(null);
         String name = applicant != null ? applicant.realName : "申请业主";
@@ -518,12 +545,12 @@ public class PropertyService {
             app.auditorId = admin.id;
             app.auditReference = reference.isBlank() ? null : reference;
             app.rejectReason = null;
-            evidence.create(admin.communityId, applicant != null ? applicant.id : admin.id, "AUDIT_PASS",
-                    "物业管理员【" + admin.realName + "】审核通过业主【" + name + "】车位申请，单据正式进入排位序列",
+            evidence.create(communityId, applicant != null ? applicant.id : admin.id, "AUDIT_PASS",
+                    reviewerTitle + "【" + admin.realName + "】审核通过业主【" + name + "】车位申请，单据正式进入排位序列",
                     Map.of("app_id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "auditor", admin.realName,
                             "action", "APPROVE", "audit_reference", reference), null);
-            saveNotice(app.userId, "车位申请审核通过通知", "恭喜！您提交的车位申请（房屋: " + app.propertyNo + "，车辆: " + app.plateNo + "）已通过物业人工审核，现已正式进入小区公平排位序列！", "SYSTEM", "GO_QUEUE");
-            engine.recalculate(admin.communityId);
+            saveNotice(app.userId, "车位申请审核通过通知", "恭喜！您提交的车位申请（房屋: " + app.propertyNo + "，车辆: " + app.plateNo + "）已通过" + reviewerTitle + "人工审核，现已正式进入小区公平排位序列！", "SYSTEM", "GO_QUEUE");
+            engine.recalculate(communityId);
             return "审核通过！业主【" + name + "】的申请已正式进入车位排位序列。";
         }
         if ("REJECT".equals(action)) {
@@ -533,10 +560,10 @@ public class PropertyService {
             app.rejectReason = reason;
             app.auditTime = Times.utcNow();
             app.auditorId = admin.id;
-            evidence.create(admin.communityId, applicant != null ? applicant.id : admin.id, "AUDIT_REJECT",
-                    "物业管理员【" + admin.realName + "】审核驳回业主【" + name + "】车位申请 (理由: " + reason + ")",
+            evidence.create(communityId, applicant != null ? applicant.id : admin.id, "AUDIT_REJECT",
+                    reviewerTitle + "【" + admin.realName + "】审核驳回业主【" + name + "】车位申请 (理由: " + reason + ")",
                     Map.of("app_id", app.id, "property_no", app.propertyNo, "plate_no", app.plateNo, "auditor", admin.realName, "action", "REJECT", "reason", reason), null);
-            saveNotice(app.userId, "车位申请审核驳回通知", "很抱歉，您提交的车位申请（房屋: " + app.propertyNo + "，车辆: " + app.plateNo + "）未能通过物业人工审核。驳回理由：【" + reason + "】。您可以重新调整申请材料后再次提交。", "SYSTEM", "GO_QUEUE");
+            saveNotice(app.userId, "车位申请审核驳回通知", "很抱歉，您提交的车位申请（房屋: " + app.propertyNo + "，车辆: " + app.plateNo + "）未能通过" + reviewerTitle + "人工审核。驳回理由：【" + reason + "】。您可以重新调整申请材料后再次提交。", "SYSTEM", "GO_QUEUE");
             return "已成功驳回该申请，驳回原因已通过站内消息即时送达业主。";
         }
         throw new ApiException(400, "无效的审核操作动作 (仅支持 APPROVE 或 REJECT)");

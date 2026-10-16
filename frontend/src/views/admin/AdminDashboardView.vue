@@ -119,6 +119,28 @@
         </button>
       </div>
 
+      <section v-if="isProduction && activeTab === 'applications'" class="bg-slate-900 rounded-3xl p-5 border border-slate-800 space-y-4 text-sm">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="font-bold text-white">三证合一 · 平台人工审核</h2>
+            <p class="text-xs text-slate-400 mt-1">物业可查看材料；平台管理员核对原件后决定通过或驳回。人证核验与 OCR 接口暂未接入。</p>
+          </div>
+          <select v-model="applicationStatus" @change="loadApplications" class="rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-white">
+            <option value="PENDING_REVIEW">待审核</option><option value="ALL">全部申请</option>
+          </select>
+        </div>
+        <div class="overflow-x-auto rounded-xl border border-slate-800">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-950 text-slate-400"><tr><th class="p-3">申请</th><th class="p-3">小区</th><th class="p-3">业主</th><th class="p-3">房屋 / 车牌</th><th class="p-3">提交时间</th><th class="p-3">状态</th><th class="p-3">操作</th></tr></thead>
+            <tbody><tr v-for="a in applications" :key="a.id" class="border-t border-slate-800 text-slate-200">
+              <td class="p-3 font-mono">#{{ a.id }}</td><td class="p-3">{{ a.community_name }}</td><td class="p-3">{{ a.applicant_name }}<br><span class="text-slate-400">{{ a.applicant_phone }}</span></td>
+              <td class="p-3">{{ a.property_no }}<br>{{ a.plate_no }}</td><td class="p-3">{{ a.apply_time }}</td><td class="p-3">{{ a.status_label }}</td>
+              <td class="p-3"><button @click="openApplication(a)" class="rounded-lg bg-indigo-700 px-3 py-1.5 text-white">{{ a.status === 'PENDING_REVIEW' ? '查看并审核' : '查看' }}</button></td>
+            </tr><tr v-if="!applications.length"><td colspan="7" class="p-6 text-center text-slate-400">暂无{{ applicationStatus === 'PENDING_REVIEW' ? '待审核' : '' }}申请</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
       <!-- ================= Tab 1: 用户全量档案与管理 (功能 18) ================= -->
       <div v-show="activeTab === 'users'" class="bg-slate-900 rounded-3xl p-5 border border-slate-800 space-y-4">
         <div class="flex items-center justify-between flex-wrap gap-2 text-xs">
@@ -409,6 +431,24 @@
       </div>
     </main>
 
+    <div v-if="reviewApp" class="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
+      <div class="w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border border-slate-700 bg-slate-900 p-5 space-y-4 text-sm">
+        <div class="flex justify-between gap-3"><h3 class="font-bold text-white">申请 #{{ reviewApp.id }} · {{ reviewApp.community_name }}</h3><button @click="reviewApp = null" class="text-slate-400">关闭</button></div>
+        <p class="text-slate-300">{{ reviewApp.applicant_name }} · {{ reviewApp.applicant_phone }} · {{ reviewApp.property_no }} · {{ reviewApp.plate_no }}</p>
+        <ApplicationDocumentList v-if="reviewApp.attachments?.length" :documents="reviewApp.attachments" dark />
+        <p v-else class="text-amber-300">此申请没有线上材料，须核对原始台账。</p>
+        <template v-if="reviewApp.status === 'PENDING_REVIEW'">
+          <p class="text-xs text-slate-400">请人工核对身份证明、房屋证明、车辆行驶证及必要的关系证明原件。系统目前不调用人证核验或 OCR 接口。</p>
+          <label class="block text-slate-300">核验登记编号<input v-model.trim="reviewReference" maxlength="100" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white" placeholder="如 LH-2026-001"></label>
+          <label class="flex gap-2 text-slate-300"><input v-model="reviewVerified" type="checkbox">我已人工核对证明材料原件</label>
+          <label class="block text-slate-300">驳回理由（驳回时填写）<textarea v-model.trim="reviewReason" maxlength="500" rows="2" class="mt-1 w-full rounded-lg border border-slate-700 bg-slate-950 p-2 text-white"></textarea></label>
+          <p v-if="reviewError" role="alert" class="text-rose-300">{{ reviewError }}</p>
+          <div class="flex gap-2"><button @click="submitReview('REJECT')" :disabled="reviewLoading || !reviewReason" class="flex-1 rounded-lg bg-rose-700 p-2 font-bold text-white disabled:opacity-50">驳回</button><button @click="submitReview('APPROVE')" :disabled="reviewLoading || !reviewVerified || !reviewReference" class="flex-1 rounded-lg bg-emerald-700 p-2 font-bold text-white disabled:opacity-50">审核通过并入队</button></div>
+        </template>
+        <p v-else-if="reviewApp.auditor_name && reviewApp.auditor_name !== '--'" class="text-xs text-slate-400">审核人：{{ reviewApp.auditor_name }} · {{ reviewApp.audit_time }} · {{ reviewApp.audit_reference || '未填写编号' }}</p>
+      </div>
+    </div>
+
     <!-- JSON 详情模态弹窗 -->
     <div v-if="showJsonModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in text-xs">
       <div class="bg-slate-900 rounded-3xl max-w-2xl w-full p-6 text-slate-200 shadow-2xl border border-slate-700 space-y-4">
@@ -511,6 +551,7 @@
 
 <script setup>
 import AppIcon from '../../components/AppIcon.vue'
+import ApplicationDocumentList from '../../components/ApplicationDocumentList.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '../../store/user'
@@ -525,11 +566,20 @@ const userList = ref([])
 const loginLogs = ref([])
 const operationLogs = ref([])
 const externalApiLogs = ref([])
+const applications = ref([])
+const applicationStatus = ref('PENDING_REVIEW')
+const reviewApp = ref(null)
+const reviewReference = ref('')
+const reviewVerified = ref(false)
+const reviewReason = ref('')
+const reviewError = ref('')
+const reviewLoading = ref(false)
 
 const activeTab = ref('users')
 const userRoleFilter = ref('ALL')
 
 const tabs = computed(() => [
+  ...(isProduction ? [{ id: 'applications', label: '三证审核', icon: 'review', count: stats.value.pending_review_count ?? 0 }] : []),
   { id: 'users', label: '用户档案管理', icon: 'users', count: userList.value.length },
   { id: 'login_logs', label: '登录流水审计', icon: 'key', count: loginLogs.value.length },
   { id: 'operation_logs', label: '操作审计日志', icon: 'clipboard', count: operationLogs.value.length },
@@ -584,6 +634,40 @@ const handleIssuePropertyInvite = async () => {
   }
 }
 
+const loadApplications = async () => {
+  if (!isProduction) return
+  const res = await api.get('/admin/applications', { params: { status: applicationStatus.value } })
+  if (res.code === 200) applications.value = res.data
+}
+
+const openApplication = (app) => {
+  reviewApp.value = app
+  reviewReference.value = ''
+  reviewVerified.value = false
+  reviewReason.value = ''
+  reviewError.value = ''
+}
+
+const submitReview = async (action) => {
+  if (!reviewApp.value || reviewLoading.value) return
+  reviewLoading.value = true
+  reviewError.value = ''
+  try {
+    await api.post('/admin/audit-application', {
+      app_id: reviewApp.value.id, action,
+      audit_reference: reviewReference.value,
+      documents_verified: reviewVerified.value,
+      reject_reason: reviewReason.value
+    })
+    reviewApp.value = null
+    await Promise.all([loadApplications(), loadAllData()])
+  } catch (err) {
+    reviewError.value = err.message || '审核失败'
+  } finally {
+    reviewLoading.value = false
+  }
+}
+
 const formatJson = (raw) => {
   if (!raw) return '{}'
   try {
@@ -619,6 +703,7 @@ const loadAllData = async () => {
     if (lRes.code === 200) loginLogs.value = lRes.data
     if (opRes.code === 200) operationLogs.value = opRes.data
     if (apiRes.code === 200) externalApiLogs.value = apiRes.data
+    if (isProduction) await loadApplications()
   } catch (err) {
     console.error('加载后台管理数据失败:', err)
   }

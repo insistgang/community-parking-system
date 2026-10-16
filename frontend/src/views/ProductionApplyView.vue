@@ -6,11 +6,11 @@
         <div class="flex items-center gap-3">
           <span class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 ring-1 ring-white/20"><AppIcon name="clipboard" :size="24" /></span>
           <div>
-            <p class="text-[11px] text-blue-200">三证材料申报 · 物业人工审核</p>
+            <p class="text-[11px] text-blue-200">三证材料申报 · 平台人工审核</p>
             <h1 class="text-lg font-bold mt-0.5">申请小区停车位</h1>
           </div>
         </div>
-        <p class="text-xs text-blue-100 mt-4 leading-relaxed">按步骤填写信息并上传证明材料。提交后由物业核对原件，审核通过后进入公开轮候队列。</p>
+        <p class="text-xs text-blue-100 mt-4 leading-relaxed">按步骤填写信息并上传证明材料。提交后由平台管理员人工核对原件，审核通过后进入公开轮候队列。人证核验与 OCR 接口暂未接入。</p>
       </section>
 
       <ol v-if="ready && !identityPending && !activeApplication" aria-label="三证申报步骤" class="grid grid-cols-3 rounded-2xl bg-white border border-slate-200 p-3 shadow-sm">
@@ -41,7 +41,7 @@
         <section v-if="step === 1" class="space-y-4" aria-labelledby="identity-title">
           <div>
             <h2 id="identity-title" class="text-base font-bold text-slate-800">第一步：身份证明</h2>
-            <p class="mt-1 text-xs text-slate-500 leading-relaxed">请核对注册信息，并上传清晰完整的证件材料。材料真实性由物业人工核验。</p>
+            <p class="mt-1 text-xs text-slate-500 leading-relaxed">请核对注册信息，并上传清晰完整的证件材料。材料真实性由平台管理员人工核验。</p>
           </div>
           <dl class="rounded-xl bg-slate-50 border border-slate-200 p-3 space-y-2 text-xs">
             <div class="flex justify-between gap-3"><dt class="text-slate-500">申请人</dt><dd class="font-medium text-slate-800">{{ profile.applicant_name }}</dd></div>
@@ -95,7 +95,7 @@
             <p class="font-semibold">提交前核对</p>
             <p>申请人：{{ profile.applicant_name }}</p>
             <p>房屋：{{ form.property_no || '尚未填写' }}</p>
-            <p>材料：已选择 {{ selectedDocuments.length }} 份，提交后由物业人工核验</p>
+            <p>材料：已选择 {{ selectedDocuments.length }} 份，提交后由平台管理员人工核验</p>
           </div>
           <label class="flex gap-2.5 text-xs text-slate-600 leading-relaxed">
             <input v-model="acknowledged" type="checkbox" required class="mt-0.5 h-4 w-4 shrink-0 accent-blue-600" />
@@ -113,7 +113,7 @@
           <button v-else type="submit" :disabled="loading || uploading || !acknowledged || activeApplication"
             class="flex flex-1 items-center justify-center gap-2 rounded-xl bg-blue-600 py-3 text-sm text-white font-bold hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed">
             <AppIcon :name="loading ? 'loading' : 'send'" :size="17" :class="loading ? 'animate-spin' : ''" />
-            {{ loading ? '正在提交…' : '提交物业审核' }}
+            {{ loading ? '正在提交…' : '提交平台审核' }}
           </button>
         </div>
       </form>
@@ -196,7 +196,7 @@ const submit = async () => {
   loading.value = true
   try {
     await api.post('/parking/apply', { ...form, plate_no: normalizePlate(), document_ids: selectedDocuments.value.map(doc => doc.id) })
-    showToast('申请已提交，等待物业人工审核', 'success')
+    showToast('申请已提交，等待平台人工审核', 'success')
     try { await userStore.fetchHomeData() } catch { /* 首页会自行重试读取状态 */ }
     router.push('/')
   } catch (err) { error.value = err.message || '提交失败，请稍后重试' }

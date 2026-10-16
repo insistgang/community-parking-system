@@ -283,11 +283,11 @@
               <h3 class="text-sm font-bold text-white flex items-center gap-2">
                 <span><AppIcon name="clipboard" size="1em" /> 车位排队申请审核台账</span>
                 <span v-if="pendingAuditCount > 0" class="text-xs text-amber-400 font-normal">
-                  (待人工审核: {{ pendingAuditCount }} 单)
+                  ({{ isProduction ? '待平台审核' : '待人工审核' }}: {{ pendingAuditCount }} 单)
                 </span>
               </h3>
               <p class="text-xs text-slate-400 mt-1">
-                {{ isProduction ? '申请资料需在线下核对原件并登记核验编号，再作出审核决定。' : '点击【查验原件资料】可调出证件资料演示查验台。' }}
+                {{ isProduction ? '物业可查看申请资料及三证材料；审核由平台管理员办理。' : '点击【查验原件资料】可调出证件资料演示查验台。' }}
               </p>
             </div>
 
@@ -305,7 +305,7 @@
                 class="px-2.5 py-1 rounded-lg border transition flex items-center gap-1 font-medium"
                 :class="auditFilter === 'PENDING_REVIEW' ? 'bg-amber-600 text-white border-amber-500' : 'bg-slate-750 text-slate-300 border-slate-600 hover:text-white'"
               >
-                <span>待人工审核</span>
+                <span>{{ isProduction ? '待平台审核' : '待人工审核' }}</span>
                 <span v-if="pendingAuditCount > 0" class="px-1.5 py-0.2 rounded-full bg-rose-500 text-white text-[10px] font-bold">
                   {{ pendingAuditCount }}
                 </span>
@@ -339,7 +339,7 @@
                   <th class="p-3">{{ isProduction ? '核验 / 台账' : '证明材料附件' }}</th>
                   <th class="p-3">单据状态</th>
                   <th class="p-3">申报时间</th>
-                  <th class="p-3 text-right">审核操作</th>
+                  <th class="p-3 text-right">{{ isProduction ? '处理状态' : '审核操作' }}</th>
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-700/60">
@@ -377,7 +377,7 @@
                       @click="openViewAttachmentsModal(app)"
                       class="text-blue-400 hover:text-blue-300 px-2.5 py-1 rounded-lg bg-blue-950/40 hover:bg-blue-900/40 border border-blue-800/50 transition text-xs flex items-center gap-1 font-medium"
                     >
-                      <span><AppIcon name="review" :size="14" /> {{ isProduction ? (app.legacy_unverified ? '查看历史台账' : '打开审核') : `查验原件资料 (${app.attachments?.length || 3}份)` }}</span>
+                      <span><AppIcon name="review" :size="14" /> {{ isProduction ? (app.legacy_unverified ? '查看历史台账' : '查看材料') : `查验原件资料 (${app.attachments?.length || 3}份)` }}</span>
                     </button>
                   </td>
                   <td class="p-3">
@@ -409,7 +409,7 @@
                         <AppIcon name="close" size="1em" /> 驳回
                       </button>
                     </div>
-                    <span v-else class="text-slate-500 text-[11px]">{{ isProduction && app.status === 'PENDING_REVIEW' ? '请打开审核' : '无需操作' }}</span>
+                    <span v-else class="text-slate-500 text-[11px]">{{ isProduction && app.status === 'PENDING_REVIEW' ? '平台审核中' : '无需操作' }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -1583,7 +1583,7 @@
     <div v-if="productionReviewVisible && productionReviewApp" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70">
       <div class="w-full max-w-lg max-h-[90vh] overflow-y-auto rounded-2xl bg-slate-800 border border-slate-600 p-5 space-y-4 text-sm shadow-2xl">
         <div class="flex items-center justify-between">
-          <h3 class="font-bold text-white">{{ productionReviewApp.legacy_unverified ? '历史排队台账' : '三证材料人工审核' }}</h3>
+          <h3 class="font-bold text-white">{{ productionReviewApp.legacy_unverified ? '历史排队台账' : '三证材料查看' }}</h3>
           <button type="button" @click="productionReviewVisible = false" class="text-slate-400 hover:text-white" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
         </div>
         <div class="rounded-xl bg-slate-900 p-3 text-xs text-slate-300 space-y-1">
@@ -1602,23 +1602,7 @@
         <p v-if="productionReviewApp.legacy_unverified" class="rounded-xl bg-slate-800 border border-slate-700 p-3 text-xs text-slate-300 leading-relaxed">原申请时间与顺位已保留。登录账号与这条申请尚未完成身份关联；请核实证件后办理关联，核实前不会参与自动分配。</p>
         <ApplicationDocumentList v-else-if="productionReviewApp.attachments?.length" :documents="productionReviewApp.attachments" dark />
         <p v-else class="rounded-xl bg-amber-950/40 border border-amber-800/60 p-3 text-xs text-amber-200 leading-relaxed">此申请未上传线上材料。可按原线下流程核验，或请申请人撤销后重新提交三证材料。</p>
-        <p v-if="!productionReviewApp.legacy_unverified" class="text-xs text-slate-300 leading-relaxed">请查看申请材料并核对身份证明、房屋及车辆证明原件，填写核验登记编号后再给出审核结果。材料上传成功不代表核验通过。</p>
-        <template v-if="productionReviewApp.status === 'PENDING_REVIEW'">
-          <div>
-            <label class="block text-xs text-slate-300 mb-1">线下核验登记编号</label>
-            <input v-model.trim="auditReference" maxlength="100" placeholder="如 CHECK-2026-001"
-              class="w-full rounded-xl bg-slate-900 border border-slate-600 px-3 py-2.5 text-white" />
-          </div>
-          <label class="flex items-center gap-2 text-xs text-slate-200">
-            <input v-model="documentsVerified" type="checkbox" class="accent-emerald-500" />
-            我已核对申请人的证明材料原件
-          </label>
-          <div class="flex gap-2">
-            <button type="button" @click="handleProductionReject" class="flex-1 rounded-xl bg-rose-700 px-3 py-2.5 text-white font-semibold">驳回</button>
-            <button type="button" @click="handleProductionApprove" :disabled="actionLoading || !documentsVerified || !auditReference"
-              class="flex-1 rounded-xl bg-emerald-600 px-3 py-2.5 text-white font-semibold disabled:opacity-50">核验通过并入队</button>
-          </div>
-        </template>
+        <p v-if="!productionReviewApp.legacy_unverified" class="text-xs text-slate-300 leading-relaxed">物业可查看申请材料。平台管理员负责人工核验原件并审核；材料上传成功不代表审核通过。</p>
       </div>
     </div>
 
@@ -1695,33 +1679,6 @@ const handleIssueOwnerInvite = async () => {
 }
 const productionReviewVisible = ref(false)
 const productionReviewApp = ref(null)
-const auditReference = ref('')
-const documentsVerified = ref(false)
-
-const handleProductionApprove = async () => {
-  if (!productionReviewApp.value || !documentsVerified.value || !auditReference.value.trim()) return
-  actionLoading.value = true
-  try {
-    await api.post('/property/audit-application', {
-      app_id: productionReviewApp.value.id,
-      action: 'APPROVE',
-      documents_verified: true,
-      audit_reference: auditReference.value.trim()
-    })
-    showToast('审核通过，申请已进入轮候队列', 'success')
-    productionReviewVisible.value = false
-    await loadData()
-  } catch (err) {
-    showToast('审核失败: ' + err.message, 'error')
-  } finally {
-    actionLoading.value = false
-  }
-}
-
-const handleProductionReject = () => {
-  productionReviewVisible.value = false
-  openRejectModal(productionReviewApp.value)
-}
 const showAddSpace = ref(false)
 const newSpaceNo = ref('')
 const newSpaceArea = ref('GROUND')
@@ -2190,8 +2147,6 @@ const handleConfirmReject = async () => {
 const openViewAttachmentsModal = (app) => {
   if (isProduction) {
     productionReviewApp.value = app
-    auditReference.value = ''
-    documentsVerified.value = false
     productionReviewVisible.value = true
     return
   }

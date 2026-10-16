@@ -29,7 +29,7 @@ public class ApplicationDocumentController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse upload(@RequestAttribute(name = "authUserId") Integer uid,
             @RequestParam("document_type") String type, @RequestParam("file") MultipartFile file) throws IOException {
-        return ApiResponse.ok("材料已保存，提交申请后由物业人工核验", documents.upload(parking.requireUser(uid), type, file));
+        return ApiResponse.ok("材料已保存，提交申请后由平台管理员人工核验", documents.upload(parking.requireUser(uid), type, file));
     }
 
     @GetMapping("/{id}")

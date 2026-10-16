@@ -3,8 +3,8 @@
     <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-blue-200 text-slate-800">
       <div class="flex items-start justify-between gap-3 border-b border-slate-200 pb-3 mb-4">
         <div>
-          <h3 class="text-sm font-bold text-slate-900">系统审计记录</h3>
-          <p class="text-[11px] text-slate-500 mt-1">本地哈希链用于发现记录改动；浦江数链尚未接入。</p>
+          <h3 class="text-sm font-bold text-slate-900">浦江数链模拟存证</h3>
+          <p class="text-[11px] text-slate-500 mt-1">记录存于本地数据库，可校验哈希链完整性；未调用真实区块链接口。</p>
         </div>
         <button type="button" @click="$emit('close')" class="text-slate-400 hover:text-slate-700" aria-label="关闭"><AppIcon name="close" size="1em" /></button>
       </div>

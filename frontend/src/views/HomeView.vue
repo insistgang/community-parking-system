@@ -156,7 +156,7 @@
           <div class="flex items-center justify-between mb-3">
             <span class="text-xs font-bold text-amber-700 flex items-center gap-1.5">
               <span class="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
-              <span>车位申请审核中 (待物业人工复核)</span>
+              <span>车位申请审核中 (待平台人工复核)</span>
             </span>
             <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
               待人工审核
@@ -178,7 +178,7 @@
               <div class="flex items-center justify-between">
                 <span class="font-bold text-amber-900">当前审核机制：</span>
                 <span class="text-[11px] font-bold text-purple-700 bg-purple-100 px-2 py-0.5 rounded-md border border-purple-200">
-                  物业人工审核
+                  平台管理员人工审核
                 </span>
               </div>
               <div class="space-y-1.5 pt-1 text-[11px]">
@@ -187,7 +187,7 @@
                 </div>
                 <div class="flex items-center gap-2 text-amber-800 font-bold">
                   <AppIcon name="clock" :size="14" />
-                  <span>步骤 2：等待物业核对证明材料原件</span>
+                  <span>步骤 2：等待平台管理员核对证明材料原件</span>
                 </div>
                 <div class="flex items-center gap-2 text-slate-400">
                   <span><AppIcon name="circle" size="1em" /> 步骤 3: 人工审核通过后系统自动并入车位 FIFO 轮候序列</span>
@@ -229,13 +229,13 @@
 
           <div class="bg-rose-50 rounded-xl p-4 border border-rose-200 space-y-2 my-2">
             <div class="flex items-center gap-2 text-rose-800 font-bold text-xs">
-              <span><AppIcon name="warning" size="1em" /> 物业人工审核驳回意见：</span>
+              <span><AppIcon name="warning" size="1em" /> 平台管理员审核驳回意见：</span>
             </div>
             <p class="text-xs text-rose-700 font-medium leading-relaxed bg-white/80 p-3 rounded-lg border border-rose-200">
               {{ myQueue?.reject_reason || '材料不齐或车辆权属凭证不符合规定要求，请核对后重新提交。' }}
             </p>
             <p class="text-[11px] text-slate-500 pt-1">
-              您可根据物业驳回意见，重新补充或调整相关车辆与房产证明附件后再次提交。
+              您可根据平台管理员驳回意见，重新补充或调整相关车辆与房产证明附件后再次提交。
             </p>
           </div>
 
@@ -489,7 +489,7 @@ const handleCancelApply = async () => {
   const ok = await showConfirm({
     title: pendingReview ? '撤销待审核申请确认' : '撤销排队申请确认',
     content: pendingReview
-      ? '撤销后，物业将停止审核本次申请。您可以修改资料后重新提交。确认撤销吗？'
+      ? '撤销后，平台管理员将停止审核本次申请。您可以修改资料后重新提交。确认撤销吗？'
       : '撤销申请后，您当前的顺位将立即释放给后续业主。重新申请需重新核验并排至队尾。确认撤销吗？',
     confirmText: '确认撤销',
     type: 'danger'

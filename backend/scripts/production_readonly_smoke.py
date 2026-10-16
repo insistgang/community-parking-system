@@ -71,7 +71,7 @@ def main():
         rented = login(base_url, str(rental[2]), rental[3])
         sessions.extend((admin, manager, owner, queued, rented))
 
-        for route in ("/admin/stats", "/admin/users", "/admin/login-logs",
+        for route in ("/admin/stats", "/admin/users", "/admin/applications?status=PENDING_REVIEW", "/admin/login-logs",
                       "/admin/operation-logs", "/admin/external-api-logs"):
             require(base_url, "GET", route, admin)
             checked += 1

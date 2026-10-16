@@ -37,7 +37,7 @@
             <textPath href="#local-seal-arc" startOffset="50%" text-anchor="middle">慧停管家电子存证演示</textPath>
           </text>
           <path d="M80 54l7 17h18L91 82l5 18-16-11-16 11 5-18-14-11h18z" fill="currentColor" />
-          <text x="80" y="117" text-anchor="middle" fill="currentColor" font-size="13" font-weight="900">演示专用</text>
+          <text x="80" y="117" text-anchor="middle" fill="currentColor" font-size="13" font-weight="900">本地存证</text>
           <text x="80" y="135" text-anchor="middle" fill="currentColor" font-size="9" font-weight="700">本地哈希链</text>
         </svg>
         </div>

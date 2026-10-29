@@ -1,7 +1,7 @@
 import json
 from typing import Optional, List, Any, Dict
 from datetime import datetime, date, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import urllib.parse
@@ -16,14 +16,9 @@ from schemas import (
 from scheduler import trigger_recalculate_queue, init_community_spaces, notify_space_change_to_applicants
 from evidence import create_evidence_record
 from utils import fmt_bj
+from security import get_property_admin
 
 router = APIRouter(prefix="/api/property", tags=["Property Management"])
-
-def get_property_admin(x_user_id: int = Header(..., alias="X-User-Id"), db: Session = Depends(get_db)) -> User:
-    user = db.query(User).filter(User.id == x_user_id).first()
-    if not user or user.role != "PROPERTY_ADMIN":
-        raise HTTPException(status_code=403, detail="仅限物业管理员权限访问")
-    return user
 
 @router.get("/stats", response_model=ResponseModel)
 def get_property_stats(admin: User = Depends(get_property_admin), db: Session = Depends(get_db)):

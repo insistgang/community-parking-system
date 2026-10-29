@@ -1,4 +1,4 @@
-from typing import Optional, List, Any
+from typing import Optional, List, Any, Literal
 from datetime import datetime, date
 from pydantic import BaseModel, Field
 
@@ -14,7 +14,7 @@ class LoginRequest(BaseModel):
     identifier: str # 手机号或身份证号
     password: Optional[str] = None
     verify_code: Optional[str] = None
-    login_type: str = "PASSWORD" # PASSWORD 或 SMS
+    login_type: Literal["PASSWORD", "SMS"] = "PASSWORD"
 
 class RegisterRequest(BaseModel):
     district: str
@@ -24,7 +24,7 @@ class RegisterRequest(BaseModel):
     id_card: str
     phone: str
     password: str
-    role: Optional[str] = "OWNER" # "OWNER" 或 "PROPERTY_ADMIN"
+    role: Literal["OWNER", "PROPERTY_ADMIN"] = "OWNER"
     company_name: Optional[str] = None # 物业服务企业名称
 
 

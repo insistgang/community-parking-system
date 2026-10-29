@@ -2,6 +2,7 @@
 set -e
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PARKING_BIND_HOST="${PARKING_HOST:-127.0.0.1}"
 cd "$DIR"
 
 echo "========================================================"
@@ -18,12 +19,16 @@ if [ ! -d "venv" ]; then
     python3 -m venv venv
     venv/bin/pip install -r requirements.txt -q
 fi
+if ! venv/bin/python --version >/dev/null 2>&1; then
+    echo "后端虚拟环境解释器已失效；请先重建 backend/venv，再启动。" >&2
+    exit 1
+fi
 
 # 初始化/检查数据
 venv/bin/python seed.py
 
 echo ">>> [2/3] 正在启动 FastAPI 后端服务 (端口: 8000)..."
-venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 > backend.log 2>&1 &
+venv/bin/uvicorn main:app --host "$PARKING_BIND_HOST" --port 8000 > backend.log 2>&1 &
 BACKEND_PID=$!
 cd "$DIR"
 
@@ -38,7 +43,7 @@ if [ ! -d "node_modules" ]; then
     npm install
 fi
 
-npm run dev -- --host 0.0.0.0 --port 5173 > frontend.log 2>&1 &
+npm run dev -- --host "$PARKING_BIND_HOST" --port 5173 > frontend.log 2>&1 &
 FRONTEND_PID=$!
 cd "$DIR"
 

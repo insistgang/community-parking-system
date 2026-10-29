@@ -1,7 +1,7 @@
 import json
 from typing import Optional
 from datetime import datetime, date, timedelta
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from models import User, ParkingSpace, QueueApplication, RentalContract, Notification, Community
@@ -9,14 +9,9 @@ from schemas import ApplyParkingRequest, CancelApplyRequest, ResponseModel, Rene
 from scheduler import trigger_recalculate_queue, estimate_waiting_duration, check_expired_allocations, notify_space_change_to_applicants
 from evidence import create_evidence_record
 from utils import fmt_bj
+from security import get_current_user
 
 router = APIRouter(prefix="/api", tags=["Parking & User"])
-
-def get_current_user(x_user_id: int = Header(..., alias="X-User-Id"), db: Session = Depends(get_db)) -> User:
-    user = db.query(User).filter(User.id == x_user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="用户身份未认证")
-    return user
 
 @router.get("/user/home", response_model=ResponseModel)
 def get_user_home(user: User = Depends(get_current_user), db: Session = Depends(get_db)):

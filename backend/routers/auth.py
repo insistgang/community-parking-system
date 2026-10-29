@@ -1,6 +1,6 @@
 import hashlib
 import time
-import random
+import secrets
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
@@ -9,6 +9,7 @@ from schemas import LoginRequest, RegisterRequest, SendSmsRequest, ResponseModel
 from districts import SHANGHAI_DISTRICTS, get_all_districts_list
 from scheduler import init_community_spaces
 from evidence import create_evidence_record
+from security import demo_enabled, issue_token
 
 router = APIRouter(prefix="/api", tags=["Auth & Common"])
 
@@ -34,12 +35,13 @@ def send_sms(req: SendSmsRequest):
     """
     发送手机短信验证码 (演示环境模拟发送)
     """
+    if not demo_enabled("PARKING_ENABLE_DEMO_SMS"):
+        raise HTTPException(status_code=403, detail="短信服务未接入；演示短信登录默认关闭，请使用密码登录")
     phone = req.phone.strip()
     if len(phone) != 11 or not phone.isdigit():
         raise HTTPException(status_code=400, detail="请输入有效的11位手机号码")
 
-    # 生成 6 位验证码 (演示环境固定或带出 888888)
-    code = "888888"
+    code = f"{secrets.randbelow(1_000_000):06d}"
     SMS_CODE_CACHE[phone] = {
         "code": code,
         "expire_at": time.time() + 300 # 5分钟有效期
@@ -70,23 +72,19 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
         if not req.password or hash_pwd(req.password) != user.password_hash:
             raise HTTPException(status_code=400, detail="密码错误")
     elif req.login_type == "SMS":
-        # 验证短信验证码
+        if not demo_enabled("PARKING_ENABLE_DEMO_SMS"):
+            raise HTTPException(status_code=403, detail="演示短信登录默认关闭，请使用密码登录")
         phone = user.phone
         cached = SMS_CODE_CACHE.get(phone)
         input_code = req.verify_code.strip() if req.verify_code else ""
-        
-        is_valid = False
-        if input_code in ["888888", "123456"]:
-            is_valid = True
-        elif cached and cached["code"] == input_code and time.time() <= cached["expire_at"]:
-            is_valid = True
-
+        is_valid = cached and secrets.compare_digest(cached["code"], input_code) and time.time() <= cached["expire_at"]
         if not is_valid:
             raise HTTPException(status_code=400, detail="短信验证码无效或已过期，请重新获取")
+        SMS_CODE_CACHE.pop(phone, None)
 
     community = db.query(Community).filter(Community.id == user.community_id).first()
 
-    token = f"token-{user.id}-{hash_pwd(user.phone)[:8]}"
+    token = issue_token(user.id)
     return ResponseModel(
         code=200,
         message="登录成功",
@@ -106,6 +104,8 @@ def login(req: LoginRequest, db: Session = Depends(get_db)):
 
 @router.post("/auth/register", response_model=ResponseModel)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
+    if req.role == "PROPERTY_ADMIN" and not demo_enabled("PARKING_ENABLE_DEMO_ADMIN_REGISTRATION"):
+        raise HTTPException(status_code=403, detail="物业管理员自助注册默认关闭；本地演示请使用预置物业账号")
     exist = db.query(User).filter((User.phone == req.phone) | (User.id_card == req.id_card)).first()
     if exist:
         raise HTTPException(status_code=400, detail="该手机号或身份证号已被注册")
@@ -148,7 +148,7 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(user)
 
-    token = f"token-{user.id}-{hash_pwd(user.phone)[:8]}"
+    token = issue_token(user.id)
     return ResponseModel(
         code=200, 
         message="注册成功",

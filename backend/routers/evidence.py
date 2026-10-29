@@ -1,17 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db
 from utils import fmt_bj
 from models import User, ChainEvidence
 from schemas import ResponseModel
+from security import get_current_user
 
 router = APIRouter(prefix="/api/evidence", tags=["Blockchain Evidence"])
-
-def get_current_user(x_user_id: int = Header(..., alias="X-User-Id"), db: Session = Depends(get_db)) -> User:
-    user = db.query(User).filter(User.id == x_user_id).first()
-    if not user:
-        raise HTTPException(status_code=401, detail="用户身份未认证")
-    return user
 
 @router.get("/list", response_model=ResponseModel)
 def get_evidence_list(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -43,12 +38,14 @@ def get_evidence_list(user: User = Depends(get_current_user), db: Session = Depe
     return ResponseModel(code=200, data=data)
 
 @router.get("/verify/{evidence_id}", response_model=ResponseModel)
-def verify_evidence(evidence_id: str, db: Session = Depends(get_db)):
+def verify_evidence(evidence_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """
     验证区块链电子存证真实性
     """
     rec = db.query(ChainEvidence).filter(ChainEvidence.evidence_id == evidence_id).first()
-    if not rec:
+    if not rec or rec.community_id != user.community_id or (
+        user.role != "PROPERTY_ADMIN" and rec.user_id != user.id and rec.event_type != "INIT"
+    ):
         raise HTTPException(status_code=404, detail="未找到该存证记录")
 
     return ResponseModel(

@@ -35,3 +35,6 @@ Thumbs.db
 
 # 无关资料，不纳入本仓库
 水电煤+vpn/
+
+# Task-local test environments and databases
+.tmp/

@@ -4,6 +4,16 @@
 > 
 > **核心里程碑目标**：**2026-09-08 (明天周二) 下班前交付前后端全栈可交互、零外部依赖、自包含、高颜值的演示系统；2026-09-09 (周三) 下午供业务负责人向张总汇报评审**。
 
+## 现行认证与演示边界（2026-10-29）
+
+- 本文下方历史示例用于说明业务流程；认证与启动以本节及实际代码为准。
+- 登录、注册调用 `backend/security.py` 签发有效期 8 小时的 HMAC-SHA256 Bearer token；所有业务接口从已验证 token 获取用户，`X-User-Id` 不作为身份依据，角色以数据库为准。
+- 默认使用进程随机密钥，后端重启后需重新登录；多进程运行时通过环境变量 `PARKING_AUTH_SECRET` 提供同一份至少 32 字节的私有密钥，不提交真实值。
+- `PARKING_ENABLE_DEMO_RESET`、`PARKING_ENABLE_DEMO_SMS`、`PARKING_ENABLE_DEMO_ADMIN_REGISTRATION` 默认关闭，仅精确设置为 `true` 时开启。重置无论开关如何都要求物业身份；演示短信返回验证码，仅可用于隔离演示，不能代替真实短信认证。
+- `run.sh`、Vite 与 `python backend/main.py` 默认仅监听 `127.0.0.1`；局域网演示须明确设置 `PARKING_HOST=0.0.0.0`。Docker 容器内部监听不等于获准部署或公开暴露。
+- 测试必须使用项目 `.tmp/` 中的隔离数据库，禁止用真实 `parking.db` 执行重置测试。回归入口为 `backend/tests/`、`backend/test_audit_complete.py` 和 `frontend/tests/api.test.mjs`。
+- 预置演示密码、拟真证照校验及当前密码存储方式仍属于演示边界，不能据此声称已满足生产系统要求。
+
 ---
 
 ## 目录

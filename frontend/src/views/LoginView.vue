@@ -86,17 +86,17 @@
               <div class="flex items-center justify-between text-amber-900 font-bold">
                 <span class="flex items-center gap-1">
                   <span>📱</span>
-                  <span>收到来自【上海政务云/停车便民服务】短信</span>
+                  <span>本地演示验证码（未发送真实短信）</span>
                 </span>
                 <span class="text-[10px] text-amber-600 font-normal">刚刚</span>
               </div>
               <p class="text-[11px] text-amber-800 leading-relaxed font-mono">
-                您的登录动态验证码为：<span class="font-extrabold text-blue-700 bg-white px-1.5 py-0.5 rounded border border-amber-300">888888</span>，5分钟内有效。
+                您的登录动态验证码为：<span class="font-extrabold text-blue-700 bg-white px-1.5 py-0.5 rounded border border-amber-300">{{ smsCode }}</span>，5分钟内有效。
               </p>
               <div class="pt-1 flex justify-end">
                 <button
                   type="button"
-                  @click="form.verify_code = '888888'"
+                  @click="fillSmsCode"
                   class="px-2 py-0.5 rounded bg-amber-200 hover:bg-amber-300 text-amber-900 font-bold text-[10px] transition"
                 >
                   ⚡ 一键填入验证码
@@ -168,6 +168,10 @@ const switchLoginType = (t) => {
 const sendingSms = ref(false)
 const smsCountdown = ref(0)
 const smsToast = ref(false)
+const smsCode = ref('')
+const fillSmsCode = () => {
+  form.value.verify_code = smsCode.value
+}
 let countdownTimer = null
 
 const handleSendSms = async () => {
@@ -178,10 +182,17 @@ const handleSendSms = async () => {
 
   sendingSms.value = true
   errorMsg.value = ''
+  smsToast.value = false
+  smsCode.value = ''
+  form.value.verify_code = ''
   try {
     const res = await api.post('/auth/send-sms', { phone: form.value.identifier })
+    if (typeof res.data?.demo_code !== 'string' || !/^\d{6}$/.test(res.data.demo_code)) {
+      throw new Error('未收到有效的演示验证码，请重新获取')
+    }
+    smsCode.value = res.data.demo_code
     smsToast.value = true
-    form.value.verify_code = res.data?.demo_code || '888888'
+    fillSmsCode()
     
     // 启动 60 秒倒计时
     smsCountdown.value = 60

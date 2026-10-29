@@ -1,13 +1,30 @@
 import sys
+import os
+from pathlib import Path
+import tempfile
+
+# Never import the application against a developer's real database.
+_project_root = Path(__file__).resolve().parents[1]
+(_project_root / ".tmp").mkdir(exist_ok=True)
+_test_database = tempfile.TemporaryDirectory(prefix="lifecycle-test-", dir=_project_root / ".tmp")
+os.environ["DATABASE_URL"] = f"sqlite:///{_test_database.name}/parking.db"
 from fastapi.testclient import TestClient
 from main import app
+from unittest.mock import patch
 
 def test_full_audit_lifecycle():
     client = TestClient(app)
     
     # 0. 重置种子数据
     print(">>> 0. 重置种子数据...")
-    res = client.post("/api/dev/reset-seed")
+    initial_login = client.post("/api/auth/login", json={
+        "identifier": "13900000001", "password": "123456", "login_type": "PASSWORD"
+    })
+    assert initial_login.status_code == 200, initial_login.text
+    with patch.dict(os.environ, {"PARKING_ENABLE_DEMO_RESET": "true"}):
+        res = client.post("/api/dev/reset-seed", headers={
+            "Authorization": f"Bearer {initial_login.json()['data']['token']}"
+        })
     assert res.status_code == 200, res.text
     print("Seed reset ok.")
 
@@ -21,8 +38,7 @@ def test_full_audit_lifecycle():
     prop_user = prop_login.json()["data"]["user"]
     prop_token = prop_login.json()["data"]["token"]
     prop_headers = {
-        "Authorization": f"Bearer {prop_token}",
-        "X-User-Id": str(prop_user["id"])
+        "Authorization": f"Bearer {prop_token}"
     }
     print(f">>> 1. 物业管理员登录成功 (User ID: {prop_user['id']})！")
 
@@ -58,8 +74,7 @@ def test_full_audit_lifecycle():
     owner_user = owner_login.json()["data"]["user"]
     owner_token = owner_login.json()["data"]["token"]
     owner_headers = {
-        "Authorization": f"Bearer {owner_token}",
-        "X-User-Id": str(owner_user["id"])
+        "Authorization": f"Bearer {owner_token}"
     }
     print(f">>> 5. 业主张欣欣登录成功 (User ID: {owner_user['id']})！")
 

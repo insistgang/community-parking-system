@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="慧停管家：老旧小区停车位管理系统全栈演示。公平排位、三证合一准入、48 小时确认与虚拟区块链存证。">
+  <title>慧停管家 · 老旧小区停车位管理系统</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0f1316; --surface:#171d21; --raised:#1f272c; --line:#333c42; --text:#ece9e1; --muted:#a5adb3; --accent:#8fc7d8; --green:#7fc7a5; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; line-height:1.7; }
+    a { color:inherit; }
+    .wrap { width:min(100% - 40px,1120px); margin:0 auto; }
+    header { padding:64px 0 36px; border-bottom:1px solid var(--line); }
+    .eyebrow { color:var(--muted); font-size:12px; letter-spacing:.16em; }
+    h1 { margin:14px 0 16px; font-size:clamp(30px,5vw,46px); letter-spacing:-.03em; }
+    .lead { max-width:700px; color:var(--muted); font-size:16px; margin:0; }
+    .badges { display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; }
+    .badge { border:1px solid var(--line); color:var(--accent); border-radius:999px; padding:6px 12px; font-size:12px; }
+    .meta { display:flex; flex-wrap:wrap; gap:22px; margin-top:24px; color:var(--muted); font-size:13px; }
+    section { padding:42px 0 0; }
+    h2 { margin:0 0 18px; font-size:24px; letter-spacing:-.02em; }
+    .shot { background:var(--surface); border:1px solid var(--line); border-radius:16px; overflow:hidden; }
+    .shot img { display:block; width:100%; height:auto; }
+    .shot figcaption { padding:12px 16px; color:var(--muted); font-size:12px; border-top:1px solid var(--line); }
+    .desktop { margin:0; }
+    .phones { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:18px; margin-top:18px; }
+    .phones figure { margin:0; }
+    .phones img { aspect-ratio:430/900; object-fit:cover; object-position:top; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px; }
+    .card { background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px; }
+    .card h3 { margin:0 0 8px; font-size:16px; }
+    .card p { margin:0; color:var(--muted); font-size:14px; }
+    .notice { border-left:2px solid var(--accent); background:var(--surface); padding:18px 20px; border-radius:0 12px 12px 0; color:var(--muted); font-size:14px; }
+    .links { display:flex; flex-wrap:wrap; gap:14px; margin-top:18px; }
+    .btn { display:inline-flex; align-items:center; gap:8px; background:var(--text); color:#14181b; text-decoration:none; padding:11px 18px; border-radius:8px; font-weight:600; font-size:14px; }
+    .btn.secondary { background:transparent; color:var(--accent); border:1px solid var(--line); }
+    footer { margin:48px 0 28px; padding-top:20px; border-top:1px solid var(--line); color:var(--muted); font-size:13px; }
+    @media (max-width:640px) { header { padding-top:44px; } .phones { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div class="eyebrow">COMMUNITY PARKING · FULL-STACK DEMO</div>
+    <h1>慧停管家</h1>
+    <p class="lead">老旧小区停车位管理系统：以公平排位、三证合一准入、48 小时确认期和虚拟区块链存证，串起业主移动端与物业管理中台。</p>
+    <div class="badges">
+      <span class="badge">Vue 3</span><span class="badge">FastAPI</span><span class="badge">SQLite</span><span class="badge">Docker</span><span class="badge">50 车位示范网格</span>
+    </div>
+    <div class="meta">
+      <span>业主 H5 + 物业 PC 中台</span><span>纯离线可运行</span><span>业务演示系统，非生产部署</span>
+    </div>
+    <div class="links">
+      <a class="btn" href="https://github.com/insistgang/community-parking-system">查看 GitHub 仓库 ↗</a>
+      <a class="btn secondary" href="https://insistgang.top/portfolio/">返回作品集</a>
+    </div>
+  </header>
+
+  <section>
+    <h2>物业管理中台</h2>
+    <figure class="shot desktop">
+      <img src="screens/property-dashboard.png" alt="物业管理中台的 50 车位资产矩阵界面" loading="lazy">
+      <figcaption>50 车位实时矩阵：已租、空闲、中签、维修停用状态与资产台账。演示数据均为虚构。</figcaption>
+    </figure>
+  </section>
+
+  <section>
+    <h2>业主移动端</h2>
+    <div class="phones">
+      <figure class="shot">
+        <img src="screens/owner-login.png" alt="业主登录页与演示账号快捷入口" loading="lazy">
+        <figcaption>登录页：预置演示账号一键填入。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screens/owner-home.png" alt="业主车位申请状态与小区概况" loading="lazy">
+        <figcaption>首页：申请审核、小区车位概况与个人状态。</figcaption>
+      </figure>
+      <figure class="shot">
+        <img src="screens/owner-queue.png" alt="业主顺位公示页面" loading="lazy">
+        <figcaption>顺位公示：队列透明展示与个人排位轨迹。</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section>
+    <h2>核心机制</h2>
+    <div class="grid">
+      <article class="card"><h3>公平排位</h3><p>一车优先于二车，同优先级按申请时间排序；物业端不提供手动指派入口。</p></article>
+      <article class="card"><h3>三证合一准入</h3><p>身份证、房产证、结婚证在前端完成拟真识别，服务端只保留必要字段与校验结果。</p></article>
+      <article class="card"><h3>48 小时确认</h3><p>中签后倒计时确认；超时自动收回并顺延，释放车位即时触发重排。</p></article>
+      <article class="card"><h3>存证验真</h3><p>业务快照写入 SHA-256 哈希链，生成可核验的防伪凭据。</p></article>
+    </div>
+  </section>
+
+  <section>
+    <h2>说明</h2>
+    <div class="notice">
+      本页是静态作品展示，截图来自本地运行的完整演示系统。系统使用预置演示账号与虚构数据；虚拟区块链为单节点哈希链实现，预置密码与证照拟真校验不满足生产要求，当前没有公网在线实例。
+    </div>
+  </section>
+
+  <footer>慧停管家 · 老旧小区停车位管理系统 · 全栈演示</footer>
+</main>
+</body>
+</html>
